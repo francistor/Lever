@@ -1,0 +1,12 @@
+{
+	"port": 3868,
+	"peers":
+	[
+		{
+		"name": "testpeer",
+		"diameterIdentity": "samsung-jativa",
+		"IPAddress": "127.0.0.1:3868",
+		"connectionPolicy": "auto"
+		}
+	]
+}

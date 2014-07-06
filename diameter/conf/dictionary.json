@@ -1,0 +1,39 @@
+{
+	"avps":
+	[
+		{
+			"code": 1,
+			"name": "User-Name",
+			"type": "UTF8String"
+		},
+		{
+			"code": 257,
+			"name": "Host-IP-Address",
+			"type": "Address"
+		},
+		{
+			"code": 264,
+			"name": "Origin-Host",
+			"type": "DiamIdent"
+		},
+		{
+			"code": 266,
+			"name": "Vendor-Id",
+			"type": "Unsigned32"
+		},
+		{
+			"code": 269,
+			"name": "Product-Name",
+			"type": "UTF8String"
+		},
+		{
+			"code": 296,
+			"name": "Origin-Realm",
+			"type": "DiamIdent"
+		}
+	],
+
+	"applications":
+	[
+	]
+}
