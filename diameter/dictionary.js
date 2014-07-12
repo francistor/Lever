@@ -8,33 +8,51 @@ var logger=require("./log").logger;
 var dictionary=JSON.parse(fs.readFileSync("./conf/dictionary.json", {encoding: "utf8"}));
 
 // Add Map from code to AVPs
-dictionary.avpsCodeMap=[];
-for(i=0; i<dictionary.avps.length; i++)
-{
-	dictionary.avpsCodeMap[dictionary.avps[i].code]=dictionary.avps[i];
+// avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
+// avpNameMap={<avpname>:{<avpDef>}, ...}
+var vendorName;
+dictionary.avpCodeMap={};
+dictionary.avpNameMap={};
+for(vendorId in dictionary.avp){
+
+	dictionary.avpCodeMap[vendorId]={};
+
+	vendorName=dictionary.vendor[vendorId];
+
+	for(i=0; i<dictionary.avp[vendorId].length; i++){
+		// Populate avpCodeMap. To retrieve avpDef from code use dictionary.avpCodeMap[vendorId][<avpcode>]
+		dictionary.avpCodeMap[vendorId][dictionary.avp[vendorId][i].code]=dictionary.avp[vendorId][i];
+
+		// Populate avpNameMap. To retrieve avpDef from name use dictionary.avpNameMap[<avpname>]
+		if(vendorName){
+			// Add vendorId to avpDef for easy reference
+			dictionary.avp[vendorId][i].vendorId=vendorId;
+			dictionary.avpNameMap[vendorName+"-"+dictionary.avp[vendorId][i].name]=dictionary.avp[vendorId][i];
+		}
+		else	dictionary.avpNameMap[dictionary.avp[0][i].name]=dictionary.avp[0][i];
+	}
 }
 
-// Add Map from names to AVPs
-dictionary.namesMap={};
-for(i=0; i<dictionary.avps.length; i++)
-{
-	dictionary.namesMap[dictionary.avps[i].name]=dictionary.avps[i];
-}
 
-// Functions for debugging
-dictionary.print=function(){console.log("--------------")};
-
-dictionary.printAVPCodes=function(){
+// For debugging only
+dictionary.dumpMaps=function(){
+	logger.debug();
 	logger.debug("Dumping codes");
-	for(i=0; i<dictionary.avps.length; i++) logger.debug("Code: "+dictionary.avps[i].code+" Definition: "+JSON.stringify(dictionary.avpsCodeMap[dictionary.avps[i].code]));
-	logger.debug("");
-}
-
-dictionary.printAVPNames=function(){
+	for(vendorId in dictionary.avpCodeMap){
+		logger.debug(vendorId+":");
+		for(avpCode in dictionary.avpCodeMap[vendorId]){
+			logger.debug("\t"+avpCode+": "+JSON.stringify(dictionary.avpCodeMap[vendorId][avpCode]));
+		}
+	}
+	logger.debug();
 	logger.debug("Dumping names");
-	for(i=0; i<dictionary.avps.length; i++) logger.debug("Name: "+dictionary.avps[i].name+" Definition: "+JSON.stringify(dictionary.namesMap[dictionary.avps[i].name]));
-	logger.debug("");
+	for(avpName in dictionary.avpNameMap){
+		logger.debug("\t"+avpName+": "+JSON.stringify(dictionary.avpNameMap[avpName]));
+	}
+	logger.debug();
 }
+dictionary.dumpMaps();
+
 
 exports.diameterDictionary=dictionary;
 

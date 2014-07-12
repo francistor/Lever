@@ -1,5 +1,14 @@
 {
-	"avps":
+	"vendor":
+	{
+			"1001": "francisco.cardosogil@gmail.com",
+			"9": "Cisco"
+	},
+
+	"avp":
+	{
+
+	"0":
 	[
 		{
 			"code": 1,
@@ -31,7 +40,28 @@
 			"name": "Origin-Realm",
 			"type": "DiamIdent"
 		}
+
 	],
+
+	"1001":
+	[
+		{
+			"code": 1,
+			"name": "myparameter",
+			"type": "UTF8String"
+		}
+	],
+
+	"9":
+	[
+		{
+			"code": 1,
+			"name": "bigparameter",
+			"type": "UTF8String"
+		}
+	]
+
+	},
 
 	"applications":
 	[
