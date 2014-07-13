@@ -1,5 +1,9 @@
 // Diameter message decoding and encoding functions
 
+var logger=require("./log").logger;
+var ipaddr=require('ipaddr.js');
+var dictionary=require("./dictionary").diameterDictionary;
+
 // Returns a JSON object containing the message
 // {
 //	isRequest:<>
@@ -12,7 +16,7 @@
 //	avps:[array of AVP]
 //		{attributeName:<>, value: <>}
 //			
-function parseMessage(buff, dictionary){
+function parseMessage(buff){
 
 	var message={};
 	
@@ -47,11 +51,15 @@ function parseMessage(buff, dictionary){
 	return message;
 
 	function parseAVP(){
+		var i;
+		var addrFamily;
+		var ipv4Parts=[0, 0, 0, 0];
+		var ipv6Parts=[0, 0, 0, 0, 0, 0, 0, 0];
+
 		var avp={};
 
 		// AVP Code
 		var avpCode=buff.readUInt32BE(readPtr);
-console.log("----------- ptr: "+readPtr+" code: "+avpCode);
 		avp.code=avpCode;
 
 		// Flags
@@ -61,7 +69,6 @@ console.log("----------- ptr: "+readPtr+" code: "+avpCode);
 
 		// Length
 		var avpLen=buff.readUInt16BE(readPtr+5)*256+buff.readUInt8(readPtr+7);
-console.log("-----------avpLen: "+avpLen);
 
 		var dataSize;
 		if(avp.isVendorSpecific){ avp.vendorId=buff.readUInt32BE(readPtr+8); readPtr+=12; dataSize=avpLen-12;} else {avp.VendorId=null; readPtr+=8; dataSize=avpLen-8}
@@ -70,18 +77,38 @@ console.log("-----------avpLen: "+avpLen);
 		if(avpDef){
 			avp.name=avpDef.name;
 			switch(avpDef.type){
+				case "Unsigned32":
+					avp.value=buff.readUInt32BE(readPtr);
+					break;
 				case "OctetString":
-				break;
+					break;
+
+				case "DiamIdent":
+					avp.value=buff.toString("utf8", readPtr, readPtr+dataSize);
+					break;
 
 				case "UTF8String":
 					avp.value=buff.toString("utf8", readPtr, readPtr+dataSize);
-				break;
+					break;
+
+				case "Address":
+					addrFamily=buff.readUInt16BE(readPtr);
+					if(addrFamily===1){
+						for(i=0; i<4; i++) ipv4Parts[i]=buff.readUInt8(readPtr+2+i);
+						avp.value=new ipaddr.IPv4(ipv4Parts).toString();
+					}
+					else if(addrFamily===2){
+						for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(readPtr+2+i);
+						avp.value=new ipaddr.IPv6(ipv6Parts).toString();
+					}
+					else logger.error("Unknown address family: "+addrFamily);
+					break;
 
 				default:
-				console.error("Unknown AVP type: "+avpDef.type);
+					logger.error("Unknown AVP type: "+avpDef.type);
 			}
 		}
-		else console.error("Unknown AVP Code: "+avpCode);
+		else logger.error("Unknown AVP Code: "+avpCode);
 		
 		// Advance pointer up to a 4 byte boundary
 		readPtr+=dataSize;
