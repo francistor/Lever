@@ -21,6 +21,11 @@
 			"type": "Address"
 		},
 		{
+			"code": 259,
+			"name": "Acct-Application-Id",
+			"type": "Unsigned32"
+		},
+		{
 			"code": 264,
 			"name": "Origin-Host",
 			"type": "DiamIdent"
@@ -31,9 +36,19 @@
 			"type": "Unsigned32"
 		},
 		{
+			"code": 267,
+			"name": "Firmware-Revision",
+			"type": "Unsigned32"
+		},
+		{
 			"code": 269,
 			"name": "Product-Name",
 			"type": "UTF8String"
+		},
+		{
+			"code": 278,
+			"name": "Origin-State-Id",
+			"type": "Unsigned32"
 		},
 		{
 			"code": 296,

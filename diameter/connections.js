@@ -3,8 +3,7 @@
 var logger=require("./log").logger;
 var util=require("util");
 var config=require("./config").config;
-var diameterCodec=require("./diameterCodec");
-var diameterDictionary=require("./dictionary").diameterDictionary;
+var diameterCodec=require("./codec");
 var EventEmitter=require("events").EventEmitter;
 
 var DiameterConnection=function(connections, state, socket, identity)
@@ -32,13 +31,18 @@ var DiameterConnection=function(connections, state, socket, identity)
 		connections.endConnection(self);
 	});
 
+	// Error received. Just log. TODO
+	this.socket.on("error", function(){
+		logger.error("Error event received");
+	});
+
 	// Data recevied
 	this.socket.on("data", function(buffer){
 		logger.debug("Receiving data from "+self.peerDiameterIdentity);
 		logger.debug("Version: "+buffer.readUInt8(0));
 		logger.debug("Message size: "+buffer.readInt16BE(1)*256+buffer.readUInt8(3));
 
-		logger.info(JSON.stringify(diameterCodec.parseMessage(buffer, diameterDictionary)));
+		logger.info(JSON.stringify(diameterCodec.parseMessage(buffer), undefined, 2));
 	});
 }
 
@@ -58,8 +62,14 @@ var diameterConnections=function(){
 
 	// Dump connections to logfile
 	that.printConnections=function(){
-		if(connections.length===0) logger.debug("No connections");
-		else for(i=0; i<connections.length; i++) logger.debug("identity: "+connections[i].peerDiameterIdentity+" state: "+connections[i].state);
+		if(connections.length===0){
+			logger.debug("No connections");
+		}
+		else{
+			logger.debug("Current connections:");
+			for(i=0; i<connections.length; i++) logger.debug("identity: "+connections[i].peerDiameterIdentity+", state: "+connections[i].state);
+		}
+		logger.debug("");
 	}
 
 	// Treat new connection arrived
