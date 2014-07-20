@@ -4,6 +4,7 @@ var logger=require("./log").logger;
 var util=require("util");
 var config=require("./config").config;
 var diameterCodec=require("./codec");
+var createMessage=require("./message").createMessage;
 var EventEmitter=require("events").EventEmitter;
 
 var DiameterConnection=function(connections, state, socket, identity)
@@ -42,7 +43,7 @@ var DiameterConnection=function(connections, state, socket, identity)
 		logger.debug("Version: "+buffer.readUInt8(0));
 		logger.debug("Message size: "+buffer.readInt16BE(1)*256+buffer.readUInt8(3));
 
-		logger.info(JSON.stringify(diameterCodec.parseMessage(buffer), undefined, 2));
+		logger.info(JSON.stringify(createMessage().decode(buffer), undefined, 2));
 	});
 }
 
