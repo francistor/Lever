@@ -42,8 +42,14 @@ var DiameterConnection=function(connections, state, socket, identity)
 		logger.debug("Receiving data from "+self.peerDiameterIdentity);
 		logger.debug("Version: "+buffer.readUInt8(0));
 		logger.debug("Message size: "+buffer.readInt16BE(1)*256+buffer.readUInt8(3));
-
-		logger.info(JSON.stringify(createMessage().decode(buffer), undefined, 2));
+		
+		var msg=createMessage().decode(buffer);
+		logger.info(JSON.stringify(msg, undefined, 2));
+		
+		var buffer2=msg.encode();
+		
+		var msg2=createMessage().decode(buffer2);
+		logger.info(JSON.stringify(msg2, undefined, 2));
 	});
 }
 

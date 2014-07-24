@@ -11,7 +11,6 @@ var DIAMETER_VERSION=1;
 
 function createMessage(){
 
-	// Message remains private
 	var message={};
 	
 	// decode method
@@ -70,7 +69,7 @@ function createMessage(){
 			var avpLen=buff.readUInt16BE(readPtr+5)*256+buff.readUInt8(readPtr+7);
 
 			var dataSize;
-			if(avp.isVendorSpecific){ avp.vendorId=buff.readUInt32BE(readPtr+8); readPtr+=12; dataSize=avpLen-12;} else {avp.VendorId=null; readPtr+=8; dataSize=avpLen-8}
+			if(avp.isVendorSpecific){ avp.vendorId=buff.readUInt32BE(readPtr+8); readPtr+=12; dataSize=avpLen-12;} else {avp.vendorId=null; readPtr+=8; dataSize=avpLen-8}
 		
 			var avpDef=dictionary.avpCodeMap[avp.vendorId||"0"][avpCode];
 			if(avpDef){
@@ -136,105 +135,106 @@ function createMessage(){
 		if(message.isProxiable) flags+=64;
 		if(message.isError) flags+=32;
 		if(message.isRetransmission) flags+=16;
-		buff.writeUInt8(4, flags);
+		buff.writeUInt8(flags, 4);
 
-		buff.writeUInt16BE(5, message.commandCode/256);
-		buff.writeUInt8(7, message.commandCode % 256);
+		buff.writeUInt16BE((message.commandCode - message.commandCode % 256)/256, 5);
+		buff.writeUInt8(message.commandCode % 256, 7);
 
-		buff.writeUInt32BE(8, message.applicationId);
-		buff.writeUInt32BE(12, message.hopByHopId);
-		buff.writeUInt32BE(16, message.endToEndId);
+		buff.writeUInt32BE(message.applicationId, 8);
+		buff.writeUInt32BE(message.hopByHopId, 12);
+		buff.writeUInt32BE(message.endToEndId, 16);
 
 		var avpDef;
 		var avp;
-		avpFlags;
+		var avpFlags;
 		var avpLen=0;
-		var writePtr=0;
+		var writePtr=20;
 		var writeLenPtr;
 		var ipAddr;
 
 		// Iterate through AVPs
 		var i, j;
-		for(i=0; i<avps.length; i++){
+		for(i=0; i<message.avps.length; i++){
 			avp=message.avps[i];
-			avpDef=dictionary.avp[avp.vendorId||"0"][avp.name];
+			avpDef=dictionary.avpNameMap[avp.name];
 			if(!avpDef){
 				logger.warn("Unknown attribute :" +JSON.stringify(avp));
 				continue;
 			}
 			
-			writePtr=encodeAVP();
+			encodeAVP();
 		}
+		
+		// Encode length
+		buff.writeUInt16BE((writePtr - writePtr % 256)/256, 1);
+		buff.writeUInt8(writePtr % 256, 3);
 
 		return buff;
 
 		function encodeAVP(){
+			var ipAddr;
+			var initialWritePtr=writePtr;
+			
 			// Write AVP Header
-			buff.writeUInt32BE(writePtr, avpDef.code);
-					
+			// Code
+			buff.writeUInt32BE(avpDef.code, writePtr);
+			// Flags
 			avpFlags=0;
 			if(avpDef.vendorId) avpFlags+=128;
 			if(avp.isMandatory) avpFlags+=64;
-			buff.writeUInt8(writePtr+4, avpFlags);
-
+			buff.writeUInt8(avpFlags, writePtr+4);
 			// Defer writting length
 			writeLenPtr=writePtr+5;
-
+			// VendorId
 			if(avp.vendorId){
-				buff.writeUInt32BE(writePtr+8, avp.vendorId);
+				buff.writeUInt32BE(avp.vendorId, writePtr+8);
 				writePtr+=12;
 			}
 			else writePtr+=8;
 
 			switch(avpDef.type){
 				case "Unsigned32":
-					buff.writeUInt32BE(writePtr, avp.value);
-					avpLen=4;
+					buff.writeUInt32BE(avp.value, writePtr);
+					writePtr+=4;
 					break;
 				case "OctetString":
 					break;
 
 				case "DiamIdent":
-					buff.writeString(avp.value, writePtr, "ascii");
-					avpLen=buff.byteLength(avp.value, "ascii");
+					writePtr+=buff.write(avp.value, writePtr, Buffer.byteLength(avp.value, "ascii"), "ascii");
 					break;
 
 				case "UTF8String":
-					buff.writeString(avp.value, writePtr, "utf8");
-					avpLen=buff.byteLength(avp.value, "utf8");
+					writePtr+=buff.write(avp.value, writePtr, Buffer.byteLength(avp.value, "utf8"), "utf8");
 					break;
 
 				case "Address":
 					ipAddr=ipaddr.parse(avp.value);
 					if(ipAddr.kind()==="ipv4"){
-						buff.writeUInt16(writePtr, 1);
-						for(j=0; j<4; j++) buff.writeUInt8(writePtr+2+j, ipAddr.octects[j]);
-						avpLen=2+4;
+						buff.writeUInt16BE(1, writePtr);
+						for(j=0; j<4; j++) buff.writeUInt8(ipAddr.octets[j], writePtr+2+j);
+						writePtr+=2+4;
 					}
 					else if(ipAddr.kind()==="ipv6"){
-						buff.writeUInt16(writePtr, 2);
-						for(j=0; j<8; j++) buff.writeUInt16BE(writePtr+2+j, ipAddr.parts[j]);
-						avpLen=2+8;
+						buff.writeUInt16BE(2, writePtr);
+						for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.parts[j], writePtr+2+j);
+						writePtr+=2+8;
 					}
-					
-					
 			}
 
 			// Write length
-			buff.writeUInt16BE(writeLenPtr, avpLen/256);
-			buff.writeUInt8(writeLenPtr+2, avplen % 256);
+			avpLen=writePtr-initialWritePtr;
+			buff.writeUInt16BE((avpLen - avpLen % 256)/256, writeLenPtr);
+			buff.writeUInt8(avpLen % 256, writeLenPtr+2);
 
 			// Pad until 4 byte boundary
-			writePtr+=avpLen;
 			while(writePtr % 4 !==0){
-				buff.writeUInt8(writePtr, 0);
+				buff.writeUInt8(0, writePtr);
 				writePtr+=1;
 			}
 			
 			// Enlarge if necessary
 			if(buff.length-writePtr < INCREMENT_BUFF_THRESHOLD) buff=Buffer.concat([buff, new Buffer(INITIAL_BUFF_LEN)], buff.length+INITIAL_BUFF_LEN);
-
-			return writePtr;
 		}
 	}
 

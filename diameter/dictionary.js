@@ -13,12 +13,15 @@ var dictionary=JSON.parse(fs.readFileSync("./conf/dictionary.json", {encoding: "
 var vendorName;
 dictionary.avpCodeMap={};
 dictionary.avpNameMap={};
+
+// Iterate through vendors
 for(vendorId in dictionary.avp){
 
 	dictionary.avpCodeMap[vendorId]={};
 
 	vendorName=dictionary.vendor[vendorId];
 
+	// Iterate through avps for the vendor
 	for(i=0; i<dictionary.avp[vendorId].length; i++){
 		// Populate avpCodeMap. To retrieve avpDef from code use dictionary.avpCodeMap[vendorId][<avpcode>]
 		dictionary.avpCodeMap[vendorId][dictionary.avp[vendorId][i].code]=dictionary.avp[vendorId][i];
@@ -29,7 +32,7 @@ for(vendorId in dictionary.avp){
 			dictionary.avp[vendorId][i].vendorId=vendorId;
 			dictionary.avpNameMap[vendorName+"-"+dictionary.avp[vendorId][i].name]=dictionary.avp[vendorId][i];
 		}
-		else	dictionary.avpNameMap[dictionary.avp[0][i].name]=dictionary.avp[0][i];
+		else dictionary.avpNameMap[dictionary.avp[0][i].name]=dictionary.avp[0][i];
 	}
 }
 
