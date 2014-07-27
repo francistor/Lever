@@ -21,9 +21,30 @@
 				"type": "Address"
 			},
 			{
+				"code": 258,
+				"name": "Auth-Application-Id",
+				"type": "Enumerated",
+				"enumValues":
+				{
+					"Base": 0,
+					"NASREQ": 1,
+					"Mobile-IPv4": 2,
+					"Accounting": 3,
+					"Credit-Control": 4
+				}
+			},
+			{
 				"code": 259,
 				"name": "Acct-Application-Id",
-				"type": "Unsigned32"
+				"type": "Enumerated",
+				"enumValues":
+				{
+					"Base": 0,
+					"NASREQ": 1,
+					"Mobile-IPv4": 2,
+					"Accounting": 3,
+					"Credit-Control": 4
+				}
 			},
 			{
 				"code": 264,
@@ -80,5 +101,59 @@
 
 	"applications":
 	[
+		{
+			"name":"Accounting",
+			"code": 3,
+			"commands":
+			{
+				"code": 3,
+				"name": "Accounting",
+				"request":
+				{
+					"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
+					"Origin-Host": {"minOccurs": 1, "maxOccurs": 1},
+					"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
+					"Destination-Realm":{"minOccurs": 1, "maxOccurs": 1},
+					"Accounting-Record-Type":{"minOccurs": 1, "maxOccurs": 1},
+					"Accounting-Record-Number":{"minOccurs": 1, "maxOccurs": 1},
+					"Acct-Application-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Vendor-Specific-Application-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"User-Name":{"minOccurs": 0, "maxOccurs": 1},
+					"Accounting-Sub-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Multi-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Interim-Interval":{"minOccurs": 0, "maxOccurs": 1},
+					"Accounting-Realtime-Required":{"minOccurs": 0, "maxOccurs": 1},
+					"Origin-State-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Event-Timestamp":{"minOccurs": 0, "maxOccurs": 1},
+					"Proxy-Info":{"minOccurs": 0},
+					"Route-Record":{"minOccurs": 0},
+					"AVP":{"minOccurs": 0}
+				},
+				"response":
+				{
+					"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
+					"Result-Code":{"minOccurs": 1, "maxOccurs": 1},
+					"Origin-Host":{"minOccurs": 1, "maxOccurs": 1},
+					"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
+					"Accounting-Record-Type":{"minOccurs": 1, "maxOccurs": 1},
+					"Accounting-Record-Number":{"minOccurs": 1, "maxOccurs": 1},
+					"Acct-Application-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Vendor-Specific-Application-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"User-Name":{"minOccurs": 0, "maxOccurs": 1},
+					"Accounting-Sub-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Multi-Session-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Error-Reporting-Host":{"minOccurs": 0, "maxOccurs": 1},
+					"Acct-Interim-Interval":{"minOccurs": 0, "maxOccurs": 1},
+					"Accounting-Realtime-Required":{"minOccurs": 0, "maxOccurs": 1},
+					"Origin-State-Id":{"minOccurs": 0, "maxOccurs": 1},
+					"Event-Timestamp":{"minOccurs": 0, "maxOccurs": 1},
+					"Proxy-Info":{"minOccurs": 0},
+					"AVP":{"minOccurs": 0}
+				}
+			}
+
+		}
 	]
 }

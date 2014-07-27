@@ -10,7 +10,11 @@ var dictionary=JSON.parse(fs.readFileSync("./conf/dictionary.json", {encoding: "
 // Add Map from code to AVPs
 // avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
 // avpNameMap={<avpname>:{<avpDef>}, ...}
+var enumCodes;
 var vendorName;
+var avpDef;
+var i;
+var enumValue;
 dictionary.avpCodeMap={};
 dictionary.avpNameMap={};
 
@@ -23,14 +27,21 @@ for(vendorId in dictionary.avp){
 
 	// Iterate through avps for the vendor
 	for(i=0; i<dictionary.avp[vendorId].length; i++){
+		avpDef=dictionary.avp[vendorId][i];
+		// If enumerated type, add reverse code map for easy reference
+		if(avpDef.type==="Enumerated"){
+			enumCodes={};
+			for(enumValue in avpDef.enumValues) enumCodes[avpDef.enumValues[enumValue]]=enumValue;
+			avpDef.enumCodes=enumCodes;
+		}
 		// Populate avpCodeMap. To retrieve avpDef from code use dictionary.avpCodeMap[vendorId][<avpcode>]
-		dictionary.avpCodeMap[vendorId][dictionary.avp[vendorId][i].code]=dictionary.avp[vendorId][i];
+		dictionary.avpCodeMap[vendorId][dictionary.avp[vendorId][i].code]=avpDef;
 
 		// Populate avpNameMap. To retrieve avpDef from name use dictionary.avpNameMap[<avpname>]
 		if(vendorName){
 			// Add vendorId to avpDef for easy reference
-			dictionary.avp[vendorId][i].vendorId=vendorId;
-			dictionary.avpNameMap[vendorName+"-"+dictionary.avp[vendorId][i].name]=dictionary.avp[vendorId][i];
+			avpDef.vendorId=vendorId;
+			dictionary.avpNameMap[vendorName+"-"+dictionary.avp[vendorId][i].name]=avpDef;
 		}
 		else dictionary.avpNameMap[dictionary.avp[0][i].name]=dictionary.avp[0][i];
 	}
