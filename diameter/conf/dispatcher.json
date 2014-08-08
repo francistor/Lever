@@ -1,0 +1,10 @@
+{
+	"Base":
+		{
+			"Capabilities-Exchange": 
+				{
+					"module":"./baseHandler",
+					"functionName": "cerHandler"
+				}
+		}
+}
