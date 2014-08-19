@@ -17,8 +17,8 @@ var cerHandler=function(context, dispatcher){
 		// TODO: add all ip addresses here if listening address not specified
 	}
 	
-	reply["Vendor-Id"]=11001;
-	reply["Firmware-Revision"]=1;
+	reply["Vendor-Id"]=config.getVendorId();
+	reply["Firmware-Revision"]=config.getFirmwareRevision();
 	
 	// Add supported applications
 	var applicationName;
@@ -38,6 +38,31 @@ var cerHandler=function(context, dispatcher){
 	dispatcher.sendReply(context);
 }
 
+var watchdogHandler=function(context, dispatcher){
+
+	var reply=context.reply.avps;
+	
+	// Result code
+	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
+	
+	// Send reply
+	dispatcher.sendReply(context);
+
+}
+
+var disconnectPeerHandler=function(context, dispatcher){
+
+	var reply=context.reply.avps;
+	
+	// Result code
+	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
+	
+	// Send reply
+	dispatcher.sendReply(context);
+}
+
 // Declare handlers
 exports.cerHandler=cerHandler;
+exports.watchdogHandler=watchdogHandler;
+exports.disconnectPeerHandler=disconnectPeerHandler;
 

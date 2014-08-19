@@ -1,63 +1,118 @@
 // Diameter connection
 
-var logger=require("./log").logger;
 var util=require("util");
+var logger=require("./log").logger;
 var config=require("./config").config;
-var diameterCodec=require("./codec");
-var createMessage=require("./message").createMessage;
-var EventEmitter=require("events").EventEmitter;
+var createDispatcher=require("./dispatcher").createDispatcher;
 
-var DiameterConnection=function(connections, state, socket, identity)
+var createMessage=require("./message").createMessage;
+
+var MAX_MESSAGE_SIZE=4096;
+
+var createDiameterConnection=function(connections, state, socket, originHost)
 {
+	var dc={};
+	
 	// Reference to the all connections array
-	this.connections=connections;
+	dc.connections=connections;
 
 	// Peer state machine as per RFC 6733. Adding another state (Wait-CER)
-	this.state=state;
+	dc.state=state;
 
 	// Socket
-	this.socket=socket;
+	dc.socket=socket;
 
 	// Diameter identity of peer
-	this.peerDiameterIdentity=identity;
+	dc.originHost=originHost;
 
-	// Buffer
-	this.data=null;
+	// Connection buffer
+	dc.data=new Buffer(MAX_MESSAGE_SIZE);
+	dc.currentMessageLength=0;
+	dc.currentDataLength=0;
+	
+	// Socket buffer
+	dc.bufferPtr=0;
+	
+	// Helper function
+	// Copies data in the data buffer up to the specified total message size
+	// Returns true if target was met
+	function copyData(targetSize, buff){
+		// Data to copy is rest to get the target size or whatever is available in the buffer
+		var copySize=Math.min(targetSize-dc.currentDataLength, buff.length-dc.bufferPtr);
+		
+		// Copy from buffer to data
+		buff.copy(dc.data, dc.currentDataLength, dc.bufferPtr, dc.bufferPtr+copySize);
+		dc.currentDataLength+=copySize;
+		dc.bufferPtr+=copySize;
+		
+		if(dc.bufferPtr===targetSize) return true; else return false;
+	}
+	
+	// Helper function
+	// Gets the diameter message size
+	function getMessageLength(){
+		return dc.data.readInt16BE(1)*256+dc.data.readUInt8(3);
+	}
 
-	// Store my identity
-	var self=this;
-
-	// When socket is closed, delete in connections table
-	this.socket.on("close", function(){
-		connections.endConnection(self);
+	// Data recevied
+	dc.socket.on("data", function(buffer){
+		var messageBuffer;
+		logger.debug("Receiving data from "+dc.originHost);
+		
+		dc.bufferPtr=0;
+		// Iterate until all the received buffer has been copied
+		// The buffer may span multiple diameter messages
+		while(dc.bufferPtr < buffer.length){
+		
+			if(dc.currentMessageLength===0){
+				// Still the message size is unknown. Try to copy the length
+				if(copyData(4, buffer)){
+					dc.currentMessageLength=getMessageLength();
+				}
+			}
+			else{
+				if(copyData(dc.currentMessageLength, buffer)){
+					// Create new buffer
+					messageBuffer=new Buffer(dc.currentMessageLength);
+		
+					// Copy data to new buffer
+					dc.data.copy(messageBuffer, 0, 0, dc.currentMessageLength);
+		
+					// Reset buffer
+					dc.currentMessageLength=0;
+					dc.currentDataLength=0;
+		
+					dc.connections.dispatcher.dispatchMessage(messageBuffer, dc.originHost);
+				}
+			}
+		}
+	});
+	
+	// Sends a diameter message
+	dc.sendMessage=function(buffer){
+			var wbytes=dc.socket.write(buffer);
+	}
+	
+		// When socket is closed, delete in connections table
+	dc.socket.on("close", function(){
+		logger.error("Closing connection");
+		connections.endConnection(dc);
 	});
 
 	// Error received. Just log. TODO
-	this.socket.on("error", function(){
+	dc.socket.on("error", function(){
 		logger.error("Error event received");
 	});
-
-	// Data recevied
-	this.socket.on("data", function(buffer){
-		logger.debug("Receiving data from "+self.peerDiameterIdentity);
-		logger.debug("Version: "+buffer.readUInt8(0));
-		logger.debug("Message size: "+buffer.readInt16BE(1)*256+buffer.readUInt8(3));
-		
-		var msg=createMessage().decode(buffer);
-		logger.info(JSON.stringify(msg, undefined, 2));
-		
-		var buffer2=msg.encode();
-		
-		var msg2=createMessage().decode(buffer2);
-		logger.info(JSON.stringify(msg2, undefined, 2));
-	});
+	
+	return dc;
 }
-
-util.inherits(DiameterConnection, EventEmitter);
 
 var diameterConnections=function(){
 	
 	var that={};
+	
+	// Instantiate dispatcher
+	that.dispatcher=createDispatcher(that);
 
 	// Private variables
 	var connections=[];
@@ -74,7 +129,7 @@ var diameterConnections=function(){
 		}
 		else{
 			logger.debug("Current connections:");
-			for(i=0; i<connections.length; i++) logger.debug("identity: "+connections[i].peerDiameterIdentity+", state: "+connections[i].state);
+			for(i=0; i<connections.length; i++) logger.debug("originHost: "+connections[i].originHost+", state: "+connections[i].state);
 		}
 		logger.debug("");
 	}
@@ -82,17 +137,17 @@ var diameterConnections=function(){
 	// Treat new connection arrived
 	that.incomingConnection=function(socket){
 		// Check is a known peer
-		var identity=config.getDiameterIdentityFromIPAddress(socket.remoteAddress);
+		var originHost=config.getOriginHostFromIPAddress(socket.remoteAddress);
 	
 		// If unknown peer, close
-		if(identity==null){
+		if(originHost==null){
 			logger.warn("Connection rejected due to peer unknown: "+socket.remoteAddress);
-			s.end();
+			socket.end();
 		}
 		// If known peer store with "Waiting for CER" state
 		else{
 			logger.debug("Connection established. Wating for CER")
-			connections.push(new DiameterConnection(that, "Wait-CER", socket, identity));
+			connections.push(createDiameterConnection(that, "Wait-CER", socket, originHost));
 		}
 
 		that.printConnections();
@@ -100,11 +155,26 @@ var diameterConnections=function(){
 
 	// End connection
 	that.endConnection=function(connection){
-		logger.debug("Closing connection with "+connection.peerDiameterIdentity);
+		logger.debug("Closing connection with "+connection.originHost);
 		var index=connections.indexOf(connection);
 		if(index>-1) connections.splice(index, 1);
 
 		that.printConnections();
+	}
+	
+	// Send message using one connection
+	that.sendMessage=function(destinationHost, buffer){
+		var i;
+		
+		// Look for connection to destinationHost
+		for(i=0; i<connections.length; i++){
+			if(connections[i].originHost===destinationHost){
+				connections[i].sendMessage(buffer);
+				return;
+			}
+		}
+		
+		throw new Error("No connection to peer");
 	}
 
 	return that;

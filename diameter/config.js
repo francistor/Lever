@@ -1,16 +1,17 @@
 // Holder for Diameter configuration
 
-var fs=require("fs");
 var logger=require("./log").logger;
+var fs=require("fs");
 
 // Read diameter configuration
-var confObject=JSON.parse(fs.readFileSync("./conf/diameter.json", {encoding: "utf8"}));
+var diameterConfig=JSON.parse(fs.readFileSync("./conf/diameter.json", {encoding: "utf8"}));
 
 // Constructor for the Peer object. Just a holder for the properties
-var Peer=function(name, diameterIdentity, IPAddress, connectionPolicy)
+var Peer=function(name, originHost, originRealm, IPAddress, connectionPolicy)
 {
 	this.name=name;
-	this.diameterIdentity=diameterIdentity;
+	this.originHost=originHost;
+	this.originRealm=originRealm;
 	this.IPAddress=IPAddress;
 	this.connectionPolicy=connectionPolicy;
 }
@@ -21,34 +22,40 @@ var config=function()
 
 	// Private variables
 	var peers=[];
-	var port=confObject.port;
 
 	// iterator
 	var i;
 
 	// Fill peers array
-	for(var i=0; i<confObject.peers.length; i++)
+	logger.debug("Diameter Peers");
+	for(var i=0; i<diameterConfig.peers.length; i++)
 	{
-		peers.push(new Peer(confObject.peers[i].name, confObject.peers[i].diameterIdentity, confObject.peers[i].IPAddress, confObject.peers[i].connectionPolicy));
-		console.log(JSON.stringify(peers[peers.length-1]));
-		
+		peers.push(new Peer(diameterConfig.peers[i].name, diameterConfig.peers[i].originHost, diameterConfig.peers[i].originRealm, diameterConfig.peers[i].IPAddress, diameterConfig.peers[i].connectionPolicy));
+		logger.debug(JSON.stringify(peers[peers.length-1]));
 	}
+	logger.debug();
 
 	// Build Methods
-	that.getPort=function(){ return port;}
+	
+	// Basic Configuration
+	that.getIPAddress=function(){ return diameterConfig.IPAddress;}
+	that.getPort=function(){ return diameterConfig.port;}
+	that.getOriginHost=function(){ return diameterConfig.originHost;}
+	that.getVendorId=function(){ return diameterConfig.vendorId;}
+	that.getFirmwareRevision=function(){ return diameterConfig.firmwareRevision;}
 
-	that.getDiameterIdentityFromIPAddress=function(ipAddr){
+	that.getOriginHostFromIPAddress=function(ipAddr){
 		for(i=0; i<peers.length; i++){
-			if((peers[i].IPAddress.split(":"))[0]===ipAddr) return peers[i].diameterIdentity;
+			if(((peers[i].IPAddress.split(":"))[0])===ipAddr) return peers[i].originHost;
 		}
 	
 		// return null if not found
 		return null;
 	}
 
-	that.getIPAddressPortFromDiameterIdentity=function(identity){
+	that.getIPAddressPortFromOriginHost=function(originHost){
 		for(i=0; i<peers.length; i++){
-			if(peers[i].diameterIdentity===identity) return peers[i].IPAddress;
+			if(peers[i].originHost===originHost) return peers[i].IPAddress;
 		}
 	
 		// return null if not found

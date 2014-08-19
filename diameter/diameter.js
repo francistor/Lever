@@ -7,9 +7,7 @@ var logger=require("./log").logger;
 var config=require("./config").config;
 var diameterConnections=require("./connections").diameterConnections;
 
-var diameterDictionary=require("./dictionary").diameterDictionary;
-
-logger.info("Diameter toy server version 0.1");
+logger.info("Toy Diameter server version 0.1");
 
 // Create Diameter Server
 var diameterServer=net.createServer();

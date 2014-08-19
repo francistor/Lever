@@ -12,15 +12,25 @@ var confObject=JSON.parse(fs.readFileSync("./conf/dmanager.json", {encoding: "ut
 var dapp=express();
 
 // Static resources mapping
-dapp.use("/stc/bootstrap", express.static(__dirname+"/bower_components/bootstrap/dist"));
-dapp.use("/stc/jquery", express.static(__dirname+"/bower_components/jquery/dist"));
-dapp.use("/stc/fontawesome", express.static(__dirname+"/bower_components/fontawesome"));
+dapp.use("/bower_components", express.static(__dirname+"/bower_components"));
 dapp.use("/stc", express.static(__dirname+"/public"));
 
-dapp.get("/", function(req, res){
-	res.send("hello world!");
-}
-);
+// GET diameter configuration file
+// Tries to parse it as JSON
+dapp.get("/dyn/get/diameterConfiguration", function(req, res){
+	fs.readFile(__dirname+"/../diameter/conf/diameter.json", {encoding: "utf8"}, function(err, data){
+		if(err){
+			res.send(500, { error: 'Could not get diameter configuration file' });
+		}
+		else{
+			try{
+				var diameterConfig=JSON.parse(data);
+				res.json(diameterConfig);
+			}
+			catch(e){ res.send(500, { error: 'Could not parse diameter configuration file' });}
+		}
+	});
+});
 
 // Start server
 dapp.listen(confObject.port);

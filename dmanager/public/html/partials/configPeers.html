@@ -1,0 +1,61 @@
+<form name="peersConfigForm" role="form">
+<legend>Diameter peers</legend>
+<div class="row">
+<div class="col-lg-12">
+	<div class="col-lg-6">
+	
+	<div class="accordion" id="accordion2">
+	
+		<div class="accordion-group" ng-repeat="peer in diameterConfig.peers">
+			<div class="accordion-heading">
+				<a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion2" data-target="#peer-{{peer.originHost}}" >
+					<h4>{{peer.name}}</h4>
+				</a>
+				
+			</div>
+			<div class="accordion-body collapse" id="peer-{{peer.originHost}}">
+				<div class="accordion-inner">
+
+						<div class="form-group">
+							<label>Diameter host name:</label>
+							<input class="form-control" ng-model="peer.originHost">
+							<p class="help-block">Required field</p>
+						</div>
+						<div class="form-group">
+							<label>Diameter realm:</label>
+							<input class="form-control" ng-model="peer.originRealm">
+							<p class="help-block">Required field</p>
+						</div>
+						<div class="form-group">
+							<label>IP Address:</label>
+							<input class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]">
+							<p class="help-block">Required field</p>
+						</div>
+						<div class="form-group">
+							<label>Connection Policy:</label>
+							<select class="form-control">
+								<option>Accept</option>
+								<option>Connect</option>
+							</select>
+						</div>
+						<button type="button" ng-click="deletePeer(peer.name)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	<br/>
+	<div class="form-group">
+		<button type="button" class="btn btn-success" ng-click="addPeer()"> New Peer
+			<i class="fa fa-plus">
+			</i>
+		</button>
+		<button type="button" class="btn btn-primary" ng-click="showJSON()">Submit changes
+			<i class="fa fa-check">
+			</i>
+		</button>
+	</div>
+	</div>
+</div>
+</div>
+</form>

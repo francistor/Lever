@@ -9,6 +9,13 @@ var INCREMENT_BUFF_LEN=1024;
 var INCREMENT_BUFF_THRESHOLD=512;
 var DIAMETER_VERSION=1;
 
+var resultCodes={
+	DIAMETER_SUCCESS: 2001,
+	DIAMETER_LIMITED_SUCCESS: 2002,
+	DIAMETER_UNKNOWN_SESSION_ID: 5002,
+	DIAMETER_UNABLE_TO_COMPLY: 5012
+};
+
 // message.avps example structure
 // 
 // {name: [<value>, <value>], }
@@ -38,12 +45,29 @@ var DIAMETER_VERSION=1;
 //	]
 // }
 
-function createMessage(){
+function createMessage(request){
 
 	var message={};
+	message.avps={};
+	
+	// createMessage from request
+	if(request){
+		// Build basic response
+		message.isRequest=false;
+		message.isProxiable=request.isProxiable;
+		message.isError=false;
+		message.isRetransmission=false;
+		message.commandCode=request.commandCode;
+		message.applicationId=request.applicationId;
+		message.hopByHopId=request.hopByHopId;
+		message.endToEndId=request.endToEndId;
+	}
 	
 	// decode method
 	message.decode=function(buff){
+		// Make sure it is empty
+		message.avps={};
+		
 		// Message length
 		var totalLength=buff.readUInt16BE(1)*256+buff.readUInt8(3);
 
@@ -55,10 +79,14 @@ function createMessage(){
 		message.isRetransmission=(flags & 16)!==0;
 
 		// Code
-		message.commandCode=buff.readUInt16BE(5)*256+buff.readUInt8(7);
+		var commandCode=buff.readUInt16BE(5)*256+buff.readUInt8(7);
+		if(dictionary.commandCodeMap[commandCode]) message.commandCode=dictionary.commandCodeMap[commandCode].name;
+		else message.commandCode="commandCode-"+commandCode;
 
 		// Application-Id
-		message.applicationId=buff.readUInt32BE(8);
+		var applicationId=buff.readUInt32BE(8);
+		if(dictionary.applicationCodeMap[applicationId]) message.applicationId=dictionary.applicationCodeMap[applicationId].name;
+		else message.applicationId="applicationId-"+applicationId;
 
 		// Identifiers
 		message.hopByHopId=buff.readUInt32BE(12);
@@ -67,27 +95,21 @@ function createMessage(){
 		// AVP
 		var readPtr=20;
 		var decodedAVP;
-		message.avps={};
 	
 		while(totalLength>readPtr){
-			decodedAVP={};
-			readPtr+=decodeAVP(readPtr, decodedAVP);
-			if(decodedAVP.value){
-				// Create array of values if not yet existing
-				if(!message.avps[decodedAVP.name]) message.avps[decodedAVP.name]=[];
-				
-				message.avps[decodedAVP.name].push(decodedAVP.value);
-			}
+			readPtr+=decodeAVP(message.avps, readPtr);
 		}
 
 		return message;
 
-		function decodeAVP(ptr, avp){
+		function decodeAVP(root, ptr){
+			var avp={};
 			var i;
 			var initialPtr=ptr;
 			var addrFamily;
 			var ipv4Parts=[0, 0, 0, 0];
 			var ipv6Parts=[0, 0, 0, 0, 0, 0, 0, 0];
+			var groupedPtr;
 
 			// AVP Code
 			var avpCode=buff.readUInt32BE(ptr);
@@ -139,12 +161,29 @@ function createMessage(){
 						}
 						else logger.error("Unknown address family: "+addrFamily);
 						break;
+						
+					case "Grouped":
+						// groupedPtr: internal pointer for the grouped avp
+						groupedPtr=ptr;
+						avp.value={};
+						while(initialPtr+avpLen>groupedPtr){
+							groupedPtr+=decodeAVP(avp.value, groupedPtr);
+						}
+						
+						break;
 
 					default:
 						logger.error("Unknown AVP type: "+avpDef.type);
 				}
 			}
 			else logger.warn("Unknown AVP Code: "+avpCode);
+			
+			// Add value
+			if(avp.value){
+				// Create array of values if not yet existing
+				if(!root[avp.name]) root[avp.name]=[];
+				root[avp.name].push(avp.value);
+			}
 		
 			// Advance pointer up to a 4 byte boundary
 			ptr+=dataSize;
@@ -158,10 +197,12 @@ function createMessage(){
 	// encode method
 	// Returns a buffer with the binary contents, to be sent to the wire
 	message.encode=function(){
+		
 		var buff=new Buffer(INITIAL_BUFF_LEN);
+		var commandCode, applicationId;
 
 		// Encode header
-		buff.writeUInt8(0, DIAMETER_VERSION);
+		buff.writeUInt8(DIAMETER_VERSION, 0);
 		
 		var flags=0;
 		if(message.isRequest) flags+=128;
@@ -170,32 +211,52 @@ function createMessage(){
 		if(message.isRetransmission) flags+=16;
 		buff.writeUInt8(flags, 4);
 
-		buff.writeUInt16BE((message.commandCode - message.commandCode % 256)/256, 5);
-		buff.writeUInt8(message.commandCode % 256, 7);
+		// Encode command code
+		if(!dictionary.commandNameMap[message.commandCode]) throw new Error("Unknown command code: "+message.commandCode);
+		commandCode=dictionary.commandNameMap[message.commandCode].code;
+		buff.writeUInt16BE((commandCode - commandCode % 256)/256, 5);
+		buff.writeUInt8(commandCode % 256, 7);
 
-		buff.writeUInt32BE(message.applicationId, 8);
+		// Encode applicationId
+		if(!dictionary.applicationNameMap[message.applicationId]) throw new Error("Unknow application id: "+message.applicationId);
+		applicationId=dictionary.applicationNameMap[message.applicationId].code;
+		buff.writeUInt32BE(applicationId, 8);
+		
 		buff.writeUInt32BE(message.hopByHopId, 12);
 		buff.writeUInt32BE(message.endToEndId, 16);
 
 		var writePtr=20;
 
 		// Iterate through AVPs
-		var i;
-		var avpName;
-		for(avpName in message.avps){
-			for(i=0; i<message.avps[avpName].length; i++){
-				// TODO: Mandatory bit is now always false
-				writePtr+=encodeAVP(writePtr, avpName, message.avps[avpName][i], false);
-			}
-		}
+		writePtr+=encodeAVPs(writePtr, message.avps);
 		
 		// Encode length of message
 		buff.writeUInt16BE((writePtr - writePtr % 256)/256, 1);
 		buff.writeUInt8(writePtr % 256, 3);
 
-		return buff;
+		return buff.slice(0, writePtr);
+		
+		// Iterate through avp names and array values
+		// avps: { name: [value], name: [ {name: value}, {name: value}] }
+		function encodeAVPs(ptr, root){
+			var i;
+			var avpName;
+			var initialPtr=ptr;
+			for(avpName in root){
+				// TODO: Mandatory bit is now always false
+				if(Array.isArray(root[avpName])) for(i=0; i<root[avpName].length; i++){
+					ptr+=encodeAVP(ptr, avpName, root[avpName][i], false);
+				} else {
+					ptr+=encodeAVP(ptr, avpName, root[avpName], false);
+				}
+			}
+			
+			return ptr-initialPtr;
+		}
 
+		// Encode a single AVP
 		function encodeAVP(ptr, name, value, isMandatory){
+			
 			var ipAddr;
 			var initialPtr=ptr;
 			var avpCode;
@@ -225,43 +286,53 @@ function createMessage(){
 			}
 			else ptr+=8;
 
-			switch(avpDef.type){
-				case "Unsigned32":
-					buff.writeUInt32BE(value, ptr);
-					ptr+=4;
-					break;
-				case "Enumerated":
-					avpCode=avpDef.enumValues[value];
-					if(avpCode==undefined){
-						logger.warn("Unknown enumerated value: "+value+ "for "+avpDef.name);
-						return 0;
-					}
-					buff.writeInt32BE(avpCode, ptr);
-					ptr+=4;
-					break;
-				case "OctetString":
-					break;
+			try{
+				switch(avpDef.type){
+					case "Unsigned32":
+						buff.writeUInt32BE(value, ptr);
+						ptr+=4;
+						break;
+					case "Enumerated":
+						avpCode=avpDef.enumValues[value];
+						if(avpCode==undefined){
+							logger.warn("Unknown enumerated value: "+value+ "for "+avpDef.name);
+							return 0;
+						}
+						buff.writeInt32BE(avpCode, ptr);
+						ptr+=4;
+						break;
+					case "OctetString":
+						break;
 
-				case "DiamIdent":
-					ptr+=buff.write(value, ptr, Buffer.byteLength(value, "ascii"), "ascii");
-					break;
+					case "DiamIdent":
+						ptr+=buff.write(value, ptr, Buffer.byteLength(value, "ascii"), "ascii");
+						break;
 
-				case "UTF8String":
-					ptr+=buff.write(value, ptr, Buffer.byteLength(value, "utf8"), "utf8");
-					break;
+					case "UTF8String":
+						ptr+=buff.write(value, ptr, Buffer.byteLength(value, "utf8"), "utf8");
+						break;
 
-				case "Address":
-					ipAddr=ipaddr.parse(value);
-					if(ipAddr.kind()==="ipv4"){
-						buff.writeUInt16BE(1, ptr);
-						for(j=0; j<4; j++) buff.writeUInt8(ipAddr.octets[j], ptr+2+j);
-						ptr+=2+4;
-					}
-					else if(ipAddr.kind()==="ipv6"){
-						buff.writeUInt16BE(2, ptr);
-						for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.parts[j], ptr+2+j);
-						ptr+=2+8;
-					}
+					case "Address":
+						ipAddr=ipaddr.parse(value);
+						if(ipAddr.kind()==="ipv4"){
+							buff.writeUInt16BE(1, ptr);
+							for(j=0; j<4; j++) buff.writeUInt8(ipAddr.octets[j], ptr+2+j);
+							ptr+=2+4;
+						}
+						else if(ipAddr.kind()==="ipv6"){
+							buff.writeUInt16BE(2, ptr);
+							for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.parts[j], ptr+2+j);
+							ptr+=2+8;
+						}
+						break;
+						
+					case "Grouped":
+						ptr+=encodeAVPs(ptr, value);
+						break;
+				}
+			}
+			catch(e){
+				logger.warn("Error encoding "+name+" with value: "+value);
 			}
 
 			// Write length of attribute
@@ -286,3 +357,4 @@ function createMessage(){
 }
 
 exports.createMessage=createMessage;
+exports.resultCodes=resultCodes;

@@ -6,9 +6,10 @@ var config=require("./config").config;
 var createMessage=require("./message").createMessage;
 
 // Read dispatcher configuration
+// applicationName: {messageName: { module: <modulenane>, functionName: <functionName>, handler: <function>}}
 var dispatcherConfig=JSON.parse(fs.readFileSync("./conf/dispatcher.json", {encoding: "utf8"}));
 
-// Hook handlers
+// Hook handlers to dispatcherConfig
 var applicationId;
 var commandCode;
 var dispElement
@@ -34,7 +35,7 @@ function createContext(message, originHost){
 	
 	// Basic answer
 	reply.avps["Origin-Host"]=config.getOriginHost();
-	if(request.avps["Session-ID"]) reply.avps["Session-ID"]=request.avps["Session-Id"];
+	if(request.avps["Session-Id"]) reply.avps["Session-Id"]=request.avps["Session-Id"];
 	
 	return context;
 }
@@ -47,24 +48,39 @@ var createDispatcher=function(connections){
 	dispatcher.dispatchMessage=function(buffer, originHost){
 
 		var message=createMessage().decode(buffer);
-		//console.log(JSON.stringify(message, undefined, 2));
+		
+		logger.debug("");
+		logger.debug("Dispatching message");
+		logger.debug(JSON.stringify(message, undefined, 2));
+		logger.debug("---------------------------");
+		logger.debug("");
 		
 		if(message.isRequest){
-			// Request
+			// Request. Start process handler passing a new context object
 			var context=createContext(message, originHost);
 
+			// Handle message if there is one configured for this type of request
 			if(dispatcherConfig[message.applicationId] && dispatcherConfig[message.applicationId][message.commandCode] && dispatcherConfig[message.applicationId][message.commandCode]["handler"]){
+				logger.debug("Dispatching message to: "+dispatcherConfig[message.applicationId][message.commandCode].functionName);
 				dispatcherConfig[message.applicationId][message.commandCode]["handler"](context, dispatcher);
 			}
 			else logger.warn("No handler defined for Application: "+message.applicationId+" and command: "+message.commandCode);
 		}
 		else {
 			// TODO: Look for pending reply
+			logger.debug("TODO. Received response message");
 		}
 	}
 	
 	// Sends answer to origin host
 	dispatcher.sendReply=function(context){
+		
+		logger.debug("");
+		logger.debug("Sending reply");
+		logger.debug(JSON.stringify(context.reply, undefined, 2));
+		logger.debug("---------------------------");
+		logger.debug("");
+		
 		var buffer=context.reply.encode();
 		
 		try{

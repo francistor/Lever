@@ -1,10 +1,28 @@
 {
 	"Base":
+	{
+		"Capabilities-Exchange": 
 		{
-			"Capabilities-Exchange": 
-				{
-					"module":"./baseHandler",
-					"functionName": "cerHandler"
-				}
+			"module":"./baseHandler",
+			"functionName": "cerHandler"
+		},
+		"Device-Watchdog":
+		{
+			"module":"./baseHandler",
+			"functionName": "watchdogHandler"			
+		},
+		"Disconnect-Peer":
+		{
+			"module":"./baseHandler",
+			"functionName": "disconnectPeerHandler"			
 		}
+	},
+	"Credit-Control":
+	{
+		"Credit-Control":
+		{
+			"module":"./gyHandler",
+			"functionName": "ccrHandler"
+		}
+	}
 }

@@ -1,13 +1,16 @@
 {
+	"IPAddress": "127.0.0.1",
 	"port": 3868,
-	"origin-Host": "samsung-jativa",
-	"origin-Realm": "fakerealm",
+	"originHost": "samsung-jativa",
+	"originRealm": "fakerealm",
+	"vendorId": 1101,
+	"firmwareRevision": 1,
 	"peers":
 	[
 		{
 		"name": "testpeer",
-		"origin-Host": "testpeer",
-		"origin-Realm": "testreaml",
+		"originHost": "testpeer",
+		"originRealm": "testrealm",
 		"IPAddress": "127.0.0.1:3868",
 		"connectionPolicy": "auto"
 		}
