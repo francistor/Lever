@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "express": "~4.6.1",
+    "protractor": "^1.0.0",
     "winston": "~0.7.3"
   }
 }
