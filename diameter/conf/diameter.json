@@ -1,18 +1,25 @@
 {
 	"IPAddress": "127.0.0.1",
 	"port": 3868,
-	"originHost": "samsung-jativa",
-	"originRealm": "fakerealm",
+	"originHost": "lever",
+	"originRealm": "jativa",
 	"vendorId": 1101,
 	"firmwareRevision": 1,
 	"peers":
 	[
 		{
-		"name": "testpeer",
-		"originHost": "testpeer",
-		"originRealm": "testrealm",
+		"name": "diameterTool",
+		"originHost": "diameterTool",
+		"originRealm": "jativa",
 		"IPAddress": "127.0.0.1:3868",
-		"connectionPolicy": "auto"
-		}
+		"connectionPolicy": "passive"
+		},
+        {
+        "name": "8950AAA",
+        "originHost": "8950AAA",
+        "originRealm": "jativa",
+        "IPAddress": "127.0.0.1:13868",
+        "connectionPolicy": "active"
+        }
 	]
 }

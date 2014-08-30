@@ -1,6 +1,6 @@
 // Object for manipulating diameter messages
 
-var logger=require("./log").logger;
+var dLogger=require("./log").dLogger;
 var ipaddr=require('ipaddr.js');
 var dictionary=require("./dictionary").diameterDictionary;
 
@@ -148,7 +148,7 @@ function createMessage(request){
 						break;
 					case "Enumerated":
 						avp.value=avpDef.enumCodes[buff.readInt32BE(ptr)];
-						if(avp.value===undefined) logger.warn("Unknown enumerated code: "+buff.readInt32BE(ptr)+ " for "+avpDef.name);
+						if(avp.value===undefined) dLogger.warn("Unknown enumerated code: "+buff.readInt32BE(ptr)+ " for "+avpDef.name);
 						break;
 
 					case "OctetString":
@@ -172,7 +172,7 @@ function createMessage(request){
 							for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+2+i);
 							avp.value=new ipaddr.IPv6(ipv6Parts).toString();
 						}
-						else logger.error("Unknown address family: "+addrFamily);
+						else dLogger.error("Unknown address family: "+addrFamily);
 						break;
 						
 					case "Grouped":
@@ -186,10 +186,10 @@ function createMessage(request){
 						break;
 
 					default:
-						logger.error("Unknown AVP type: "+avpDef.type);
+						dLogger.error("Unknown AVP type: "+avpDef.type);
 				}
 			}
-			else logger.warn("Unknown AVP Code: "+avpCode);
+			else dLogger.warn("Unknown AVP Code: "+avpCode);
 			
 			// Add value
 			if(avp.value){
@@ -213,6 +213,7 @@ function createMessage(request){
 		
 		var buff=new Buffer(INITIAL_BUFF_LEN);
 		var commandCode, applicationId;
+        var messageSpec;
 
 		// Encode header
 		buff.writeUInt8(DIAMETER_VERSION, 0);
@@ -231,10 +232,15 @@ function createMessage(request){
 		buff.writeUInt8(commandCode % 256, 7);
 
 		// Encode applicationId
-		if(!dictionary.applicationNameMap[message.applicationId]) throw new Error("Unknow application id: "+message.applicationId);
+		if(!dictionary.applicationNameMap[message.applicationId]) throw new Error("Unknown application id: "+message.applicationId);
 		applicationId=dictionary.applicationNameMap[message.applicationId].code;
 		buff.writeUInt32BE(applicationId, 8);
-		
+
+        // Get message spec from dictionary
+        if(message.isRequest) messageSpec=dictionary.commandNameMap[message.commandCode]["request"];
+        else messageSpec=dictionary.commandNameMap[message.commandCode]["response"];
+        if(!messageSpec) throw new Error("Unknown message for command code: "+message.commandCode);
+
 		buff.writeUInt32BE(message.hopByHopId, 12);
 		buff.writeUInt32BE(message.endToEndId, 16);
 
@@ -252,15 +258,17 @@ function createMessage(request){
 		// Iterate through avp names and array values
 		// avps: { name: [value], name: [ {name: value}, {name: value}] }
 		function encodeAVPs(ptr, root){
+            var isMandatory;
 			var i;
 			var avpName;
 			var initialPtr=ptr;
 			for(avpName in root) if(root.hasOwnProperty(avpName)) {
-				// TODO: Mandatory bit is now always false
+				// TODO: Mandatory bit is now always true
+                if(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true ) isMandatory=true; else isMandatory=false;
                 if (Array.isArray(root[avpName])) for (i = 0; i < root[avpName].length; i++) {
-                    ptr += encodeAVP(ptr, avpName, root[avpName][i], false);
+                    ptr += encodeAVP(ptr, avpName, root[avpName][i], isMandatory);
                 } else {
-                    ptr += encodeAVP(ptr, avpName, root[avpName], false);
+                    ptr += encodeAVP(ptr, avpName, root[avpName], isMandatory);
                 }
 			}
 			
@@ -278,7 +286,7 @@ function createMessage(request){
 			var avpFlags=0;
 			var avpDef=dictionary.avpNameMap[name];
 			if(!avpDef){
-				logger.warn("Unknown attribute :" +JSON.stringify(message.avps[name]));
+				dLogger.warn("Unknown attribute :" +JSON.stringify(message.avps[name]));
 				return 0;
 			}
 
@@ -310,7 +318,7 @@ function createMessage(request){
 					case "Enumerated":
 						avpCode=avpDef['enumValues'][value];
 						if(avpCode==undefined){
-							logger.warn("Unknown enumerated value: "+value+ "for "+avpDef.name);
+							dLogger.warn("Unknown enumerated value: "+value+ "for "+avpDef.name);
 							return 0;
 						}
 						buff.writeInt32BE(avpCode, ptr);
@@ -348,7 +356,7 @@ function createMessage(request){
 				}
 			}
 			catch(e){
-				logger.warn("Error encoding "+name+" with value: "+value);
+				dLogger.warn("Error encoding "+name+" with value: "+value);
                 return 0;
 			}
 

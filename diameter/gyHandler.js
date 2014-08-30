@@ -4,8 +4,9 @@ var logger=require("./log").logger;
 var resultCodes=require("./message").resultCodes;
 var dictionary=require("./dictionary").diameterDictionary;
 var config=require("./config").config;
+var dispatcher=require("./dispatcher").dispatcher;
 
-var ccrHandler=function(context, dispatcher){
+var ccrHandler=function(context){
 
 	var reply=context.reply.avps;
 	var request=context.request.avps;

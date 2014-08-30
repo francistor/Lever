@@ -4,8 +4,9 @@ var logger=require("./log").logger;
 var resultCodes=require("./message").resultCodes;
 var dictionary=require("./dictionary").diameterDictionary;
 var config=require("./config").config;
+var dispatcher=require("./dispatcher").dispatcher;
 
-var cerHandler=function(context, dispatcher){
+var cerHandler=function(context){
 
 	var reply=context.reply.avps;
 	var request=context.request.avps;
@@ -38,7 +39,7 @@ var cerHandler=function(context, dispatcher){
 	dispatcher.sendReply(context);
 }
 
-var watchdogHandler=function(context, dispatcher){
+var watchdogHandler=function(context){
 
 	var reply=context.reply.avps;
 	
@@ -50,7 +51,7 @@ var watchdogHandler=function(context, dispatcher){
 
 }
 
-var disconnectPeerHandler=function(context, dispatcher){
+var disconnectPeerHandler=function(context){
 
 	var reply=context.reply.avps;
 	

@@ -3,7 +3,7 @@
 var util=require("util");
 var logger=require("./log").logger;
 var config=require("./config").config;
-var createDispatcher=require("./dispatcher").createDispatcher;
+var dispatcher=require("./dispatcher").dispatcher;
 
 var createMessage=require("./message").createMessage;
 
@@ -54,7 +54,7 @@ var createDiameterConnection=function(connections, state, socket, originHost)
 		return dc.data.readInt16BE(1)*256+dc.data.readUInt8(3);
 	}
 
-	// Data recevied
+	// Data received
 	dc.socket.on("data", function(buffer){
 		var messageBuffer;
 		logger.debug("Receiving data from "+dc.originHost);
@@ -82,7 +82,7 @@ var createDiameterConnection=function(connections, state, socket, originHost)
 					dc.currentMessageLength=0;
 					dc.currentDataLength=0;
 		
-					dc.connections.dispatcher.dispatchMessage(messageBuffer, dc.originHost);
+					dispatcher.dispatchMessage(messageBuffer, dc.originHost);
 				}
 			}
 		}
@@ -91,7 +91,7 @@ var createDiameterConnection=function(connections, state, socket, originHost)
 	// Sends a diameter message
 	dc.sendMessage=function(buffer){
 			var wbytes=dc.socket.write(buffer);
-	}
+	};
 	
 		// When socket is closed, delete in connections table
 	dc.socket.on("close", function(){
@@ -103,22 +103,22 @@ var createDiameterConnection=function(connections, state, socket, originHost)
 	dc.socket.on("error", function(){
 		logger.error("Error event received");
 	});
-	
+
 	return dc;
 }
 
 var diameterConnections=function(){
 	
 	var that={};
-	
-	// Instantiate dispatcher
-	that.dispatcher=createDispatcher(that);
 
 	// Private variables
 	var connections=[];
 
 	// Iterator
 	var i;
+	
+	// Initialize dispatcher
+	dispatcher.init(that);
 
 	// Methods
 
@@ -132,7 +132,7 @@ var diameterConnections=function(){
 			for(i=0; i<connections.length; i++) logger.debug("originHost: "+connections[i].originHost+", state: "+connections[i].state);
 		}
 		logger.debug("");
-	}
+	};
 
 	// Treat new connection arrived
 	that.incomingConnection=function(socket){
@@ -146,12 +146,12 @@ var diameterConnections=function(){
 		}
 		// If known peer store with "Waiting for CER" state
 		else{
-			logger.debug("Connection established. Wating for CER")
+			logger.debug("Connection established. Waiting for CER")
 			connections.push(createDiameterConnection(that, "Wait-CER", socket, originHost));
 		}
 
 		that.printConnections();
-	}
+	};
 
 	// End connection
 	that.endConnection=function(connection){

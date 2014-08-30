@@ -38,11 +38,11 @@ var config=function()
 	// Build Methods
 	
 	// Basic Configuration
-	that.getIPAddress=function(){ return diameterConfig.IPAddress;}
-	that.getPort=function(){ return diameterConfig.port;}
-	that.getOriginHost=function(){ return diameterConfig.originHost;}
-	that.getVendorId=function(){ return diameterConfig.vendorId;}
-	that.getFirmwareRevision=function(){ return diameterConfig.firmwareRevision;}
+	that.getIPAddress=function(){ return diameterConfig.IPAddress;};
+	that.getPort=function(){ return diameterConfig.port;};
+	that.getOriginHost=function(){ return diameterConfig.originHost;};
+	that.getVendorId=function(){ return diameterConfig.vendorId;};
+	that.getFirmwareRevision=function(){ return diameterConfig.firmwareRevision;};
 
 	that.getOriginHostFromIPAddress=function(ipAddr){
 		for(i=0; i<peers.length; i++){
