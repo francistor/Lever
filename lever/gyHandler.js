@@ -3,7 +3,7 @@
 var hLogger=require("./log").hLogger;
 var resultCodes=require("./message").resultCodes;
 var dictionary=require("./dictionary").diameterDictionary;
-var diameterConfig=require("./config").diameterConfig;
+var config=require("./config").config;
 var createMessage=require("./message").createMessage;
 
 var ccrHandler=function(connection, message){
@@ -14,7 +14,7 @@ var ccrHandler=function(connection, message){
     var request=message.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Host"]=config.diameter["originHost"];
     reply["Session-Id"]=request["Session-Id"];
 	// TODO: Rest of parameters
 	

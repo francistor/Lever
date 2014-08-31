@@ -6,10 +6,11 @@
 
 var net=require("net");
 var dLogger=require("./log").dLogger;
-var diameterConfig=require("./config").diameterConfig;
-var dispatcherConfig=require("./config").dispatcherConfig;
+var config=require("./config").config;
 var createConnection=require("./connections").createConnection;
 var createMessage=require("./message").createMessage;
+var stats=require("./stats").stats;
+var createAgent=require("./agent").createAgent;
 
 var sendCer=require("./baseHandler").sendCer;
 
@@ -33,16 +34,16 @@ var createDiameterStateMachine=function(){
     var requestPointers={};
 
     // Hook handlers to dispatcherConfig
-    // Function to invoke for a message will be dispatcherConfig[applicationId][commandCode]["handler"]
+    // Function to invoke for a message will be config.dispatcher[applicationId][commandCode]["handler"]
     // Signature for handler functions is fnc(connection, message)
     var applicationId;
     var commandCode;
     var dispElement;
     var handlerModule;
-    for(applicationId in dispatcherConfig) if(dispatcherConfig.hasOwnProperty(applicationId)){
-        for(commandCode in dispatcherConfig[applicationId]) {
-            if (dispatcherConfig[applicationId].hasOwnProperty(commandCode)) {
-                dispElement = dispatcherConfig[applicationId][commandCode];
+    for(applicationId in config.dispatcher) if(config.dispatcher.hasOwnProperty(applicationId)){
+        for(commandCode in config.dispatcher[applicationId]) {
+            if (config.dispatcher[applicationId].hasOwnProperty(commandCode)) {
+                dispElement = config.dispatcher[applicationId][commandCode];
                 handlerModule = require(dispElement["module"]);
                 dispElement["handler"] = handlerModule[dispElement["functionName"]];
             }
@@ -73,25 +74,33 @@ var createDiameterStateMachine=function(){
 
         if (message.isRequest) {
             // Handle message if there is one configured for this type of request
-            if (dispatcherConfig[message.applicationId] && dispatcherConfig[message.applicationId][message.commandCode] && dispatcherConfig[message.applicationId][message.commandCode]["handler"]) {
-                dLogger.debug("Message is Request. Dispatching message to: " + dispatcherConfig[message.applicationId][message.commandCode].functionName);
+            stats.incrementServerRequest(connection.hostName, message.commandCode);
+            if (config.dispatcher[message.applicationId] && config.dispatcher[message.applicationId][message.commandCode] && config.dispatcher[message.applicationId][message.commandCode]["handler"]) {
+                dLogger.debug("Message is Request. Dispatching message to: " + config.dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
-                    dispatcherConfig[message.applicationId][message.commandCode]["handler"](connection, message);
+                    config.dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
-                    dLogger.error("Handler error in "+dispatcherConfig[message.applicationId][message.commandCode].functionName);
+                    stats.incrementServerError(connection.hostName, message.commandCode);
+                    dLogger.error("Handler error in "+config.dispatcher[message.applicationId][message.commandCode].functionName);
                     dLogger.error(e.message);
                 }
             }
-            else dLogger.warn("No handler defined for Application: " + message.applicationId + " and command: " + message.commandCode);
+            else{
+                stats.incrementServerError(connection.hostName, message.commandCode);
+                dLogger.warn("No handler defined for Application: " + message.applicationId + " and command: " + message.commandCode);
+            }
         } else {
             dLogger.debug("Message is Response");
+            stats.incrementClientResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
             requestPointer=requestPointers[connection.hostName+"."+message.hopByHopId];
             if (requestPointer) {
                 clearTimeout(requestPointer.timer);
                 delete requestPointers[connection.hostName+"."+message.hopByHopId];
                 dLogger.debug("Executing callback");
                 requestPointer.callback(null, message);
-            } else dLogger.debug("Unsolicited response message");
+            } else{
+                dLogger.debug("Unsolicited response message");
+            }
         }
     };
 
@@ -108,9 +117,11 @@ var createDiameterStateMachine=function(){
         }
         else try {
             connection.socket.write(message.encode());
+            stats.incrementServerResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
         }
         catch(e){
             // Message encoding error
+            stats.incrementServerError(connection.hostName, message.commandCode);
             dLogger.error("Could not encode & send message: "+e.message);
             dLogger.error("Closing connection");
             connection.socket.end();
@@ -119,7 +130,7 @@ var createDiameterStateMachine=function(){
         }
     };
 
-    // Sends a request message tot he specified hostName
+    // Sends a request message to he specified hostName
     diameterStateMachine.sendRequest=function(hostName, message, timeout, callback){	// callback is fnc(error, message)
 
         dLogger.debug("");
@@ -130,19 +141,23 @@ var createDiameterStateMachine=function(){
         connection=connections[hostName];
         if(connection) {
             if(message.applicationId!=="Base" && connection.state!=="Open"){
+                stats.incrementClientError(hostName, message.commandCode);
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
             }
             else try {
                 connection.socket.write(message.encode());
+                stats.incrementClientRequest(hostName, message.commandCode);
                 requestPointers[hostName+"."+message.hopByHopId] = {
                     "timer": setTimeout(function () {
                         delete requestPointers[hostName+"."+message.hopByHopId];
+                        stats.incrementClientError(hostName, message.commandCode);
                         callback(new Error("timeout"), null);
                     }, timeout),
                     "callback": callback
                 };
             } catch(e){
                 // Message encoding error
+                stats.incrementClientError(connection.hostName, message.commandCode);
                 dLogger.error("Could not encode & send message: "+e.message);
                 dLogger.error("Closing connection");
                 connection.socket.end();
@@ -170,14 +185,16 @@ var createDiameterStateMachine=function(){
     // Establishes connections with peers with "active" connection policy, if not already established
     diameterStateMachine.establishConnections=function(){
         dLogger.info("Checking connections");
-        // Iterate through peers
-        for(i=0; i<diameterConfig["peers"].length; i++){
-            peer=diameterConfig["peers"][i];
+        // Iterate through peers and check if a new connection has to be established
+        for(i=0; i<config.diameter["peers"].length; i++){
+            peer=config.diameter["peers"][i];
             if(peer["connectionPolicy"]==="active" && !connections[peer["originHost"]]){
                 dLogger.debug("Connecting to "+peer["originHost"]+" in "+peer["IPAddress"]);
                 connections[peer["originHost"]]=createConnection(diameterStateMachine, net.connect(peer["IPAddress"].split(":")[1]||3868, peer["IPAddress"].split(":")[0]) , peer["originHost"], "Wait-Conn-Ack");
             }
         }
+        // Iterate through connections and check if a connection has to be closed
+        // TODO:
     };
 
     diameterStateMachine.onConnectionACK=function(connection){
@@ -193,7 +210,7 @@ var createDiameterStateMachine=function(){
 
     diameterStateMachine.establishConnections();
 
-    setInterval(diameterStateMachine.establishConnections, diameterConfig["connectionInterval"]||10000);
+    setInterval(diameterStateMachine.establishConnections, config.diameter["connectionInterval"]||10000);
 
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
@@ -205,8 +222,8 @@ var createDiameterStateMachine=function(){
 
         // Check whether there is at least one peer with that IP Address
         peer=null;
-        for(i=0; i<diameterConfig["peers"].length; i++){
-            if(diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=diameterConfig["peers"][i];
+        for(i=0; i<config.diameter["peers"].length; i++){
+            if(config.diameter["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=config.diameter["peers"][i];
         }
         if(peer===null){
             dLogger.info("Received connection from unknown peer");
@@ -224,8 +241,8 @@ var createDiameterStateMachine=function(){
         if(connection && connection.state==="Wait-CER"){
             // Check that Origin-Host is declared as peer with the received origin IP address
             ipAddress=connection.socket["remoteAddress"];
-            for(i=0; i<diameterConfig["peers"].length; i++){
-                peer=diameterConfig["peers"][i];
+            for(i=0; i<config.diameter["peers"].length; i++){
+                peer=config.diameter["peers"][i];
 
                 if(peer["originHost"]===hostName && peer["IPAddress"].split(":")[0]===connection.socket["remoteAddress"]){
                     // TODO: Election process should be implemented here
@@ -259,8 +276,10 @@ var createDiameterStateMachine=function(){
         diameterStateMachine.onConnectionReceived(socket);
     });
 
-    diameterServer.listen(diameterConfig.port||3868);
-    dLogger.info("Diameter listening in port "+diameterConfig.port);
+    diameterServer.listen(config.diameter.port||3868);
+    dLogger.info("Diameter listening in port "+config.diameter.port);
+
+    createAgent();
 
     return diameterStateMachine;
 };

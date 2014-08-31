@@ -4,7 +4,7 @@ var hLogger=require("./log").hLogger;
 var os=require("os");
 var resultCodes=require("./message").resultCodes;
 var dictionary=require("./dictionary").diameterDictionary;
-var diameterConfig=require("./config").diameterConfig;
+var config=require("./config").config;
 var createMessage=require("./message").createMessage;
 
 var DEFAULT_TIMEOUT=10000;
@@ -14,8 +14,8 @@ function getIPAddresses(){
     var ifzName, interfaces;
     var IPAddresses=[];
 
-    if(diameterConfig["IPAddress"]){
-        IPAddresses=diameterConfig["IPAddress"];
+    if(config.diameter["IPAddress"]){
+        IPAddresses=config.diameter["IPAddress"];
     } else {
         interfaces=os.networkInterfaces();
         for(ifzName in interfaces) if(interfaces.hasOwnProperty(ifzName)){
@@ -35,12 +35,12 @@ var sendCer=function(connection){
     requestMessage.commandCode="Capabilities-Exchange";
 
     // Set mandatory parameters
-    request["Origin-Host"]=diameterConfig["originHost"];
-    request["Origin-Realm"]=diameterConfig["originRealm"];
+    request["Origin-Host"]=config.diameter["originHost"];
+    request["Origin-Realm"]=config.diameter["originRealm"];
     request["Host-IP-Address"]=getIPAddresses();
-    request["Vendor-Id"]=diameterConfig["vendorId"];
-    request["Product-Name"]=diameterConfig["productName"];
-    request["Firmware-Revision"]=diameterConfig["firmwareRevision"];
+    request["Vendor-Id"]=config.diameter["vendorId"];
+    request["Product-Name"]=config.diameter["productName"];
+    request["Firmware-Revision"]=config.diameter["firmwareRevision"];
 
     // Add supported applications
     var applicationName;
@@ -84,11 +84,11 @@ var cerHandler=function(connection, message){
     if(!connection.diameterStateMachine.onCERReceived(connection, request["Origin-Host"][0])) return;
 	
 	// Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
-    reply["Origin-Realm"]=diameterConfig["originRealm"];
+    reply["Origin-Host"]=config.diameter["originHost"];
+    reply["Origin-Realm"]=config.diameter["originRealm"];
     reply["Host-IP-Address"]=getIPAddresses();
-	reply["Vendor-Id"]=diameterConfig["vendorId"];
-	reply["Firmware-Revision"]=diameterConfig["firmwareRevision"];
+	reply["Vendor-Id"]=config.diameter["vendorId"];
+	reply["Firmware-Revision"]=config.diameter["firmwareRevision"];
 	
 	// Add supported applications
 	var applicationName;
@@ -114,7 +114,7 @@ var watchdogHandler=function(connection, message){
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Host"]=config.diameter["originHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
@@ -129,7 +129,7 @@ var disconnectPeerHandler=function(connection, message){
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Host"]=config.diameter["originHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;

@@ -1,4 +1,5 @@
 {
+    "_version": 1001,
     "_IPAddress": ["127.0.0.1"],
     "port": 3868,
     "originHost": "lever",
@@ -6,7 +7,7 @@
     "vendorId": 1101,
     "productName": "Lever",
     "firmwareRevision": 1,
-    "connectionInterval": 500000,
+    "connectionInterval": 5000,
     "peers":
     [
         {
@@ -21,5 +22,9 @@
             "IPAddress": "127.0.0.1:13868",
             "connectionPolicy": "active"
         }
-    ]
+    ],
+
+    "management":{
+        "httpPort": 9001
+    }
 }

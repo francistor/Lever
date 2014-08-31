@@ -32,4 +32,4 @@ var mlogger=new (winston.Logger)({
 
 exports.dLogger=dLogger;
 exports.hLogger=hLogger;
-exports.mlogger=mlogger;
+exports.mLogger=mlogger;

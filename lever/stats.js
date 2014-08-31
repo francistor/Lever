@@ -8,17 +8,19 @@ createStats = function () {
     stats.serverResponses = {};
     stats.clientRequests = {};
     stats.clientResponses = {};
+    stats.serverErrors = {};
+    stats.clientErrors = {};
 
-    stats.incrementServerRequest = function (destinationHost, commandCode) {
+    stats.incrementServerRequest = function (originHost, commandCode) {
         var serverRequests = stats.serverRequests;
         // Create path if does not exist
-        if(!serverRequests[destinationHost]){
-            serverRequests[destinationHost]={};
-            serverRequests[destinationHost][commandCode]=0;
-        } else if(!serverRequests[destinationHost][commandCode]){
-            serverRequests[destinationHost][commandCode]=0;
+        if(!serverRequests[originHost]){
+            serverRequests[originHost]={};
+            serverRequests[originHost][commandCode]=0;
+        } else if(!serverRequests[originHost][commandCode]){
+            serverRequests[originHost][commandCode]=0;
         }
-        serverRequests[destinationHost][commandCode]++;
+        serverRequests[originHost][commandCode]++;
     };
 
     stats.incrementServerResponse = function (destinationHost, commandCode, resultCode) {
@@ -37,16 +39,16 @@ createStats = function () {
         serverResponses[destinationHost][commandCode][resultCode]++;
     };
 
-    stats.incrementClientRequest = function (destinationHost, commandCode) {
+    stats.incrementClientRequest = function (originHost, commandCode) {
         var clientRequests = stats.clientRequests;
         // Create path if does not exist
-        if(!clientRequests[destinationHost]){
-            clientRequests[destinationHost]={};
-            clientRequests[destinationHost][commandCode]=0;
-        } else if(!clientRequests[destinationHost][commandCode]){
-            clientRequests[destinationHost][commandCode]=0;
+        if(!clientRequests[originHost]){
+            clientRequests[originHost]={};
+            clientRequests[originHost][commandCode]=0;
+        } else if(!clientRequests[originHost][commandCode]){
+            clientRequests[originHost][commandCode]=0;
         }
-        clientRequests[destinationHost][commandCode]++;
+        clientRequests[originHost][commandCode]++;
     };
 
     stats.incrementClientResponse = function (destinationHost, commandCode, resultCode) {
@@ -65,6 +67,33 @@ createStats = function () {
         clientResponses[destinationHost][commandCode][resultCode]++;
     };
 
+    stats.incrementServerError=function(originHost, commandCode){
+        var serverErrors=stats.serverErrors;
+        // Create path if does not exist
+        if(!serverErrors[originHost]){
+            serverErrors[originHost]={};
+            serverErrors[originHost][commandCode]=0;
+        }
+        else if(!serverErrors[originHost][commandCode]){
+            serverErrors[originHost][commandCode]=0;
+        }
+        serverErrors[originHost][commandCode]++;
+    };
+
+    stats.incrementClientError=function(destinationHost, commandCode){
+        var clientErrors=stats.clientErrors;
+        // Create path if does not exist
+        if(!clientErrors[destinationHost]){
+            clientErrors[destinationHost]={};
+            clientErrors[destinationHost][commandCode]=0;
+        }
+        else if(!clientErrors[destinationHost][commandCode]){
+            clientErrors[destinationHost][commandCode]=0;
+        }
+        clientErrors[destinationHost][commandCode]++;
+    };
+
+    return stats;
 };
 
 var s=createStats();
