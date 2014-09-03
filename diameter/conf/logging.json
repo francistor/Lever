@@ -1,6 +1,0 @@
-{
-	"__COMMENT": "Define entries 'console' and/or 'file' with the winston transport properties",
-
-	"console": {"timestamp": true, "level": "debug"},
-	"file": {"timestamp": true, "level": "debug", "filename": "diameter.log", "json": false}
-}
