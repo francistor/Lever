@@ -1,0 +1,28 @@
+{
+  "name": "dmanager",
+  "main": "dmanager.js",
+  "version": "0.0.1",
+  "homepage": "https://github.com/francistor/gitsandbox",
+  "authors": [
+    "francisco.cardosogil@gmail.com <francisco.cardosogil@gmail.com>"
+  ],
+  "description": "Diameter Manager",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "~1.2.22",
+    "bootstrap": "3.2.0",
+    "fontawesome": "4.1.0",
+    "angular-route": "~1.2.22"
+  },
+  "keywords": [
+    "Diameter"
+  ]
+}
