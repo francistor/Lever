@@ -3,28 +3,27 @@ var mLogger=require("./log").mLogger;
 var stats=require("./stats").stats;
 var config=require("./config").config;
 var express=require("express");
+var bodyParser=require('body-parser');
 
 var createAgent=function(diameterStateMachine){
 
     // Instantiate express
     var httpServer=express();
 
+    // parse application/json
+    httpServer.use(bodyParser.json());
+
     // Start server
-    httpServer.listen(config.diameter["management"]["httpPort"]);
-    mLogger.info("HTTP manager listening on port "+config.diameter["management"]["httpPort"]);
+    httpServer.listen(config.diameterConfig["management"]["httpPort"]);
+    mLogger.info("HTTP manager listening on port "+config.diameterConfig["management"]["httpPort"]);
 
-    httpServer.get("/dyn/get/diameterConfig", function(req, res){
-        mLogger.debug("Getting diameter configuration");
-        res.json(config.diameter);
-    });
-
-    httpServer.get("/dyn/pull/diameterConfig", function(req, res){
-        mLogger.debug("Updating diameter configuration");
+    httpServer.get("/dyn/agent/pullDiameterConfig", function(req, res){
+        mLogger.debug("Reloading diameter configuration");
         config.startUpdateDiameter();
         res.json({});
     });
 
-    httpServer.get("/dyn/get/diameterStats", function(req, res){
+    httpServer.get("/dyn/agent/diameterStats", function(req, res){
         mLogger.debug("Getting stats");
         res.json(stats);
     });

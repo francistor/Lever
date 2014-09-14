@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "body-parser": "^1.8.1",
     "express": "~4.6.1",
+    "mongodb": "^1.4.10",
     "protractor": "^1.0.0",
     "winston": "~0.7.3"
   }

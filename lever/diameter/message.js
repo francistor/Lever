@@ -2,7 +2,7 @@
 
 var dLogger=require("./log").dLogger;
 var ipaddr=require('ipaddr.js');
-var dictionary=require("./dictionary").diameterDictionary;
+var config=require("./config").config;
 
 var INITIAL_BUFF_LEN=1024;
 var INCREMENT_BUFF_THRESHOLD=512;
@@ -50,6 +50,7 @@ var nextEndToEndId=(new Date().getTime() % 65535)+Math.floor(Math.random()*10485
 // }
 
 function createMessage(request){
+    var dictionary=config.dictionary;
 
 	var message={};
 	message.avps={};
@@ -210,6 +211,7 @@ function createMessage(request){
 	// encode method
 	// Returns a buffer with the binary contents, to be sent to the wire
 	message.encode=function(){
+        var dictionary=config.dictionary;
 		
 		var buff=new Buffer(INITIAL_BUFF_LEN);
 		var commandCode, applicationId;

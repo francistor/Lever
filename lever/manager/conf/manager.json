@@ -1,3 +1,16 @@
 {
-	"port": 9000
+	"port": 9001,
+    "databaseURL":"mongodb://localhost/leverConfig",
+    "databaseOptions":{
+        "server":{
+            "auto_reconnect": true,
+            "socketOptions": {
+                "connectTimeoutMS": 2000,
+                "socketTimeoutMS": 2000
+            }
+        }
+    },
+    "queryOptions":{
+        "maxTimeMS": 2000
+    }
 }

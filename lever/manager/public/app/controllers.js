@@ -1,24 +1,15 @@
-var dmanagerControllers=angular.module('dmanagerControllers', []);
+var managerControllers=angular.module('managerControllers', []);
 
-// Basic Diameter configuration
-dmanagerControllers.controller("BasicConfigController", ['$scope', '$http', function($scope, $http){
-		
-		var diameterConfig;
-		$http.get("/dyn/get/diameterConfiguration").success(function(data){
-			$scope.diameterConfig=data;
-		}).error(function(data){
-			alert("Error: "+data);
-		});
-		
-		$scope.diameterConfig=diameterConfig;
-	}]);
+var requestTimeout=2000;
 	
 // Peers configuration
-dmanagerControllers.controller("PeersConfigController", ['$scope', '$http', function($scope, $http){
+managerControllers.controller("DiameterConfigController", ['$scope', '$http', function($scope, $http){
 
 		$scope.diameterConfig={};
-		
-		$http.get("/dyn/get/diameterConfiguration").success(function(data){
+
+        // Get diameterConfig
+		$http.get("/dyn/config/diameterConfiguration", {timeout: requestTimeout})
+            .success(function(data){
 			$scope.diameterConfig=data;
 		}).error(function(data){
 			alert("Error: "+data);
@@ -26,7 +17,7 @@ dmanagerControllers.controller("PeersConfigController", ['$scope', '$http', func
 		
 		// Deletes the peer with the specified originHost
 		$scope.deletePeer=function(name){
-			var peers=$scope.diameterConfig.peers;
+			var peers=$scope.diameterConfig["peers"];
 			if(!peers) return;
 			
 			var i;
@@ -36,16 +27,28 @@ dmanagerControllers.controller("PeersConfigController", ['$scope', '$http', func
 					break;
 				}
 			}
-		}
+		};
 		
 		// Adds a new, empty peer
 		$scope.addPeer=function(){
-			var peers=$scope.diameterConfig.peers;
+			var peers=$scope.diameterConfig["peers"];
 			if(peers) peers.push({"name":"New peer", "originHost":"-"});
-		}
+		};
+
+        // Saves the diameterConfiguration
+        $scope.updateDiameterConfig=function(){
+            if(!$scope.diameterConfig) return;
+            $http.post("/dyn/config/diameterConfiguration", $scope.diameterConfig, {timeout: requestTimeout})
+                .success(function(data){
+                    if(data.error) alert(data.error);
+                })
+                .error(function(data){
+                    alert("No response from server");
+                });
+        };
 		
 		$scope.showJSON=function(){
-			alert(JSON.stringify(diameterConfig, undefined, 2));
+			alert(JSON.stringify($scope.diameterConfig, undefined, 2));
 		}
 	}]);
 	

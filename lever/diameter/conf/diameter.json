@@ -1,6 +1,6 @@
 {
-    "_version": 1001,
-    "_IPAddress": ["127.0.0.1"],
+    "_id": 1001,
+    "IPAddress": "127.0.0.1",
     "port": 3868,
     "originHost": "lever",
     "originRealm": "jativa",
@@ -25,6 +25,6 @@
     ],
 
     "management":{
-        "httpPort": 9001
+        "httpPort": 9000
     }
 }

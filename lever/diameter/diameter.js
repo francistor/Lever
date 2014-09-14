@@ -33,22 +33,11 @@ var createDiameterStateMachine=function(){
     // Holds a reference to the callback function and timer for each destinationHost+HopByHopID
     var requestPointers={};
 
-    // Hook handlers to dispatcherConfig
-    // Function to invoke for a message will be config.dispatcher[applicationId][commandCode]["handler"]
-    // Signature for handler functions is fnc(connection, message)
-    var applicationId;
-    var commandCode;
-    var dispElement;
-    var handlerModule;
-    for(applicationId in config.dispatcher) if(config.dispatcher.hasOwnProperty(applicationId)){
-        for(commandCode in config.dispatcher[applicationId]) {
-            if (config.dispatcher[applicationId].hasOwnProperty(commandCode)) {
-                dispElement = config.dispatcher[applicationId][commandCode];
-                handlerModule = require(dispElement["module"]);
-                dispElement["handler"] = handlerModule[dispElement["functionName"]];
-            }
-        }
-    }
+    // Initial load (sync is true)
+    config.pullDiameterConfiguration(true);
+    config.pullDictionary(true);
+    // Wire handlers AFTER dictionary
+    config.pullDispatcher(true);
 
     // Invoked by the connection when a new complete message is available
     // Call handler if request, or call callback if response and original request is found
@@ -56,11 +45,14 @@ var createDiameterStateMachine=function(){
         var requestPointer;
         var message;
 
+        var dispatcher=config.dispatcher;
+
         try {
             message = createMessage().decode(buffer);
         }catch(e){
             // Message decoding error
             dLogger.error("Diameter decoding error: "+e.message);
+            dLogger.error(e.stack);
             connection.socket.end();
             connection.state="Closing";
             // Will be deleted when close event arrives
@@ -75,14 +67,16 @@ var createDiameterStateMachine=function(){
         if (message.isRequest) {
             // Handle message if there is one configured for this type of request
             stats.incrementServerRequest(connection.hostName, message.commandCode);
-            if (config.dispatcher[message.applicationId] && config.dispatcher[message.applicationId][message.commandCode] && config.dispatcher[message.applicationId][message.commandCode]["handler"]) {
-                dLogger.debug("Message is Request. Dispatching message to: " + config.dispatcher[message.applicationId][message.commandCode].functionName);
+            console.log(JSON.stringify(dispatcher, undefined, 2));
+            if (dispatcher[message.applicationId] && dispatcher[message.applicationId][message.commandCode] && dispatcher[message.applicationId][message.commandCode]["handler"]) {
+                dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
-                    config.dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
+                    dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
                     stats.incrementServerError(connection.hostName, message.commandCode);
-                    dLogger.error("Handler error in "+config.dispatcher[message.applicationId][message.commandCode].functionName);
+                    dLogger.error("Handler error in "+dispatcher[message.applicationId][message.commandCode].functionName);
                     dLogger.error(e.message);
+                    dLogger.error(e.stack);
                 }
             }
             else{
@@ -122,8 +116,9 @@ var createDiameterStateMachine=function(){
         catch(e){
             // Message encoding error
             stats.incrementServerError(connection.hostName, message.commandCode);
-            dLogger.error("Could not encode & send message: "+e.message);
+            dLogger.error("Could not encode & send reply: "+e.message);
             dLogger.error("Closing connection");
+            dLogger.error(e.stack);
             connection.socket.end();
             connection.state="Closing";
             // Will be deleted when close event arrives
@@ -158,15 +153,16 @@ var createDiameterStateMachine=function(){
             } catch(e){
                 // Message encoding error
                 stats.incrementClientError(connection.hostName, message.commandCode);
-                dLogger.error("Could not encode & send message: "+e.message);
+                dLogger.error("Could not encode & send request: "+e.message);
                 dLogger.error("Closing connection");
+                dLogger.error(e.stack);
                 connection.socket.end();
                 connection.state="Closing";
                 // Will be deleted when close event arrives
             }
         }
         else {
-            dLogger.warn("Could not send message. No connection to "+hostName);
+            dLogger.warn("Could not send request. No connection to "+hostName);
         }
     };
 
@@ -186,8 +182,8 @@ var createDiameterStateMachine=function(){
     diameterStateMachine.establishConnections=function(){
         dLogger.info("Checking connections");
         // Iterate through peers and check if a new connection has to be established
-        for(i=0; i<config.diameter["peers"].length; i++){
-            peer=config.diameter["peers"][i];
+        for(i=0; i<config.diameterConfig["peers"].length; i++){
+            peer=config.diameterConfig["peers"][i];
             if(peer["connectionPolicy"]==="active" && !connections[peer["originHost"]]){
                 dLogger.debug("Connecting to "+peer["originHost"]+" in "+peer["IPAddress"]);
                 connections[peer["originHost"]]=createConnection(diameterStateMachine, net.connect(peer["IPAddress"].split(":")[1]||3868, peer["IPAddress"].split(":")[0]) , peer["originHost"], "Wait-Conn-Ack");
@@ -210,7 +206,7 @@ var createDiameterStateMachine=function(){
 
     diameterStateMachine.establishConnections();
 
-    setInterval(diameterStateMachine.establishConnections, config.diameter["connectionInterval"]||10000);
+    setInterval(diameterStateMachine.establishConnections, config.diameterConfig["connectionInterval"]||10000);
 
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
@@ -222,8 +218,8 @@ var createDiameterStateMachine=function(){
 
         // Check whether there is at least one peer with that IP Address
         peer=null;
-        for(i=0; i<config.diameter["peers"].length; i++){
-            if(config.diameter["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=config.diameter["peers"][i];
+        for(i=0; i<config.diameterConfig["peers"].length; i++){
+            if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=config.diameterConfig["peers"][i];
         }
         if(peer===null){
             dLogger.info("Received connection from unknown peer");
@@ -241,8 +237,8 @@ var createDiameterStateMachine=function(){
         if(connection && connection.state==="Wait-CER"){
             // Check that Origin-Host is declared as peer with the received origin IP address
             ipAddress=connection.socket["remoteAddress"];
-            for(i=0; i<config.diameter["peers"].length; i++){
-                peer=config.diameter["peers"][i];
+            for(i=0; i<config.diameterConfig["peers"].length; i++){
+                peer=config.diameterConfig["peers"][i];
 
                 if(peer["originHost"]===hostName && peer["IPAddress"].split(":")[0]===connection.socket["remoteAddress"]){
                     // TODO: Election process should be implemented here
@@ -276,8 +272,8 @@ var createDiameterStateMachine=function(){
         diameterStateMachine.onConnectionReceived(socket);
     });
 
-    diameterServer.listen(config.diameter.port||3868);
-    dLogger.info("Diameter listening in port "+config.diameter.port);
+    diameterServer.listen(config.diameterConfig.port||3868);
+    dLogger.info("Diameter listening in port "+config.diameterConfig.port);
 
     createAgent();
 

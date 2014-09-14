@@ -3,19 +3,20 @@
 var hLogger=require("./log").hLogger;
 var os=require("os");
 var resultCodes=require("./message").resultCodes;
-var dictionary=require("./dictionary").diameterDictionary;
 var config=require("./config").config;
 var createMessage=require("./message").createMessage;
 
 var DEFAULT_TIMEOUT=10000;
 
 function getIPAddresses(){
+    var diameterConfig=config.diameterConfig;
+
     var i;
     var ifzName, interfaces;
     var IPAddresses=[];
 
-    if(config.diameter["IPAddress"]){
-        IPAddresses=config.diameter["IPAddress"];
+    if(diameterConfig["IPAddress"]){
+        IPAddresses=[diameterConfig["IPAddress"]];
     } else {
         interfaces=os.networkInterfaces();
         for(ifzName in interfaces) if(interfaces.hasOwnProperty(ifzName)){
@@ -28,6 +29,9 @@ function getIPAddresses(){
 }
 
 var sendCer=function(connection){
+    var diameterConfig=config.diameterConfig;
+    var dictionary=config.dictionary;
+
     var requestMessage=createMessage();
     var request=requestMessage.avps;
 
@@ -35,20 +39,20 @@ var sendCer=function(connection){
     requestMessage.commandCode="Capabilities-Exchange";
 
     // Set mandatory parameters
-    request["Origin-Host"]=config.diameter["originHost"];
-    request["Origin-Realm"]=config.diameter["originRealm"];
+    request["Origin-Host"]=diameterConfig["originHost"];
+    request["Origin-Realm"]=diameterConfig["originRealm"];
     request["Host-IP-Address"]=getIPAddresses();
-    request["Vendor-Id"]=config.diameter["vendorId"];
-    request["Product-Name"]=config.diameter["productName"];
-    request["Firmware-Revision"]=config.diameter["firmwareRevision"];
+    request["Vendor-Id"]=diameterConfig["vendorId"];
+    request["Product-Name"]=diameterConfig["productName"];
+    request["Firmware-Revision"]=diameterConfig["firmwareRevision"];
 
     // Add supported applications
     var applicationName;
     var authApplications=[];
     var acctApplications=[];
-    for(applicationName in dictionary.applicationNameMap) if(dictionary.applicationNameMap.hasOwnProperty(applicationName)){
-        if(dictionary.applicationNameMap[applicationName].type==="auth") authApplications.push(applicationName);
-        if(dictionary.applicationNameMap[applicationName].type==="acct") acctApplications.push(applicationName);
+    for(applicationName in dictionary["applicationNameMap"]) if(dictionary["applicationNameMap"].hasOwnProperty(applicationName)){
+        if(dictionary["applicationNameMap"][applicationName].type==="auth") authApplications.push(applicationName);
+        if(dictionary["applicationNameMap"][applicationName].type==="acct") acctApplications.push(applicationName);
     }
     request["Auth-Application-Id"]=authApplications;
     request["Acct-Application-Id"]=acctApplications;
@@ -77,6 +81,9 @@ var sendCer=function(connection){
 
 var cerHandler=function(connection, message){
 
+    var diameterConfig=config.diameterConfig;
+    var dictionary=config.dictionary;
+
     var replyMessage=createMessage(message);
 	var reply=replyMessage.avps;
     var request=message.avps;
@@ -84,19 +91,19 @@ var cerHandler=function(connection, message){
     if(!connection.diameterStateMachine.onCERReceived(connection, request["Origin-Host"][0])) return;
 	
 	// Set mandatory parameters
-    reply["Origin-Host"]=config.diameter["originHost"];
-    reply["Origin-Realm"]=config.diameter["originRealm"];
+    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Realm"]=diameterConfig["originRealm"];
     reply["Host-IP-Address"]=getIPAddresses();
-	reply["Vendor-Id"]=config.diameter["vendorId"];
-	reply["Firmware-Revision"]=config.diameter["firmwareRevision"];
+	reply["Vendor-Id"]=diameterConfig["vendorId"];
+	reply["Firmware-Revision"]=diameterConfig["firmwareRevision"];
 	
 	// Add supported applications
 	var applicationName;
 	var authApplications=[];
 	var acctApplications=[];
-	for(applicationName in dictionary.applicationNameMap) if(dictionary.applicationNameMap.hasOwnProperty(applicationName)){
-		if(dictionary.applicationNameMap[applicationName].type==="auth") authApplications.push(applicationName);
-		if(dictionary.applicationNameMap[applicationName].type==="acct") acctApplications.push(applicationName);
+	for(applicationName in dictionary["applicationNameMap"]) if(dictionary["applicationNameMap"].hasOwnProperty(applicationName)){
+		if(dictionary["applicationNameMap"][applicationName].type==="auth") authApplications.push(applicationName);
+		if(dictionary["applicationNameMap"][applicationName].type==="acct") acctApplications.push(applicationName);
 	}
 	reply["Auth-Application-Id"]=authApplications;
 	reply["Acct-Application-Id"]=acctApplications;
@@ -109,12 +116,14 @@ var cerHandler=function(connection, message){
 };
 
 var watchdogHandler=function(connection, message){
+    var diameterConfig=config.diameterConfig;
+    var dictionary=config.dictionary;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=config.diameter["originHost"];
+    reply["Origin-Host"]=diameterConfig["originHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
@@ -124,12 +133,14 @@ var watchdogHandler=function(connection, message){
 };
 
 var disconnectPeerHandler=function(connection, message){
+    var diameterConfig=config.diameterConfig;
+    var dictionary=config.dictionary;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=config.diameter["originHost"];
+    reply["Origin-Host"]=diameterConfig["originHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
