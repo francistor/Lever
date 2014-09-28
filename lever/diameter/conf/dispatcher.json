@@ -1,28 +1,28 @@
 {
-	"Base":
-	{
-		"Capabilities-Exchange": 
-		{
-			"module":"./baseHandler",
-			"functionName": "cerHandler"
-		},
-		"Device-Watchdog":
-		{
-			"module":"./baseHandler",
-			"functionName": "watchdogHandler"			
-		},
-		"Disconnect-Peer":
-		{
-			"module":"./baseHandler",
-			"functionName": "disconnectPeerHandler"			
-		}
-	},
-	"Credit-Control":
-	{
-		"Credit-Control":
-		{
-			"module":"./gyHandler",
-			"functionName": "ccrHandler"
-		}
-	}
+  "_id": {
+    "$oid": "542827fba2dd1bcdae2912f4"
+  },
+  "_version": 1001,
+  "dispatcher": {
+    "Base": {
+      "Capabilities-Exchange": {
+        "module": "./baseHandler",
+        "functionName": "cerHandler"
+      },
+      "Device-Watchdog": {
+        "module": "./baseHandler",
+        "functionName": "watchdogHandler"
+      },
+      "Disconnect-Peer": {
+        "module": "./baseHandler",
+        "functionName": "disconnectPeerHandler"
+      }
+    },
+    "Credit-Control": {
+      "Credit-Control": {
+        "module": "./gyHandler",
+        "functionName": "ccrHandler"
+      }
+    }
+  }
 }

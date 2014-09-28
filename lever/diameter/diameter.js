@@ -33,12 +33,6 @@ var createDiameterStateMachine=function(){
     // Holds a reference to the callback function and timer for each destinationHost+HopByHopID
     var requestPointers={};
 
-    // Initial load (sync is true)
-    config.pullDiameterConfiguration(true);
-    config.pullDictionary(true);
-    // Wire handlers AFTER dictionary
-    config.pullDispatcher(true);
-
     // Invoked by the connection when a new complete message is available
     // Call handler if request, or call callback if response and original request is found
     diameterStateMachine.onMessageReceived=function(connection, buffer){
@@ -59,17 +53,20 @@ var createDiameterStateMachine=function(){
             return;
         }
 
-        dLogger.debug("");
-        dLogger.debug("Received message");
-        dLogger.debug(JSON.stringify(message, undefined, 2));
-        dLogger.debug("");
+        if(dLogger["debugEnabled"]) {
+            dLogger.debug("");
+            dLogger.debug("Received message");
+            dLogger.debug(JSON.stringify(message, undefined, 2));
+            dLogger.debug("");
+        }
 
         if (message.isRequest) {
             // Handle message if there is one configured for this type of request
             stats.incrementServerRequest(connection.hostName, message.commandCode);
-            console.log(JSON.stringify(dispatcher, undefined, 2));
-            if (dispatcher[message.applicationId] && dispatcher[message.applicationId][message.commandCode] && dispatcher[message.applicationId][message.commandCode]["handler"]) {
-                dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
+            if(dLogger["debugEnabled"]) dLogger.debug(JSON.stringify(dispatcher, undefined, 2));
+            //if (dispatcher[message.applicationId] && dispatcher[message.applicationId][message.commandCode] && dispatcher[message.applicationId][message.commandCode]["handler"]) {
+            if(((dispatcher[message.applicationId]||{})[message.commandCode]||{})["handler"]){
+                if(dLogger["debugEnabled"]) dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
                     dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
@@ -204,10 +201,6 @@ var createDiameterStateMachine=function(){
         connection.state="Open";
     };
 
-    diameterStateMachine.establishConnections();
-
-    setInterval(diameterStateMachine.establishConnections, config.diameterConfig["connectionInterval"]||10000);
-
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
     ///////////////////////////////////////////////////////////////////////////
@@ -265,17 +258,37 @@ var createDiameterStateMachine=function(){
         return false;
     };
 
-    // Create Listener on Diameter port (or configured)
-    var diameterServer=net.createServer();
+    var diameterServer;
 
-    diameterServer.on("connection", function(socket){
-        diameterStateMachine.onConnectionReceived(socket);
+    // Read configuration and initialize
+    config.readAll(function(err){
+        if(err){
+            dLogger.error("Initialization error");
+            dLogger.error(err.stack);
+            process.exit(-1);
+        }
+        else{
+            /////////////////////////////////////////////
+            // Initialization
+            ////////////////////////////////////////////
+
+            // Create Listener on Diameter port (or configured)
+            diameterServer=net.createServer();
+
+            diameterServer.on("connection", diameterStateMachine.onConnectionReceived);
+
+            diameterServer.listen(config.diameterConfig.port||3868);
+            dLogger.info("Diameter listening in port "+config.diameterConfig.port);
+
+            // Create management HTTP server
+            createAgent();
+
+            // Establish outgoing connections
+            diameterStateMachine.establishConnections();
+            // Set timer for periodically checking connections
+            setInterval(diameterStateMachine.establishConnections, config.diameterConfig["connectionInterval"]||10000);
+        }
     });
-
-    diameterServer.listen(config.diameterConfig.port||3868);
-    dLogger.info("Diameter listening in port "+config.diameterConfig.port);
-
-    createAgent();
 
     return diameterStateMachine;
 };

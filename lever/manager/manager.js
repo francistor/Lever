@@ -5,6 +5,7 @@ var logger=require("./log").logger;
 var fs=require("fs");
 var express=require("express");
 var MongoClient=require("mongodb").MongoClient;
+var ObjectID=require('mongodb').ObjectID;
 var bodyParser=require('body-parser');
 
 // Read dmanager configuration
@@ -44,20 +45,23 @@ mApp.post("/dyn/config/diameterConfiguration", function(req, res){
     if(!configDB){
         res.json({"error": "Database closed"});
     }
-    else configDB.collection("diameterConfig").update({"_id": req.body._id}, req.body, config["queryOptions"], function(err, result){
-        if(!err && result===1){
-            logger.info("Updated diameter configuration");
-            res.json({});
-        }
-        else if(result===0){
-            logger.error("Error updating diameter configuration: Data was modified by another user");
-            res.json({"error": "Data modified by another user"});
-        }
-        else{
-            logger.error("Error updating diameter configuration: "+err.message);
-            res.json({"error": err.message});
-        }
-    });
+    else{
+        req.body._id=ObjectID.createFromHexString(req.body._id);
+        configDB.collection("diameterConfig").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+            if(!err && result===1){
+                logger.info("Updated diameter configuration");
+                res.json({});
+            }
+            else if(result===0){
+                logger.error("Error updating diameter configuration: Data was modified by another user");
+                res.json({"error": "Data modified by another user"});
+            }
+            else{
+                logger.error("Error updating diameter configuration: "+err.message);
+                res.json({"error": err.message});
+            }
+        });
+    }
 });
 
 // Connect to mongodb and start server

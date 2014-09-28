@@ -1,0 +1,1 @@
+Configuracion en database. Usar "export.bat" para obtener versión actualizada

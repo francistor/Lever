@@ -6,6 +6,7 @@ var requestTimeout=2000;
 managerControllers.controller("DiameterConfigController", ['$scope', '$http', function($scope, $http){
 
 		$scope.diameterConfig={};
+        $scope.disabled=false;
 
         // Get diameterConfig
 		$http.get("/dyn/config/diameterConfiguration", {timeout: requestTimeout})
@@ -38,12 +39,25 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', fu
         // Saves the diameterConfiguration
         $scope.updateDiameterConfig=function(){
             if(!$scope.diameterConfig) return;
+            $scope.disabled=true;
+
+            // Update version of diameter config
+            $scope.diameterConfig["_version"]++;
+            // Post update
             $http.post("/dyn/config/diameterConfiguration", $scope.diameterConfig, {timeout: requestTimeout})
                 .success(function(data){
-                    if(data.error) alert(data.error);
+                    if(data.error){
+                        bootbox.alert("Error updating configuration");
+                        console.log(data.error);
+                    }
+                    else bootbox.alert("Configuration updated.");
+
+                    $scope.disabled=false;
                 })
                 .error(function(data){
-                    alert("No response from server");
+                    bootbox.alert("No response from server.");
+
+                    $scope.disabled=false;
                 });
         };
 		

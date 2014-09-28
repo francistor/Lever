@@ -1,122 +1,155 @@
 // Holder for Configurations
 
-var backendConfig=require("./fileConfig").config;
+var backendConfig=require("./databaseConfig").config;
 var dLogger=require("./log").dLogger;
 
+// Holds basic Diameter configuration
+// Delegates the reading to a backendConfig object, which in turn will invoke
+// callbacks for this object to cook the result. This callback may be
+// called synchronously (sync=true), to be used on startup
 var createConfig=function(){
 
-    var config={"diameterConfig":{}, "dispatcher":{}, "dictionary":{}};
+    var config={"diameterConfig":null, "dispatcher":null, "dictionary":null};
 
-    // Updates
-    config.pullDiameterConfiguration=function(sync){
-       backendConfig.getDiameterConfiguration(sync, function(diameterConfig){
-           config.diameterConfig=diameterConfig;
+    // Updates basic Diameter configuration
+    // Callback expects a single error parameter
+    config.readDiameterConfiguration=function(callback){
+       backendConfig.getDiameterConfiguration(function(err, diameterConfig){
+           if(err){
+               callback(err);
+           }
+           else{
+               config.diameterConfig=diameterConfig;
+               callback(null);
+           }
        });
     };
 
-    // Updates the dispatcher object within the config object
-    // In case of error reading configuration, nothing is done
-    config.pullDispatcher=function(sync){
-        backendConfig.getDispatcherConfiguration(sync, function(dispatcher){
+    // Updates the dispatcher configuration
+    // Callback expects a single error parameter
+    config.readDispatcher=function(callback){
+        backendConfig.getDispatcherConfiguration(function(err, dispatcherConfig){
+            if(err){
+                callback(err);
+            }
+            else {
+                try {
+                    var dispatcher=dispatcherConfig["dispatcher"];
 
-            // Hook handlers to dispatcher
-            // Function to invoke for a message will be config.dispatcherConfig[applicationId][commandCode]["handler"]
-            // Signature for handler functions is fnc(connection, message)
-            var applicationId;
-            var commandCode;
-            var dispElement;
-            var handlerModule;
-            for (applicationId in dispatcher) if (dispatcher.hasOwnProperty(applicationId)) {
-                for (commandCode in dispatcher[applicationId]) {
-                    if (dispatcher[applicationId].hasOwnProperty(commandCode)) {
-                        dispElement = dispatcher[applicationId][commandCode];
-                        handlerModule = require(dispElement["module"]);
-                        dispElement["handler"] = handlerModule[dispElement["functionName"]];
+                    // Hook handlers to dispatcher
+                    // Function to invoke for a message will be config.dispatcherConfig[applicationId][commandCode]["handler"]
+                    // Signature for handler functions is fnc(connection, message)
+                    var applicationId;
+                    var commandCode;
+                    var dispElement;
+                    var handlerModule;
+                    for (applicationId in dispatcher) if (dispatcher.hasOwnProperty(applicationId)) {
+                        for (commandCode in dispatcher[applicationId]) {
+                            if (dispatcher[applicationId].hasOwnProperty(commandCode)) {
+                                dispElement = dispatcher[applicationId][commandCode];
+                                handlerModule = require(dispElement["module"]);
+                                dispElement["handler"] = handlerModule[dispElement["functionName"]];
+                            }
+                        }
                     }
                 }
+                catch(e){
+                    callback(e);
+                    return;
+                }
+                // Everything ok, replace dispatcher
+                config.dispatcher = dispatcher;
+                callback(null);
             }
-
-            // Everything ok, replace dispatcher
-            config.dispatcher=dispatcher;
         });
     };
 
     // Updates the dictionary object within the config object
-    // In case of error reading configuration, nothing is done
-    config.pullDictionary=function(sync) {
-        backendConfig.getDictionaryConfiguration(sync, function(dictionary){
-
-            // Add Maps (code map and name map)
-            // avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
-            // avpNameMap={<avpname>:{<avpDef>}, ...}
-            var code, name;
-            var enumCodes;
-            var vendorName;
-            var avpDef;
-            var i, j;
-            var enumValue;
-            var vendorId;
-            dictionary["avpCodeMap"] = {};
-            dictionary["avpNameMap"] = {};
-
-            // Iterate through vendors
-            for (vendorId in dictionary["avp"]) if (dictionary["avp"].hasOwnProperty(vendorId)) {
-
-                dictionary["avpCodeMap"][vendorId] = {};
-
-                vendorName = dictionary["vendor"][vendorId];
-
-                // Iterate through avps for the vendor
-                for (i = 0; i < dictionary["avp"][vendorId].length; i++) {
-                    avpDef = dictionary["avp"][vendorId][i];
-                    // If enumerated type, add reverse code map for easy reference
-                    if (avpDef.type === "Enumerated") {
-                        enumCodes = {};
-                        for (enumValue in avpDef["enumValues"]) if (avpDef["enumValues"].hasOwnProperty(enumValue)) enumCodes[avpDef["enumValues"][enumValue]] = enumValue;
-                        avpDef.enumCodes = enumCodes;
-                    }
-                    // Populate avpCodeMap. To retrieve avpDef from code use dictionary["avpCodeMap"][vendorId][<avpcode>]
-                    dictionary["avpCodeMap"][vendorId][dictionary["avp"][vendorId][i].code] = avpDef;
-
-                    // Populate avpNameMap. To retrieve avpDef from name use dictionary["avpNameMap"][<avpname>]
-                    if (vendorName) {
-                        // Add vendorId to avpDef for easy reference
-                        avpDef.vendorId = vendorId;
-                        dictionary["avpNameMap"][vendorName + "-" + dictionary["avp"][vendorId][i].name] = avpDef;
-                    }
-                    else dictionary["avpNameMap"][dictionary["avp"][0][i].name] = dictionary["avp"][0][i];
-                }
+    // Callback expects a single error parameter
+    config.readDictionary=function(callback) {
+        backendConfig.getDictionaryConfiguration(function(err, dictionary){
+            if(err){
+                config.dictionary={};
+                callback(err);
             }
+            else {
+                try {
+                    // Add Maps (code map and name map)
+                    // avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
+                    // avpNameMap={<avpname>:{<avpDef>}, ...}
+                    var code, name;
+                    var enumCodes;
+                    var vendorName;
+                    var avpDef;
+                    var i, j;
+                    var enumValue;
+                    var vendorId;
+                    dictionary["avpCodeMap"] = {};
+                    dictionary["avpNameMap"] = {};
 
-            // Add application and commands map
-            dictionary["applicationCodeMap"] = {};
-            dictionary["applicationNameMap"] = {};
-            dictionary["commandCodeMap"] = {};
-            dictionary["commandNameMap"] = {};
-            for (i = 0; i < dictionary["applications"].length; i++) {
-                // Add to application code and name maps
-                code = dictionary["applications"][i].code;
-                if (code === undefined) throw new Error("Missing code in application dictionary");
-                name = dictionary["applications"][i].name;
-                if (name === undefined) throw new Error("Missing name in application dictionary");
-                dictionary["applicationCodeMap"][dictionary["applications"][i].code] = dictionary["applications"][i];
-                dictionary["applicationNameMap"][dictionary["applications"][i].name] = dictionary["applications"][i];
-                for (j = 0; j < dictionary["applications"][i]["commands"].length; j++) {
-                    // Add to command code and application maps
-                    code = dictionary["applications"][i]["commands"][j].code;
-                    if (code === undefined) throw new Error("Missing code in command dictionary");
-                    name = dictionary["applications"][i]["commands"][j].name;
-                    if (name === undefined) throw new Error("Missing code in command dictionary");
-                    dictionary["commandCodeMap"][dictionary["applications"][i]["commands"][j].code] = dictionary["applications"][i]["commands"][j];
-                    dictionary["commandNameMap"][dictionary["applications"][i]["commands"][j].name] = dictionary["applications"][i]["commands"][j];
+                    // Iterate through vendors
+                    for (vendorId in dictionary["avp"]) if (dictionary["avp"].hasOwnProperty(vendorId)) {
+
+                        dictionary["avpCodeMap"][vendorId] = {};
+
+                        vendorName = dictionary["vendor"][vendorId];
+
+                        // Iterate through avps for the vendor
+                        for (i = 0; i < dictionary["avp"][vendorId].length; i++) {
+                            avpDef = dictionary["avp"][vendorId][i];
+                            // If enumerated type, add reverse code map for easy reference
+                            if (avpDef.type === "Enumerated") {
+                                enumCodes = {};
+                                for (enumValue in avpDef["enumValues"]) if (avpDef["enumValues"].hasOwnProperty(enumValue)) enumCodes[avpDef["enumValues"][enumValue]] = enumValue;
+                                avpDef.enumCodes = enumCodes;
+                            }
+                            // Populate avpCodeMap. To retrieve avpDef from code use dictionary["avpCodeMap"][vendorId][<avpcode>]
+                            dictionary["avpCodeMap"][vendorId][dictionary["avp"][vendorId][i].code] = avpDef;
+
+                            // Populate avpNameMap. To retrieve avpDef from name use dictionary["avpNameMap"][<avpname>]
+                            if (vendorName) {
+                                // Add vendorId to avpDef for easy reference
+                                avpDef.vendorId = vendorId;
+                                dictionary["avpNameMap"][vendorName + "-" + dictionary["avp"][vendorId][i].name] = avpDef;
+                            }
+                            else dictionary["avpNameMap"][dictionary["avp"][0][i].name] = dictionary["avp"][0][i];
+                        }
+                    }
+
+                    // Add application and commands map
+                    dictionary["applicationCodeMap"] = {};
+                    dictionary["applicationNameMap"] = {};
+                    dictionary["commandCodeMap"] = {};
+                    dictionary["commandNameMap"] = {};
+                    for (i = 0; i < dictionary["applications"].length; i++) {
+                        // Add to application code and name maps
+                        code = dictionary["applications"][i].code;
+                        if (code === undefined) throw new Error("Missing code in application dictionary");
+                        name = dictionary["applications"][i].name;
+                        if (name === undefined) throw new Error("Missing name in application dictionary");
+                        dictionary["applicationCodeMap"][dictionary["applications"][i].code] = dictionary["applications"][i];
+                        dictionary["applicationNameMap"][dictionary["applications"][i].name] = dictionary["applications"][i];
+                        for (j = 0; j < dictionary["applications"][i]["commands"].length; j++) {
+                            // Add to command code and application maps
+                            code = dictionary["applications"][i]["commands"][j].code;
+                            if (code === undefined) throw new Error("Missing code in command dictionary");
+                            name = dictionary["applications"][i]["commands"][j].name;
+                            if (name === undefined) throw new Error("Missing code in command dictionary");
+                            dictionary["commandCodeMap"][dictionary["applications"][i]["commands"][j].code] = dictionary["applications"][i]["commands"][j];
+                            dictionary["commandNameMap"][dictionary["applications"][i]["commands"][j].name] = dictionary["applications"][i]["commands"][j];
+                        }
+                    }
                 }
-            }
+                catch(e){
+                    callback(e);
+                    return;
+                }
 
-            // Everything went well, replace dictionary
-            config.dictionary=dictionary;
+                // Everything went well, replace dictionary
+                config.dictionary = dictionary;
+                callback(null);
+            }
         });
-
-
     };
 
     // For debugging purposes only
@@ -159,6 +192,43 @@ var createConfig=function(){
             dLogger.debug("\t" + commandName + " " + JSON.stringify(dictionary["commandNameMap"][commandName]));
         }
         dLogger.debug();
+    };
+
+    // Reads all configuration and invokes callback when finished
+    config.readAll=function(callback){
+        var diameterConfigurationError=null, dictionaryError=null, dispatcherError=null;
+        var diameterConfigurationFinished=false, dictionaryFinished=false, dispatcherFinished=false;
+
+        // Helper function. To invoke callback just once
+        var checkReady=function(callback){
+            if(diameterConfigurationFinished && dictionaryFinished && dispatcherFinished)
+                callback(diameterConfigurationError || dictionaryError || dispatcherError);
+        };
+
+        config.readDiameterConfiguration(function(err){
+            diameterConfigurationFinished=true;
+            if(err){
+                diameterConfigurationError=err;
+                dLogger.error("Error reading Diameter configuration: "+err.message);
+            }
+            checkReady(callback);
+        });
+        config.readDictionary(function(err){
+            dictionaryFinished=true;
+            if(err){
+                dictionaryError=err;
+                dLogger.error("Error reading dictionary configuration: "+err.message);
+            }
+            checkReady(callback);
+        });
+        config.readDispatcher(function(err){
+            dispatcherFinished=true;
+            if(err){
+                dispatcherError=err;
+                dLogger.error("Error reading dispatcher configuration: "+err.message);
+            }
+            checkReady(callback);
+        });
     };
 
     return config;

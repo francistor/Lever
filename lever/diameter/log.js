@@ -1,5 +1,7 @@
 // For sharing winston logging
 
+var debugEnabled=true;
+
 var winston=require("winston");
 var fs=require("fs");
 // Read and configure logging configuration, logging.json MUST
@@ -26,10 +28,14 @@ var hLogger=new (winston.Logger)({
 var managementTransports=[];
 if("console" in logConfig["management"]) managementTransports.push(new (winston.transports.Console)(logConfig["management"].console));
 if("file" in logConfig["management"]) managementTransports.push(new (winston.transports.File)(logConfig["management"].file));
-var mlogger=new (winston.Logger)({
+var mLogger=new (winston.Logger)({
     "transports": managementTransports
 });
 
+dLogger["debugEnabled"]=debugEnabled;
+hLogger["debugEnabled"]=debugEnabled;
+mLogger["debugEnabled"]=debugEnabled;
+
 exports.dLogger=dLogger;
 exports.hLogger=hLogger;
-exports.mLogger=mlogger;
+exports.mLogger=mLogger;

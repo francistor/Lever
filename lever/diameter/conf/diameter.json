@@ -1,30 +1,32 @@
 {
-    "_id": 1001,
-    "IPAddress": "127.0.0.1",
-    "port": 3868,
-    "originHost": "lever",
-    "originRealm": "jativa",
-    "vendorId": 1101,
-    "productName": "Lever",
-    "firmwareRevision": 1,
-    "connectionInterval": 5000,
-    "peers":
-    [
-        {
-            "name": "diameterTool",
-            "originHost": "diameterTool",
-            "IPAddress": "127.0.0.1:3868",
-            "connectionPolicy": "passive"
-        },
-        {
-            "name": "8950AAA",
-            "originHost": "8950AAA",
-            "IPAddress": "127.0.0.1:13868",
-            "connectionPolicy": "active"
-        }
-    ],
-
-    "management":{
-        "httpPort": 9000
+  "_id": {
+    "$oid": "542827fba2dd1bcdae2912f3"
+  },
+  "_version": 1001,
+  "serverName": "frodriguezgpw7",
+  "IPAddress": "127.0.0.1",
+  "port": 3868,
+  "originHost": "lever",
+  "originRealm": "jativa",
+  "vendorId": 1101,
+  "productName": "Lever",
+  "firmwareRevision": 1,
+  "connectionInterval": 5000,
+  "peers": [
+    {
+      "name": "diameterTool",
+      "originHost": "diameterTool",
+      "IPAddress": "127.0.0.1:3868",
+      "connectionPolicy": "passive"
+    },
+    {
+      "name": "8950AAA",
+      "originHost": "8950AAA",
+      "IPAddress": "127.0.0.1:13868",
+      "connectionPolicy": "active"
     }
+  ],
+  "management": {
+    "httpPort": 9000
+  }
 }
