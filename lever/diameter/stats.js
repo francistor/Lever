@@ -1,6 +1,11 @@
 // Holds Diameter statistics
 // host -> command [-> resultCode (for responses)]
 
+// serverRequests[originHost][commandCode]
+// serverResponses[destinationHost][commandCode][resultCode]
+// clientRequests[originHost][commandCode]
+// clientResponses[destinationHost][commandCode][resultCode]
+
 var createStats;
 createStats = function () {
     var stats = {};

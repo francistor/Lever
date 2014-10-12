@@ -16,7 +16,7 @@ print("----------------------------------");
 var diameterConfig=
 {
     "_version": 1001,
-	"serverName": "frodriguezgpw7",
+	"serverName": "samsung-jativa",
     "IPAddress": "127.0.0.1",
     "port": 3868,
     "originHost": "lever",

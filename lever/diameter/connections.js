@@ -32,6 +32,7 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
         var copySize=Math.min(targetSize-currentDataLength, buff.length-bufferPtr);
 
         // Copy from buffer to data
+        // targetBuffer, targetStart, sourceStart, sourceEnd
         buff.copy(data, currentDataLength, bufferPtr, bufferPtr+copySize);
         currentDataLength+=copySize;
         bufferPtr+=copySize;
@@ -47,37 +48,45 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
     }
 
     // Data received
-    dc.socket.on("data", function(buffer){
+    dc.socket.on("data", function(buffer) {
         var messageBuffer;
-        dLogger.debug("Receiving data from "+dc.hostName);
+        dLogger.debug("Receiving " + buffer.length + " bytes from " + dc.hostName);
 
-        bufferPtr=0;
-        // Iterate until all the received buffer has been copied
-        // The buffer may span multiple diameter messages
-        while(bufferPtr < buffer.length){
+        bufferPtr = 0;
 
-            if(currentMessageLength===0){
-                // Still the message size is unknown. Try to copy the length
-                if(copyData(4, buffer)){
-                    currentMessageLength=getMessageLength();
+        try{
+            // Iterate until all the received buffer has been copied
+            // The buffer may span multiple diameter messages
+            while (bufferPtr < buffer.length) {
+                if (currentMessageLength === 0) {
+                    // Still the message size is unknown. Try to copy the length
+                    if (copyData(4, buffer)) {
+                        currentMessageLength = getMessageLength();
+                    }
+                }
+                else {
+                    if (copyData(currentMessageLength, buffer)) {
+                        // Create new buffer
+                        messageBuffer = new Buffer(currentMessageLength);
+
+                        // Copy data to new buffer
+                        data.copy(messageBuffer, 0, 0, currentMessageLength);
+
+                        // Reset buffer
+                        currentMessageLength = 0;
+                        currentDataLength = 0;
+
+                        // Process message
+                        dc.diameterStateMachine.onMessageReceived(dc, messageBuffer);
+                    }
                 }
             }
-            else{
-                if(copyData(currentMessageLength, buffer)){
-                    // Create new buffer
-                    messageBuffer=new Buffer(currentMessageLength);
-
-                    // Copy data to new buffer
-                    data.copy(messageBuffer, 0, 0, currentMessageLength);
-
-                    // Reset buffer
-                    currentMessageLength=0;
-                    currentDataLength=0;
-
-                    // Process message
-                    dc.diameterStateMachine.onMessageReceived(dc, messageBuffer);
-                }
-            }
+        }
+        catch(e){
+            dLogger.error("Diameter decoding error: "+e.message);
+            dLogger.error(e.stack);
+            socket.end();
+            state="Closing";
         }
     });
 

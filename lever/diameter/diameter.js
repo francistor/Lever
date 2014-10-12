@@ -197,6 +197,7 @@ var createDiameterStateMachine=function(){
     };
 
     diameterStateMachine.onCEAReceived=function(connection){
+        // Already handled
         dLogger.debug("CEA received from "+connection.hostName);
         connection.state="Open";
     };
