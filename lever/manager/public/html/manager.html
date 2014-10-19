@@ -78,7 +78,7 @@
             </ul>
             <!-- /.navbar-top-links -->
 
-            <div class="navbar-default navbar-static-side" role="navigation">
+            <div class="navbar-default navbar-static-side" role="navigation" ng-controller="NodeListController">
                 <div class="sidebar-collapse">
                     <ul class="nav" id="side-menu">
                         <li class="sidebar-search">
@@ -96,26 +96,39 @@
                             <a href="#/dashboard"><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
                         </li>
 						<li>
+                            <!-- Old -->
 							<a href="#">
-								<i class="fa fa-wrench fa-fw"></i> Settings<span class="fa arrow"></span>
+								<i class="fa fa-wrench fa-fw"></i>Settings<span class="fa arrow"></span>
 							</a>
 							<ul class="nav nav-second-level">
 								<li>
-									<a href="#/configDiameterBasic" id="linkBasic">Diameter Basic Settings</a>
+									<a href="#/diameterDictionary">Diameter Dictionary</a>
 								</li>
-								<li>
-									<a href="#/configDiameterPeers" id="linkPeers">Diameter Peers</a>
-								</li>
-								<li>
-									<a href="#" id="linkRoutes">Diameter Realm Routes</a>
-								</li>
+                                <li>
+                                    <a href="">Radius Dictionary</a>
+                                </li>
 							</ul>
+                        </li>
+                        <li>
+                            <!-- New -->
+                            <a href="#">
+                                <i class="fa fa-wrench fa-fw"></i>Nodes<span class="fa arrow"></span>
+                            </a>
+                            <ul class="nav nav-second-level">
+                                <li ng-repeat="serverName in nodes">
+                                    <a href="#/node/{{serverName}}" id="linkNode-{{serverName}}">{{serverName}}</a>
+                                </li>
+                            </ul>
 						</li>
 						<li>
-                            <a href="#"><i class="fa fa-user fa-fw"></i> Clients</a>
+                            <a href="#">
+                                <i class="fa fa-user fa-fw"></i> Clients
+                            </a>
                         </li>
 						<li>
-                            <a href="#"><i class="fa fa-edit fa-fw"></i> Products</a>
+                            <a href="#">
+                                <i class="fa fa-edit fa-fw"></i> Products
+                            </a>
                         </li>
                         <li>
                             <a href="#"><i class="fa fa-bar-chart-o fa-fw"></i> Reports<span class="fa arrow"></span></a>

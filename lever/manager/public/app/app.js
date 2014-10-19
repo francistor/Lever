@@ -3,12 +3,15 @@ var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers']);
 managerApp.config(['$routeProvider',
   function($routeProvider) {
     $routeProvider.
-      when('/configDiameterBasic', {
-        templateUrl: 'partials/configDiameterBasic.html',
+      when('/node/:serverName', {
+        templateUrl: 'partials/node.html',
         controller: 'DiameterConfigController'
-      }).when('/configDiameterPeers', {
-        templateUrl: 'partials/configDiameterPeers.html',
-        controller: 'DiameterConfigController'
+      }).when('/diameterDictionary', {
+        templateUrl: 'partials/diameterDictionary.html',
+        controller: 'DiameterDictionaryController'
+      }).when('/radiusDictionary', {
+        templateUrl: 'partials/radiusDictionary.html',
+        controller: 'RadiusDictionaryController'
       }).when('/dashboard', {
         templateUrl: 'partials/dashboard.html'
       }).otherwise({

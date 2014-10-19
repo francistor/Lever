@@ -1,0 +1,139 @@
+<br>
+<ul class="nav nav-tabs" role="tablist">
+    <!-- use data-target instead of href -->
+    <li class="active"><a data-target="#basic" href="" role="tab" data-toggle="tab">Basic Configuration</a></li>
+    <li><a data-target="#peers" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Diameter Peers</a></li>
+    <li><a data-target="#radiusclients" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Radius Clients</a></li>
+    <li><a data-target="#realmroute" href="" role="tab" data-toggle="tab" >Realm Route Table</a></li>
+</ul>
+
+<!-- Tab panes -->
+<div class="tab-content">
+    <!-- Basic Diameter Configuration -->
+    <div class="tab-pane active" id="basic">
+        <form name="basicConfigForm" role="form">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="col-lg-6">
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.serverName.$invalid}">
+                            <label>Server Name:</label>
+                            <input name="serverName" type="text" class="form-control" ng-model="diameterConfig.serverName" ng-pattern="/.{3,}/">
+                            <p class="help-block">Server hostname</p>
+                        </div>
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.originHost.$invalid}">
+                            <label>Diameter Host Name:</label>
+                            <input name="originHost" type="text" class="form-control" ng-model="diameterConfig.originHost" ng-pattern="/.{3,}/">
+                        </div>
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.realm.$invalid}">
+                            <label>Diameter Realm:</label>
+                            <input name="realm" type="text" class="form-control" ng-model="diameterConfig.originRealm">
+                        </div>
+                        <div class="form-group" ng-class="basicConfigForm.IPAddress.$invalid ? 'has-error': '' ">
+                            <label>Listen Address:</label>
+                            <input name="IPAddress" class="form-control" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/" ng-model="diameterConfig.IPAddress">
+                        </div>
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.port.$invalid}">
+                            <label>Listen Port:</label>
+                            <input name="port" class="form-control" ng-model="diameterConfig.port" ng-pattern="/[0-9]{4,5}/">
+                        </div>
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.interval.$invalid}">
+                            <label>Connection interval:</label>
+                            <input name="interval" class="form-control" ng-model="diameterConfig.connectionInterval" ng-pattern="/[0-9]{1,9}/">
+                            <p class="help-block">In milliseconds. Interval to try reconnect to peers</p>
+                        </div>
+                        <div class="form-group"  ng-class="{'has-error': basicConfigForm.vendorId.$invalid}">
+                            <label>Vendor Id:</label>
+                            <input name="vendorId" class="form-control" ng-model="diameterConfig.vendorId" ng-pattern="/[0-9]{1,9}/">
+                        </div>
+                        <div class="form-group"  ng-class="{'has-error': basicConfigForm.productName.$invalid}">
+                            <label>Product Name:</label>
+                            <input name="productName" type="text" class="form-control" ng-model="diameterConfig.productName">
+                        </div>
+                        <div class="form-group"  ng-class="{'has-error': basicConfigForm.firmwareRevision.$invalid}">
+                            <label>Firmware Revision:</label>
+                            <input name="firmwareRevision" type="number" class="form-control" ng-model="diameterConfig.firmwareRevision" ng-pattern="/[0-9]{1,9}/">
+                        </div>
+                        <div class="form-group">
+                            <button type="button" ng-disabled="isDisabled" class="btn btn-primary" ng-click="updateDiameterConfig()">Submit changes
+                                <i class="fa fa-check">
+                                </i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <!-- Peers -->
+    <div class="tab-pane" id="peers">
+        <form name="peersConfigForm" role="form">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="col-lg-6">
+
+                        <div class="accordion" id="peerList">
+
+                            <div class="accordion-group" ng-repeat="peer in diameterConfig['peers']">
+
+                                <div class="accordion-heading">
+                                    <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#peerList" data-target="#peer-{{peer.originHost}}" >
+                                        <h4>{{peer.name}}</h4>
+                                    </a>
+                                </div>
+
+                                <div class="accordion-body collapse" id="peer-{{peer.originHost}}">
+                                    <div class="accordion-inner">
+
+                                        <div class="form-group" ng-class="{'has-error': peersConfigForm.name.$invalid}">
+                                            <label>Name:</label>
+                                            <input name="name" class="form-control" ng-model="peer.name" ng-pattern="/.{3,}/">
+                                            <p class="help-block">Required field</p>
+                                        </div>
+                                        <div class="form-group" ng-class="{'has-error': peersConfigForm.originHost.$invalid}">
+                                            <label>Diameter host name:</label>
+                                            <input name="originHost" class="form-control" ng-model="peer.originHost" ng-pattern="/.{3,}/">
+                                            <p class="help-block">Required field</p>
+                                        </div>
+                                        <div class="form-group" ng-class="{'has-error': peersConfigForm.IPAddress.$invalid}">
+                                            <label>IP Address:</label>
+                                            <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\:[0-9]{4,6}){0,1}$/">
+                                            <p class="help-block">Required field</p>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Connection Policy:</label>
+                                            <select class="form-control">
+                                                <option value="passive">Accept connection from this peer</option>
+                                                <option value="active">Initiate connection to this peer</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" ng-click="deletePeer(peer.name)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <br/>
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" ng-click="addPeer()"> New Peer
+                                <i class="fa fa-plus">
+                                </i>
+                            </button>
+                            <button type="button" class="btn btn-primary" ng-click="updateDiameterConfig()">Submit changes
+                                <i class="fa fa-check">
+                                </i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="tab-pane" id="radiusclients">
+        RadiusClients
+    </div>
+    <div class="tab-pane" id="realmroute">
+        RealmRoute
+    </div>
+</div>
+
+        

@@ -328,6 +328,12 @@ table.dataTable thead .sorting:after {
     margin: 15px 0;
 }
 
+/* Customized */
+
 .mylink{
     cursor: pointer;
+}
+
+.indent1{
+    margin-left:2em;
 }

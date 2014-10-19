@@ -100,13 +100,13 @@ var dictionaryConfig=
 	"_version": 1001,
 	"vendor":
 	{
+            "0": "Standard",
 			"1001": "francisco.cardosogil@gmail.com",
 			"9": "Cisco"
 	},
 
 	"avp":
 	{
-
 		"0":
 		[
 			{

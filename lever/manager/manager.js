@@ -29,21 +29,40 @@ mApp.get("/", function(req,res){
     res.redirect("/stc/html/manager.html");
 });
 
-mApp.get("/dyn/config/diameterConfiguration", function(req, res){
+
+// Get list of nodes
+mApp.get("/dyn/config/nodeList", function(req, res){
     if(!configDB){
-        res.json({"error": "Database closed"});
+        res.status(500).send("Error: Database connection closed");
     }
-    else configDB.collection("diameterConfig").findOne({}, {}, config["queryOptions"], function(err, item){
+    else configDB.collection("diameterConfig").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
         if(!err){
-            res.json(item);
+            var nodeList=[];
+            docs.forEach(function(doc){nodeList.push(doc.serverName);});
+            res.json(nodeList);
         }
-        else res.json({"error": err.message});
+        else res.status(500).send("Error: "+err.message);
+    });
+
+});
+
+// Reads diameter configuration
+mApp.get("/dyn/config/diameterConfiguration/:serverName", function(req, res){
+    if(!configDB){
+        res.status(500).send("Error: Database connection closed");
+    }
+    else configDB.collection("diameterConfig").findOne({serverName: req.params.serverName}, {}, config["queryOptions"], function(err, item){
+        if(!err){
+            if(item)res.json(item);else res.json({error: "serverName not found"});
+        }
+        else res.status(500).send("Error: "+err.message);
     });
 });
 
+// Updates diameter configuration
 mApp.post("/dyn/config/diameterConfiguration", function(req, res){
     if(!configDB){
-        res.json({"error": "Database closed"});
+        res.status(500).send("Error: Database connection closed");
     }
     else{
         req.body._id=ObjectID.createFromHexString(req.body._id);
@@ -54,11 +73,48 @@ mApp.post("/dyn/config/diameterConfiguration", function(req, res){
             }
             else if(result===0){
                 logger.error("Error updating diameter configuration: Data was modified by another user");
-                res.json({"error": "Data modified by another user"});
+                res.status(500).send("Error: configuration modified by another user");
             }
             else{
                 logger.error("Error updating diameter configuration: "+err.message);
-                res.json({"error": err.message});
+                res.status(500).send("Error: "+err.message);
+            }
+        });
+    }
+});
+
+// Reads diameter dictionary
+mApp.get("/dyn/config/diameterDictionary", function(req, res){
+    if(!configDB){
+        res.status(500).send("Error: Database connection closed");
+    }
+    else configDB.collection("dictionaryConfig").findOne({}, {}, config["queryOptions"], function(err, item){
+        if(!err){
+            if(item) res.json(item);else res.status(500).send("Error: dictionary not found");
+        }
+        else res.status(500).send("Error: "+err.message);
+    });
+});
+
+// Updates diameter dictionary
+mApp.post("/dyn/config/diameterDictionary", function(req, res){
+    if(!configDB){
+        rres.status(500).send("Error: Database connection closed");
+    }
+    else{
+        req.body._id=ObjectID.createFromHexString(req.body._id);
+        configDB.collection("dictionaryConfig").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+            if(!err && result===1){
+                logger.info("Updated diameter dictionary");
+                res.json({});
+            }
+            else if(result===0){
+                logger.error("Error updating diameter dictionary: Data was modified by another user");
+                res.status(500).send("Error: Dictionary modified by another user");
+            }
+            else{
+                logger.error("Error updating diameter dictionary: "+err.message);
+                res.status(500).send("Error: "+err.message);;
             }
         });
     }
