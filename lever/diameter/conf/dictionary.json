@@ -1,9 +1,10 @@
 {
   "_id": {
-    "$oid": "543ab2712d59becab595b2f4"
+    "$oid": "54943f0b0e8ee5c39a752d9c"
   },
   "_version": 1001,
   "vendor": {
+    "0": "Standard",
     "9": "Cisco",
     "1001": "francisco.cardosogil@gmail.com"
   },

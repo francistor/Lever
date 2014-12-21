@@ -17,15 +17,20 @@ var createAgent=function(diameterStateMachine){
     httpServer.listen(config.diameterConfig["management"]["httpPort"]);
     mLogger.info("HTTP manager listening on port "+config.diameterConfig["management"]["httpPort"]);
 
-    httpServer.get("/dyn/agent/readDiameterConfig", function(req, res){
+    httpServer.get("/agent/updateDiameterConfig", function(req, res){
         mLogger.debug("Reloading diameter configuration");
         config.readDiameterConfiguration();
         res.json({});
     });
 
-    httpServer.get("/dyn/agent/diameterStats", function(req, res){
+    httpServer.get("/agent/getDiameterStats", function(req, res){
         mLogger.debug("Getting stats");
         res.json(stats);
+    });
+
+    httpServer.get("/agent/getConnections", function(req, res){
+        mLogger.debug("Getting connection status");
+        res.json(diameterStateMachine.getConnectionsStatus());
     });
 };
 

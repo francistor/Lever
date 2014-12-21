@@ -64,6 +64,37 @@ var createConfig=function(){
         });
     };
 
+    // dictionary = {
+    //      avp: {
+    //          <vendor_id>:[
+    //              {code:<code>, name:<name>, type:<type>},
+    //              {code:<code>, name:<name>, type:<type>}
+    //          ]
+    //      }
+    //
+    //      // Generated
+    //      avpCodeMap: {
+    //          <vendor_id>:{
+    //              <code>:<avpDef> --> Added enumCodes if type Enum
+    //          }
+    //      }
+    //      avpNameMap:{
+    //          <avp_name>:{        --> Name is <vendor_name>-<avp_name>
+    //          }
+    //      }
+    //      applicationCodeMap:{
+    //          <app_code>:<application_def>
+    //      }
+    //      applicationNameMap:{
+    //          <app_name>:<application_def>
+    //      }
+    //      commandCodeMap:{
+    //          <command_code>:<command_def>
+    //      }
+    //      commandNameMap:{
+    //          <command_name>:<command_def>
+    //      }
+    // }
     // Updates the dictionary object within the config object
     // Callback expects a single error parameter
     config.readDictionary=function(callback) {
@@ -147,6 +178,7 @@ var createConfig=function(){
 
                 // Everything went well, replace dictionary
                 config.dictionary = dictionary;
+                //config.dumpDictionaryMaps();
                 callback(null);
             }
         });

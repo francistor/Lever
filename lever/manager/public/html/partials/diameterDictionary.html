@@ -1,69 +1,70 @@
 <form name="dictionaryForm" role="form">
 <br>
 <legend>Diameter Dictionary</legend>
-<div class="row">
-<div class="col-lg-12">
-	<div class="col-lg-6">
-	
-	<div class="accordion" id="vendors">
 
-        <!-- Vendors -->
-		<div class="accordion-group" ng-repeat="vendor in vendors">
-			<div class="accordion-heading">
-				<a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#vendors" data-target="#vendor-{{vendor}}" >
-					<h4>{{diameterDictionary["vendor"][vendor]}}</h4>
-				</a>
-			</div>
+<div class="accordion" id="dictionary">
+    <div class="accordion-group">
 
-			<div class="accordion-body collapse" id="vendor-{{vendor}}">
-                <div class="accordion-inner">
+        <div class="panel panel-default" ng-repeat="vendor in vendors">
+            <div class="panel-heading">
 
-                    <div class="accordion" id="vendorattributes-{{vendor}}">
-                        <!-- Attributes for vendor-->
+                <div class="accordion-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle mylink" data-toggle="collapse"
+                           data-parent="#dictionary" data-target="#vendor_{{vendor}}">
+                            {{diameterDictionary["vendor"][vendor]}}</a>
+                    </h4>
+                </div>
+            </div>
+
+            <div class="accordion-body collapse indent1" id="vendor_{{vendor}}">
+                    <div class="accordion" id="dictionary_{{vendor}}">
                         <div class="accordion-group" ng-repeat="attribute in diameterDictionary.avp[vendor]">
-                            <div class="accordion-heading" >
-                                <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#vendorattributes-{{vendor}}" data-target="#vendor-{{vendor}}-attribute-{{attribute.name}}">
-                                    <h5>{{attribute.name}}</h5>
-                                </a>
-                            </div>
-                            <div class="accordion-body collapse indent1" id="vendor-{{vendor}}-attribute-{{attribute.name}}">
-                                <div class="accordion-inner">
-                                    <div class="form-group">
-                                        <label>Code:</label>
-                                        <input name="code" ng-model="diameterDictionary.avp[vendor][$index].code" class="form-control" type="number"/>
-                                        <p class="help-block">Required field</p>
+
+
+                                    <div class="accordion-heading">
+                                            <a class="accordion-toggle mylink" data-toggle="collapse"
+                                               data-parent="#dictionary" data-target="#vendor_{{vendor}}_attribute_{{attribute.name}}">
+                                                <h5>{{attribute.name}}</h5></a>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Name:</label>
-                                        <input name="name" ng-model="diameterDictionary.avp[vendor][$index].name" class="form-control" type="text" />
-                                        <p class="help-block">Required field</p>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Type:</label>
-                                        <select class="form-control" ng-model="diameterDictionary.avp[vendor][$index].type" ng-options="theType.name as theType.type for theType in types">
-                                        </select>
+
+                                <div class="accordion-body collapse" id="vendor_{{vendor}}_attribute_{{attribute.name}}">
+                                    <div class="accordion-inner">
+                                        <div class="row">
+                                            <div class="col-lg-6">
+                                                <div class="form-group">
+                                                    <label>Code:</label>
+                                                    <input name="code" ng-model="diameterDictionary.avp[vendor][$index].code" class="form-control" type="number"/>
+                                                    <p class="help-block">Required field</p>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Name:</label>
+                                                    <input name="name" ng-model="diameterDictionary.avp[vendor][$index].name" class="form-control" type="text" />
+                                                    <p class="help-block">Required field</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="form-group">
+                                                    <label>Type:</label>
+                                                    <select class="form-control" ng-model="diameterDictionary.avp[vendor][$index].type" ng-options="theType.name as theType.type for theType in types">
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                         </div>
                     </div>
-                </div>
-			</div>
-		</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-	</div>
-	<br/>
-	<div class="form-group">
-		<button type="button" class="btn btn-success" ng-click="addVendor()"> New Vendor
-			<i class="fa fa-plus">
-			</i>
-		</button>
-		<button type="button" class="btn btn-primary" ng-click="updateDiameterDictionary()">Submit changes
-			<i class="fa fa-check">
-			</i>
-		</button>
-	</div>
-	</div>
+<div class="form-group">
+    <button type="button" class="btn btn-primary" ng-click="updateDiameterDictionary()">Submit changes
+        <i class="fa fa-check">
+        </i>
+    </button>
 </div>
-</div>
+
 </form>

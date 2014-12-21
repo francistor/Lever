@@ -21,7 +21,7 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
     var currentMessageLength=0;
     var currentDataLength=0;
 
-    // Socket buffer
+    // Socket buffer pointer
     var bufferPtr=0;
 
     // Helper function

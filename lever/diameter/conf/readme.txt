@@ -1,1 +1,1 @@
-Configuracion en database. Usar "export.bat" para obtener versi�n actualizada
+Configuración en database. Usar "export.bat" para obtener versión actualizada

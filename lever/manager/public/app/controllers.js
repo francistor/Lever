@@ -9,7 +9,7 @@ var genericShowError=function(st){
 }
 
 // List of modes
-managerControllers.controller("NodeListController", ['$scope', '$http', function($scope, $http){
+managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
     $scope.nodes=[];
 
@@ -18,24 +18,28 @@ managerControllers.controller("NodeListController", ['$scope', '$http', function
         .success(function(data){
             $scope.nodes=data;
         }).error(function(data, status, headers, config, statusText){
-            genericShowError(statusText);
+            niceAlert.error(statusText);
         })
 }]);
 	
 // Diameter configuration
-managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$routeParams', function($scope, $http, $routeParams){
+managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
 
 		$scope.diameterConfig={};
         $scope.isDisabled=false;
 
         // Get diameterConfig
-		$http.get("/dyn/config/diameterConfiguration/"+$routeParams.serverName, {timeout: requestTimeout})
-            .success(function(data){
-			$scope.diameterConfig=data;
-		}).error(function(data, status, headers, config, statusText){
-            genericShowError(statusText);
-		});
-		
+        $http({
+            method  : 'GET',
+            url     : "/dyn/config/diameterConfiguration/"+$routeParams.serverName,
+            timeout: requestTimeout
+        }).success(function(data){
+            $scope.diameterConfig=data;
+        }).error(function(data, status, headers, config, statusText){
+            // Shows inline error message
+            niceAlert.error(statusText);
+        });
+
 		// Deletes the peer with the specified originHost
 		$scope.deletePeer=function(name){
 			var peers=$scope.diameterConfig["peers"];
@@ -53,7 +57,7 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
 		// Adds a new, empty peer
 		$scope.addPeer=function(){
 			var peers=$scope.diameterConfig["peers"];
-			if(peers) peers.push({"name":"New peer", "originHost":"-"});
+			if(peers) peers.push({"name":"New_peer", "originHost":"-"});
 		};
 
         // Saves the diameterConfiguration
@@ -64,20 +68,18 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
             // Update version of diameter config
             $scope.diameterConfig["_version"]++;
             // Post update
-            $http.post("/dyn/config/diameterConfiguration", $scope.diameterConfig, {timeout: requestTimeout})
-                .success(function(data){
-                    if(data.error){
-                        console.error(data);
-                        bootbox.alert(data);
-                    }
-                    else bootbox.alert("Configuration updated.");
-
-                    $scope.isDisabled=false;
-                })
-                .error(function(data, status, headers, config, statusText){
-                    genericShowError(statusText);
-                    $scope.isDisabled=false;
-                });
+            $http({
+                method  : 'POST',
+                url     : "/dyn/config/diameterConfiguration",
+                data    : $scope.diameterConfig,
+                timeout: requestTimeout
+            }).success(function(data){
+                if(data.error) niceAlert.error(data);
+                else niceAlert.error("Configuration updated.");
+            }).error(function(data, status, headers, config, statusText){
+                // Shows inline error message
+                niceAlert.error(statusText);
+            });
         };
 		
 		$scope.showJSON=function(){
@@ -100,14 +102,118 @@ managerControllers.controller("DiameterDictionaryController", ['$scope', '$http'
         {name: 'Grouped', type:'Grouped'}
     ];
 
-    $http.get("/dyn/config/diameterDictionary", {timeout: requestTimeout})
-        .success(function(data){
-            for (vendor in data.vendor) {
-                if (data.vendor.hasOwnProperty(vendor)) $scope.vendors.push(vendor);
+    $http({
+        method  : 'GET',
+        url     : "/dyn/config/diameterDictionary",
+        timeout: requestTimeout
+    }).success(function(data){
+        // Add default vendor
+        data.vendor["0"]="Standard";
+        // Add rest of vendors
+        for (vendor in data.vendor) {
+            if (data.vendor.hasOwnProperty(vendor)) $scope.vendors.push(vendor);
+        }
+        $scope.diameterDictionary = data;
+    }).error(function(data, status, headers, config, statusText){
+        // Shows inline error message
+        niceAlert.error(statusText);
+    });
+}]);
+
+// Node statistics
+managerControllers.controller("NodeStatsController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
+
+    $scope.stats=[];
+
+    $http({
+        method  : 'GET',
+        url     : "/dyn/stats/nodeStats/"+$routeParams.serverName,
+        timeout: requestTimeout
+    }).success(function(data){
+        console.log("Got stats");
+
+        var originHost;
+        var commandCode;
+        var resultCode;
+        var oH, cC, rC;
+
+        var sReq={label: "Server Requests", children:[]};
+        for(originHost in data.serverRequests) if(data.serverRequests.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            sReq.children.push(oH);
+            for(commandCode in data.serverRequests[originHost]) if(data.serverRequests[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode+" "+data.serverRequests[originHost][commandCode]};
+                oH.children.push(cC);
             }
-            $scope.diameterDictionary = data;
-        })
-        .error(function(data, status, headers, config, statusText){
-            genericShowError(statusText);
-        });
+        }
+
+        var sRes={label: "Server Responses", children:[]};
+        for(originHost in data.serverResponses) if(data.serverResponses.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            sRes.children.push(oH);
+            for(commandCode in data.serverResponses[originHost]) if(data.serverResponses[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode, children:[]};
+                oH.children.push(cC);
+                for(resultCode in data.serverResponses[originHost][commandCode]) if(data.serverResponses[originHost][commandCode].hasOwnProperty(resultCode)){
+                    rC={label: resultCode+" "+data.serverResponses[originHost][commandCode][resultCode]};
+                    cC.children.push(rC);
+                }
+            }
+        }
+
+        var cReq={label: "Client Requests", children:[]};
+        for(originHost in data.clientRequests) if(data.clientRequests.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            cReq.children.push(oH);
+            for(commandCode in data.clientRequests[originHost]) if(data.clientRequests[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode+" "+data.clientRequests[originHost][commandCode]};
+                oH.children.push(cC);
+            }
+        }
+
+        var cRes={label: "Client Responses", children:[]};
+        for(originHost in data.clientResponses) if(data.clientResponses.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            cRes.children.push(oH);
+            for(commandCode in data.clientResponses[originHost]) if(data.clientResponses[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode, children:[]};
+                oH.children.push(cC);
+                for(resultCode in data.clientResponses[originHost][commandCode]) if(data.clientResponses[originHost][commandCode].hasOwnProperty(resultCode)){
+                    rC={label: resultCode+" "+data.clientResponses[originHost][commandCode][resultCode]};
+                    cC.children.push(rC);
+                }
+            }
+        }
+
+        var sErr={label: "Server Errors", children:[]};
+        for(originHost in data.serverErrors) if(data.serverErrors.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            sErr.children.push(oH);
+            for(commandCode in data.serverErrors[originHost]) if(data.serverErrors[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode+" "+data.serverErrors[originHost][commandCode]};
+                oH.children.push(cC);
+            }
+        }
+
+        var cErr={label: "Client Errors", children:[]};
+        for(originHost in data.clientErrors) if(data.clientErrors.hasOwnProperty(originHost)){
+            oH={label: originHost, children:[]};
+            cErr.children.push(oH);
+            for(commandCode in data.clientErrors[originHost]) if(data.clientErrors[originHost].hasOwnProperty(commandCode)){
+                cC={label: commandCode+" "+data.clientErrors[originHost][commandCode]};
+                oH.children.push(cC);
+            }
+        }
+
+        $scope.stats.push(sReq);
+        $scope.stats.push(sRes);
+        $scope.stats.push(cReq);
+        $scope.stats.push(cRes);
+        $scope.stats.push(sErr);
+        $scope.stats.push(cErr);
+
+    }).error(function(data, status, headers, config, statusText){
+        // Shows inline error message
+        niceAlert.error(statusText);
+    });
 }]);

@@ -13,13 +13,13 @@ print("----------------------------------");
 print("Creating diameterConfig");
 print("----------------------------------");
 
-var diameterConfig=
+var diameterConfigSamsung=
 {
     "_version": 1001,
 	"serverName": "samsung-jativa",
-    "IPAddress": "127.0.0.1",
+    "IPAddress-not-used": "127.0.0.1",
     "port": 3868,
-    "originHost": "lever",
+    "originHost": "lever-samsung",
     "originRealm": "jativa",
     "vendorId": 1101,
     "productName": "Lever",
@@ -34,19 +34,67 @@ var diameterConfig=
             "connectionPolicy": "passive"
         },
         {
-            "name": "8950AAA",
+            "name": "8950AAA-samsung",
             "originHost": "8950AAA",
             "IPAddress": "127.0.0.1:13868",
+            "connectionPolicy": "active"
+        },
+        {
+            "name": "lever-toshiba",
+            "originHost": "lever-toshiba",
+            "IPAddress": "10.0.0.1:3868",
             "connectionPolicy": "active"
         }
     ],
 
     "management":{
+        "IPAddress": "127.0.0.1",
         "httpPort": 9000
     }
-}
+};
 
-db.diameterConfig.insert(diameterConfig);
+var diameterConfigToshiba=
+{
+    "_version": 1001,
+    "serverName": "frodriguezgpw7",
+    "IPAddress-not-used": "127.0.0.1",
+    "port": 3868,
+    "originHost": "lever-toshiba",
+    "originRealm": "jativa",
+    "vendorId": 1101,
+    "productName": "Lever",
+    "firmwareRevision": 1,
+    "connectionInterval": 5000,
+    "peers":
+        [
+            {
+                "name": "diameterTool",
+                "originHost": "diameterTool",
+                "IPAddress": "127.0.0.1:3868",
+                "connectionPolicy": "passive"
+            },
+            {
+                "name": "8950AAA-toshiba",
+                "originHost": "8950AAA",
+                "IPAddress": "127.0.0.1:13868",
+                "connectionPolicy": "active"
+            },
+            {
+                "name": "lever-samsung",
+                "originHost": "lever-samsung",
+                "IPAddress": "10.0.0.1:3868",
+                "connectionPolicy": "active"
+            }
+        ],
+
+    "management":{
+        "IPAddress": "127.0.0.1",
+        "httpPort": 9000
+    }
+};
+
+db.diameterConfig.insert(diameterConfigSamsung);
+db.diameterConfig.insert(diameterConfigToshiba);
 print("done");
 print("");
 
@@ -100,7 +148,6 @@ var dictionaryConfig=
 	"_version": 1001,
 	"vendor":
 	{
-            "0": "Standard",
 			"1001": "francisco.cardosogil@gmail.com",
 			"9": "Cisco"
 	},

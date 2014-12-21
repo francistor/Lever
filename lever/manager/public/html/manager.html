@@ -12,6 +12,7 @@
 	<!-- Core CSS - Include with every page -->
 	<link href="/bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
 	<link href="/bower_components/fontawesome/css/font-awesome.css" rel="stylesheet">
+    <link href="/bower_components/angular-bootstrap-nav-tree/dist/abn_tree.css" rel="stylesheet">
 
     <!-- Page-Level Plugin CSS - Dashboard -->
 	<!--
@@ -20,8 +21,7 @@
 
 	<!-- SB Admin CSS - Include with every page -->
 	<link href="/stc/css/sb-admin.css" rel="stylesheet">
-	
-	
+
 	<!-- Core Scripts - Include with every page -->
     <script src="/bower_components/jquery/dist/jquery.min.js"></script>
     <script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
@@ -33,6 +33,7 @@
 	
 	<script src="/bower_components/angular/angular.js"></script>
 	<script src="/bower_components/angular-route/angular-route.js"></script>
+    <script src="/bower_components/angular-bootstrap-nav-tree/dist/abn_tree_directive.js"></script>
 
 </head>
 
@@ -98,11 +99,11 @@
 						<li>
                             <!-- Old -->
 							<a href="#">
-								<i class="fa fa-wrench fa-fw"></i>Settings<span class="fa arrow"></span>
+								<i class="fa fa-wrench fa-fw"></i> Settings<span class="fa arrow"></span>
 							</a>
 							<ul class="nav nav-second-level">
 								<li>
-									<a href="#/diameterDictionary">Diameter Dictionary</a>
+									<a href="#/diameterDictionary"> Diameter Dictionary</a>
 								</li>
                                 <li>
                                     <a href="">Radius Dictionary</a>
@@ -112,11 +113,11 @@
                         <li>
                             <!-- New -->
                             <a href="#">
-                                <i class="fa fa-wrench fa-fw"></i>Nodes<span class="fa arrow"></span>
+                                <i class="fa fa-sitemap"></i> Nodes<span class="fa arrow"></span>
                             </a>
                             <ul class="nav nav-second-level">
                                 <li ng-repeat="serverName in nodes">
-                                    <a href="#/node/{{serverName}}" id="linkNode-{{serverName}}">{{serverName}}</a>
+                                    <a href="#/node/{{serverName}}"> {{serverName}}</a>
                                 </li>
                             </ul>
 						</li>
@@ -131,13 +132,23 @@
                             </a>
                         </li>
                         <li>
-                            <a href="#"><i class="fa fa-bar-chart-o fa-fw"></i> Reports<span class="fa arrow"></span></a>
+                            <a href="#"><i class="fa fa-tasks"></i> Node Reports<span class="fa arrow"></span></a>
+                            <ul class="nav nav-second-level">
+                                <li ng-repeat="serverName in nodes">
+                                    <a href="#/nodeStats/{{serverName}}">{{serverName}}</a>
+                                </li>
+
+                            </ul>
+                            <!-- /.nav-second-level -->
+                        </li>
+                        <li>
+                            <a href="#"><i class="fa fa-bar-chart-o fa-fw"></i> Global Reports<span class="fa arrow"></span></a>
                             <ul class="nav nav-second-level">
                                 <li>
-                                    <a href="#">Advertising</a>
+                                    <a href="#"> Advertising</a>
                                 </li>
                                 <li>
-                                    <a href="#">Purchases</a>
+                                    <a href="#"> Purchases</a>
                                 </li>
                             </ul>
                             <!-- /.nav-second-level -->

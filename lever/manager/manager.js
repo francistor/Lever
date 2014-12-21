@@ -4,9 +4,13 @@
 var logger=require("./log").logger;
 var fs=require("fs");
 var express=require("express");
+var request=require('request');
 var MongoClient=require("mongodb").MongoClient;
 var ObjectID=require('mongodb').ObjectID;
 var bodyParser=require('body-parser');
+
+// Configuration
+var requestTimeout=1000;
 
 // Read dmanager configuration
 var config=JSON.parse(fs.readFileSync("./conf/manager.json", {encoding: "utf8"}));
@@ -53,16 +57,16 @@ mApp.get("/dyn/config/diameterConfiguration/:serverName", function(req, res){
     }
     else configDB.collection("diameterConfig").findOne({serverName: req.params.serverName}, {}, config["queryOptions"], function(err, item){
         if(!err){
-            if(item)res.json(item);else res.json({error: "serverName not found"});
+            if(item) res.json(item);else res.status(500).send("ServerName not found");
         }
-        else res.status(500).send("Error: "+err.message);
+        else res.status(500).send(err.message);
     });
 });
 
 // Updates diameter configuration
 mApp.post("/dyn/config/diameterConfiguration", function(req, res){
     if(!configDB){
-        res.status(500).send("Error: Database connection closed");
+        res.status(500).send("Database connection closed");
     }
     else{
         req.body._id=ObjectID.createFromHexString(req.body._id);
@@ -73,11 +77,11 @@ mApp.post("/dyn/config/diameterConfiguration", function(req, res){
             }
             else if(result===0){
                 logger.error("Error updating diameter configuration: Data was modified by another user");
-                res.status(500).send("Error: configuration modified by another user");
+                res.status(500).send("Configuration modified by another user");
             }
             else{
                 logger.error("Error updating diameter configuration: "+err.message);
-                res.status(500).send("Error: "+err.message);
+                res.status(500).send(err.message);
             }
         });
     }
@@ -92,14 +96,14 @@ mApp.get("/dyn/config/diameterDictionary", function(req, res){
         if(!err){
             if(item) res.json(item);else res.status(500).send("Error: dictionary not found");
         }
-        else res.status(500).send("Error: "+err.message);
+        else res.status(500).send(err.message);
     });
 });
 
 // Updates diameter dictionary
 mApp.post("/dyn/config/diameterDictionary", function(req, res){
     if(!configDB){
-        rres.status(500).send("Error: Database connection closed");
+        res.status(500).send("Error: Database connection closed");
     }
     else{
         req.body._id=ObjectID.createFromHexString(req.body._id);
@@ -110,14 +114,39 @@ mApp.post("/dyn/config/diameterDictionary", function(req, res){
             }
             else if(result===0){
                 logger.error("Error updating diameter dictionary: Data was modified by another user");
-                res.status(500).send("Error: Dictionary modified by another user");
+                res.status(500).send("Dictionary modified by another user");
             }
             else{
                 logger.error("Error updating diameter dictionary: "+err.message);
-                res.status(500).send("Error: "+err.message);;
+                res.status(500).send(err.message);
             }
         });
     }
+});
+
+// Gets node stats
+mApp.get("/dyn/stats/nodeStats/:serverName", function(req, res){
+    if(!configDB){
+        res.status(500).send("Database connection closed");
+    }
+    else configDB.collection("diameterConfig").findOne({serverName: req.params.serverName}, {}, config["queryOptions"], function(err, item){
+        if(!err){
+            if(item){
+                // Request stats
+                request({
+                    url: "http://"+item.management.IPAddress + ":" + item.management.httpPort + "/agent/getDiameterStats",
+                    timeout: requestTimeout
+                    },
+                    function(err, response, body){
+                        if (!err && response.statusCode==200) {
+                            res.json(JSON.parse(body));
+                        } else err ? res.status(500).send("Could not get stats from server. "+err.message) : res.status(500).send("Status: "+response.statusCode);
+                });
+            }
+            else res.status(500).send("Server name not found");
+        }
+        else res.status(500).send(err.message);
+    });
 });
 
 // Connect to mongodb and start server

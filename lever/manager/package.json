@@ -8,6 +8,7 @@
     "express": "~4.6.1",
     "mongodb": "^1.4.10",
     "protractor": "^1.0.0",
+    "request": "^2.51.0",
     "winston": "~0.7.3"
   }
 }

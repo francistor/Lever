@@ -1,4 +1,4 @@
-mongoexport --db leverConfig --collection diameterConfig --query "{'serverName':'samsung-jativa'}" --out diameter.json > out.txt
+mongoexport --db leverConfig --collection diameterConfig --query "{'serverName':'$1'}" --out diameter.json > out.txt
 node prettyprint.js diameter.json > ../diameter/conf/diameter.json
 rm diameter.json
 

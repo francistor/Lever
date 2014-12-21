@@ -21,7 +21,7 @@ function getIPAddresses(){
         interfaces=os.networkInterfaces();
         for(ifzName in interfaces) if(interfaces.hasOwnProperty(ifzName)){
             for(i=0; i<interfaces[ifzName].length; i++){
-                if(!interfaces[ifzName][i]["internal"])  IPAddresses.push(interfaces[ifzName][i]["address"]);
+                if(!interfaces[ifzName][i]["internal"]) IPAddresses.push(interfaces[ifzName][i]["address"]);
             }
         }
     }

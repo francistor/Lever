@@ -2,7 +2,7 @@
 // Implements state machine
 
 // TODO: Implement duplicate detection.
-// --- Cache of Ent2EndId being processed
+// --- Cache of Ent2EndId being processed and processed
 
 var net=require("net");
 var dLogger=require("./log").dLogger;
@@ -61,10 +61,10 @@ var createDiameterStateMachine=function(){
         }
 
         if (message.isRequest) {
-            // Handle message if there is one configured for this type of request
+            // Handle message if there is a handler configured for this type of request
             stats.incrementServerRequest(connection.hostName, message.commandCode);
             if(dLogger["debugEnabled"]) dLogger.debug(JSON.stringify(dispatcher, undefined, 2));
-            //if (dispatcher[message.applicationId] && dispatcher[message.applicationId][message.commandCode] && dispatcher[message.applicationId][message.commandCode]["handler"]) {
+            // if(there is a handler)
             if(((dispatcher[message.applicationId]||{})[message.commandCode]||{})["handler"]){
                 if(dLogger["debugEnabled"]) dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
@@ -84,7 +84,7 @@ var createDiameterStateMachine=function(){
             dLogger.debug("Message is Response");
             stats.incrementClientResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
             requestPointer=requestPointers[connection.hostName+"."+message.hopByHopId];
-            if (requestPointer) {
+            if(requestPointer) {
                 clearTimeout(requestPointer.timer);
                 delete requestPointers[connection.hostName+"."+message.hopByHopId];
                 dLogger.debug("Executing callback");
@@ -192,8 +192,8 @@ var createDiameterStateMachine=function(){
 
     diameterStateMachine.onConnectionACK=function(connection){
         dLogger.debug("Connection established with "+connection.hostName);
-        connection.state="Wait-CEA";
         sendCer(connection);
+        connection.state="Wait-CEA";
     };
 
     diameterStateMachine.onCEAReceived=function(connection){
@@ -227,7 +227,9 @@ var createDiameterStateMachine=function(){
     };
 
     diameterStateMachine.onCERReceived=function(connection, hostName){
-        connection=connections[connection.socket["remoteAddress"]+":"+connection.socket["remotePort"]];
+        var peerFound=false;
+        var tmpHostName=connection.socket["remoteAddress"]+":"+connection.socket["remotePort"];
+        connection=connections[tmpHostName];
         if(connection && connection.state==="Wait-CER"){
             // Check that Origin-Host is declared as peer with the received origin IP address
             ipAddress=connection.socket["remoteAddress"];
@@ -235,22 +237,29 @@ var createDiameterStateMachine=function(){
                 peer=config.diameterConfig["peers"][i];
 
                 if(peer["originHost"]===hostName && peer["IPAddress"].split(":")[0]===connection.socket["remoteAddress"]){
+                    peerFound=true;
                     // TODO: Election process should be implemented here
                     // Here we make sure that only one connection from/to a specific host will be established
                     if(!connections[hostName]) {
+                        // Index by hostName
+                        connections[hostName]=connection;
+                        // Remove old entry
+                        delete connections[tmpHostName];
+                        // Change connection properties
                         connection.hostName = hostName;
                         connection.state = "Open";
                         // Everything OK
                         return true;
                     }
                     else dLogger.warn("Connection already established with "+hostName);
+                    break;
                 }
-                dLogger.warn(hostName+" peer, connecting from "+connection.socket["remoteAddress"]+" not configured");
             }
         }else{
             dLogger.warn("CER out of sequence for originHost "+connection.socket["remoteAddress"]);
-            connection.socket.end();
         }
+
+        if(!peerFound) dLogger.warn(hostName+" peer, connecting from "+connection.socket["remoteAddress"]+" not configured");
 
         // If here, something went wrong
         connection.socket.end();
@@ -258,6 +267,22 @@ var createDiameterStateMachine=function(){
         // Connection will be deleted when close event arrives
         return false;
     };
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Instrumentation
+    ///////////////////////////////////////////////////////////////////////////
+    diameterStateMachine.getConnectionsStatus=function(){
+        var connectionStatus=[];
+        var hostName;
+        for(var hostName in connections) if(connections.hasOwnProperty(hostName)){
+            connectionStatus.push({hostName: hostName, status: connections[hostName]["state"]});
+        }
+        return connectionStatus;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Startup
+    ///////////////////////////////////////////////////////////////////////////
 
     var diameterServer;
 
@@ -282,7 +307,7 @@ var createDiameterStateMachine=function(){
             dLogger.info("Diameter listening in port "+config.diameterConfig.port);
 
             // Create management HTTP server
-            createAgent();
+            createAgent(diameterStateMachine);
 
             // Establish outgoing connections
             diameterStateMachine.establishConnections();

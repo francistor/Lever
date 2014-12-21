@@ -16,9 +16,9 @@ var resultCodes={
 };
 
 // ID generators
-// HopByHopId is a random number
+// HopByHopId is a monotonically increasing number used to match answers with requests
 var nextHopByHopId=Math.floor(Math.random()*4294967296);    // 2^32
-// EndToEndId is 12 bits date and 20 bits random number
+// EndToEndId is 12 bits date and 20 bits random number. This is an unique value used to detect duplicates
 var nextEndToEndId=(new Date().getTime() % 65535)+Math.floor(Math.random()*1048576);
 
 // message.avps example structure
@@ -96,12 +96,12 @@ function createMessage(request){
 		// Code
 		var commandCode=buff.readUInt16BE(5)*256+buff.readUInt8(7);
 		if(dictionary.commandCodeMap[commandCode]) message.commandCode=dictionary.commandCodeMap[commandCode].name;
-		else message.commandCode="commandCode-"+commandCode;
+		else message.commandCode="commandCode-"+commandCode;    // Unknown command-code
 
 		// Application-Id
 		var applicationId=buff.readUInt32BE(8);
 		if(dictionary.applicationCodeMap[applicationId]) message.applicationId=dictionary.applicationCodeMap[applicationId].name;
-		else message.applicationId="applicationId-"+applicationId;
+		else message.applicationId="applicationId-"+applicationId;  // Unknown application-id
 
 		// Identifiers
 		message.hopByHopId=buff.readUInt32BE(12);
@@ -258,6 +258,7 @@ function createMessage(request){
 		return buff.slice(0, writePtr);
 		
 		// Iterate through avp names and array values
+        // Notice that messages decoded always have arrays as values, but messages build by handlers may be simple objects
 		// avps: { name: [value], name: [ {name: value}, {name: value}] }
 		function encodeAVPs(ptr, root){
             var isMandatory;
@@ -265,7 +266,6 @@ function createMessage(request){
 			var avpName;
 			var initialPtr=ptr;
 			for(avpName in root) if(root.hasOwnProperty(avpName)) {
-				// TODO: Mandatory bit is now always true
                 if(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true ) isMandatory=true; else isMandatory=false;
                 if (Array.isArray(root[avpName])) for (i = 0; i < root[avpName].length; i++) {
                     ptr += encodeAVP(ptr, avpName, root[avpName][i], isMandatory);
@@ -288,7 +288,7 @@ function createMessage(request){
 			var avpFlags=0;
 			var avpDef=dictionary.avpNameMap[name];
 			if(!avpDef){
-				dLogger.warn("Unknown attribute :" +JSON.stringify(message.avps[name]));
+				dLogger.warn("Unknown attribute:"+name+": "+JSON.stringify(message.avps[name]));
 				return 0;
 			}
 

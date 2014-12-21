@@ -5,9 +5,10 @@
 // serverResponses[destinationHost][commandCode][resultCode]
 // clientRequests[originHost][commandCode]
 // clientResponses[destinationHost][commandCode][resultCode]
+// serverErrors[originHost][commandCode]
+// clientErrors[originHost][commandCode]
 
-var createStats;
-createStats = function () {
+var createStats = function () {
     var stats = {};
     stats.serverRequests = {};
     stats.serverResponses = {};

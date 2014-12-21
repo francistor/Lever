@@ -1,12 +1,12 @@
 {
   "_id": {
-    "$oid": "543ab2712d59becab595b2f2"
+    "$oid": "54943f0b0e8ee5c39a752d9a"
   },
-  "_version": 1003,
-  "serverName": "samsung-jativa",
-  "IPAddress": "127.0.0.1",
+  "_version": 1001,
+  "serverName": "frodriguezgpw7",
+  "IPAddress-not-used": "127.0.0.1",
   "port": 3868,
-  "originHost": "lever",
+  "originHost": "lever-toshiba",
   "originRealm": "jativa",
   "vendorId": 1101,
   "productName": "Lever",
@@ -20,9 +20,15 @@
       "connectionPolicy": "passive"
     },
     {
-      "name": "8950AAA",
+      "name": "8950AAA-toshiba",
       "originHost": "8950AAA",
       "IPAddress": "127.0.0.1:13868",
+      "connectionPolicy": "active"
+    },
+    {
+      "name": "lever-samsung",
+      "originHost": "lever-samsung",
+      "IPAddress": "10.0.0.1:3868",
       "connectionPolicy": "active"
     }
   ],
