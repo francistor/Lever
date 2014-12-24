@@ -1,6 +1,6 @@
 // Diameter connection functions
 // Handle reading messages from TCP sockets, invoking diameterStateMachine
-// for each complete message
+// for each complete
 
 var dLogger=require("./log").dLogger;
 
@@ -30,6 +30,7 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
     function copyData(targetSize, buff){
         // Data to copy is rest to get the target size or whatever is available in the buffer
         var copySize=Math.min(targetSize-currentDataLength, buff.length-bufferPtr);
+		if(copySize==0) throw new Error();
 
         // Copy from buffer to data
         // targetBuffer, targetStart, sourceStart, sourceEnd
@@ -38,7 +39,8 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
         bufferPtr+=copySize;
 
         // true if all data was written
-        return bufferPtr === targetSize;
+        // return bufferPtr === targetSize;
+		return currentDataLength===targetSize;
     }
 
     // Helper function
