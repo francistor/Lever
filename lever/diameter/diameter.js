@@ -6,6 +6,7 @@
 
 var net=require("net");
 var dLogger=require("./log").dLogger;
+var logMessage=require("./log").logMessage;
 var config=require("./config").config;
 var createConnection=require("./connections").createConnection;
 var createMessage=require("./message").createMessage;
@@ -53,20 +54,22 @@ var createDiameterStateMachine=function(){
             return;
         }
 
-        if(dLogger["debugEnabled"]) {
+        if(dLogger["inDebug"]) {
             dLogger.debug("");
             dLogger.debug("Received message");
             dLogger.debug(JSON.stringify(message, undefined, 2));
             dLogger.debug("");
         }
 
+        if(dLogger["inVerbose"]) logMessage(connection.hostName, config.diameterConfig["originHost"], message);
+
         if (message.isRequest) {
             // Handle message if there is a handler configured for this type of request
             stats.incrementServerRequest(connection.hostName, message.commandCode);
-            if(dLogger["debugEnabled"]) dLogger.debug(JSON.stringify(dispatcher, undefined, 2));
+            if(dLogger["inDebug"]) dLogger.debug(JSON.stringify(dispatcher, undefined, 2));
             // if(there is a handler)
             if(((dispatcher[message.applicationId]||{})[message.commandCode]||{})["handler"]){
-                if(dLogger["debugEnabled"]) dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
+                if(dLogger["inDebug"]) dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
                     dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
@@ -107,6 +110,7 @@ var createDiameterStateMachine=function(){
             dLogger.warn("SendReply - Connection is not in 'Open' state. Discarding message");
         }
         else try {
+            if(dLogger["inVerbose"]) logMessage(config.diameterConfig["originHost"], connection.hostName, message);
             connection.socket.write(message.encode());
             stats.incrementServerResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
         }
@@ -137,6 +141,7 @@ var createDiameterStateMachine=function(){
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
             }
             else try {
+                if(dLogger["inVerbose"]) logMessage(config.diameterConfig["originHost"], connection.hostName, message);
                 connection.socket.write(message.encode());
                 stats.incrementClientRequest(hostName, message.commandCode);
                 requestPointers[hostName+"."+message.hopByHopId] = {
@@ -177,12 +182,12 @@ var createDiameterStateMachine=function(){
 
     // Establishes connections with peers with "active" connection policy, if not already established
     diameterStateMachine.establishConnections=function(){
-        dLogger.info("Checking connections");
+        dLogger.debug("Checking connections");
         // Iterate through peers and check if a new connection has to be established
         for(i=0; i<config.diameterConfig["peers"].length; i++){
             peer=config.diameterConfig["peers"][i];
             if(peer["connectionPolicy"]==="active" && !connections[peer["originHost"]]){
-                dLogger.debug("Connecting to "+peer["originHost"]+" in "+peer["IPAddress"]);
+                dLogger.verbose("Connecting to "+peer["originHost"]+" in address "+peer["IPAddress"]);
                 connections[peer["originHost"]]=createConnection(diameterStateMachine, net.connect(peer["IPAddress"].split(":")[1]||3868, peer["IPAddress"].split(":")[0]) , peer["originHost"], "Wait-Conn-Ack");
             }
         }
@@ -191,7 +196,7 @@ var createDiameterStateMachine=function(){
     };
 
     diameterStateMachine.onConnectionACK=function(connection){
-        dLogger.debug("Connection established with "+connection.hostName);
+        dLogger.verbose("Connection established with "+connection.hostName);
         sendCer(connection);
         connection.state="Wait-CEA";
     };
@@ -205,10 +210,12 @@ var createDiameterStateMachine=function(){
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
     ///////////////////////////////////////////////////////////////////////////
-    diameterStateMachine.onConnectionReceived=function(socket){
+
+    // DEPRECATED. ALLOWS MORE THAN ONE ORIGIN-HOST WITH THE SAME IP-ADDRESS
+    diameterStateMachine.onConnectionReceived2=function(socket){
         var tmpHostName;
 
-        dLogger.debug("got connection from "+socket["remoteAddress"]);
+        dLogger.verbose("got connection from "+socket["remoteAddress"]);
 
         // Check whether there is at least one peer with that IP Address
         peer=null;
@@ -216,7 +223,7 @@ var createDiameterStateMachine=function(){
             if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=config.diameterConfig["peers"][i];
         }
         if(peer===null){
-            dLogger.info("Received connection from unknown peer");
+            dLogger.info("Received connection from unknown peer "+socket["remoteAddress"]);
             socket.end();
             return;
         }
@@ -226,7 +233,8 @@ var createDiameterStateMachine=function(){
         connections[tmpHostName]=createConnection(diameterStateMachine, socket, tmpHostName, "Wait-CER");
     };
 
-    diameterStateMachine.onCERReceived=function(connection, hostName){
+    // DEPRECATED. ALLOWS MORE THAN ONE ORIGIN-HOST WITH THE SAME IP-ADDRESS
+    diameterStateMachine.onCERReceived2=function(connection, hostName){
         var peerFound=false;
         var tmpHostName=connection.socket["remoteAddress"]+":"+connection.socket["remotePort"];
         connection=connections[tmpHostName];
@@ -268,6 +276,49 @@ var createDiameterStateMachine=function(){
         return false;
     };
 
+    // Only one peer for each IPAddress is allowed
+    diameterStateMachine.onConnectionReceived=function(socket){
+        dLogger.verbose("Got connection from "+socket["remoteAddress"]);
+
+        // Look for Origin-Host in peer table
+        peer=null;
+        for(i=0; i<config.diameterConfig["peers"].length; i++) if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]){
+            // Peer found
+            peer=config.diameterConfig["peers"][i];
+
+            // Create new connection if does not already exist. Origin-Host is the only one for the connecting IP address
+            if(!connections[peer["originHost"]]) connections[peer["originHost"]]=createConnection(diameterStateMachine, socket, peer["originHost"], "Wait-CER");
+            else{
+                dLogger.warn("Connection to host already exists");
+                socket.end();
+            }
+
+            return;
+        }
+
+        // If here, peer was not found for the origin IP-Address
+        dLogger.warn("Received connection from unknown peer "+socket["remoteAddress"]);
+        socket.end();
+        return;
+    };
+
+    // Here the peer declares the origin-host, which must match the one in the peer table
+    diameterStateMachine.onCERReceived=function(connection, hostName){
+        // Check that the hostName matches the one for the connection
+        if(connections[hostName] && connections[hostName].socket["remoteAddress"]==connection.socket["remoteAddress"]){ //if(connections[hostName]===connection))
+            connection.state="Open";
+            // Everything OK
+            return true;
+        }
+
+        // If here, something went wrong
+        dLogger.warn("Origin-Host "+hostName+" does not match");
+        connection.socket.end();
+        connection.state="Closing";
+        // Connection will be deleted when close event arrives
+        return false;
+    };
+
     ///////////////////////////////////////////////////////////////////////////
     // Instrumentation
     ///////////////////////////////////////////////////////////////////////////
@@ -275,7 +326,7 @@ var createDiameterStateMachine=function(){
         var connectionStatus=[];
         var hostName;
         for(var hostName in connections) if(connections.hasOwnProperty(hostName)){
-            connectionStatus.push({hostName: hostName, status: connections[hostName]["state"]});
+            connectionStatus.push({hostName: hostName, state: connections[hostName]["state"]});
         }
         return connectionStatus;
     };

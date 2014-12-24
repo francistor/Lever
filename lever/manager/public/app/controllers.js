@@ -18,7 +18,7 @@ managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAle
         .success(function(data){
             $scope.nodes=data;
         }).error(function(data, status, headers, config, statusText){
-            niceAlert.error(statusText);
+            niceAlert.error(data);
         })
 }]);
 	
@@ -31,13 +31,13 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
         // Get diameterConfig
         $http({
             method  : 'GET',
-            url     : "/dyn/config/diameterConfiguration/"+$routeParams.serverName,
+            url     : "/dyn/node/"+$routeParams.serverName+"/diameterConfiguration",
             timeout: requestTimeout
         }).success(function(data){
             $scope.diameterConfig=data;
         }).error(function(data, status, headers, config, statusText){
             // Shows inline error message
-            niceAlert.error(statusText);
+            niceAlert.error(data);
         });
 
 		// Deletes the peer with the specified originHost
@@ -74,11 +74,10 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
                 data    : $scope.diameterConfig,
                 timeout: requestTimeout
             }).success(function(data){
-                if(data.error) niceAlert.error(data);
-                else niceAlert.error("Configuration updated.");
+                niceAlert.info("Configuration updated.");
             }).error(function(data, status, headers, config, statusText){
                 // Shows inline error message
-                niceAlert.error(statusText);
+                niceAlert.error(data);
             });
         };
 		
@@ -116,7 +115,7 @@ managerControllers.controller("DiameterDictionaryController", ['$scope', '$http'
         $scope.diameterDictionary = data;
     }).error(function(data, status, headers, config, statusText){
         // Shows inline error message
-        niceAlert.error(statusText);
+        niceAlert.error(data);
     });
 }]);
 
@@ -124,13 +123,24 @@ managerControllers.controller("DiameterDictionaryController", ['$scope', '$http'
 managerControllers.controller("NodeStatsController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
 
     $scope.stats=[];
+    $scope.connections=[];
 
     $http({
         method  : 'GET',
-        url     : "/dyn/stats/nodeStats/"+$routeParams.serverName,
+        url     : "/dyn/node/"+$routeParams.serverName+"/agent/getConnections",
         timeout: requestTimeout
     }).success(function(data){
-        console.log("Got stats");
+        $scope.connections=data;
+    }).error(function(data, status, headers, config, statusText){
+        // Shows inline error message
+        niceAlert.error(data);
+    });
+
+    $http({
+        method  : 'GET',
+        url     : "/dyn/node/"+$routeParams.serverName+"/agent/getDiameterStats",
+        timeout: requestTimeout
+    }).success(function(data){
 
         var originHost;
         var commandCode;
@@ -214,6 +224,6 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
 
     }).error(function(data, status, headers, config, statusText){
         // Shows inline error message
-        niceAlert.error(statusText);
+        niceAlert.error(data);
     });
 }]);

@@ -36,19 +36,19 @@ var diameterConfigSamsung=
         {
             "name": "8950AAA-samsung",
             "originHost": "8950AAA",
-            "IPAddress": "127.0.0.1:13868",
+            "IPAddress": "192.168.1.101:13868",
             "connectionPolicy": "active"
         },
         {
             "name": "lever-toshiba",
             "originHost": "lever-toshiba",
-            "IPAddress": "10.0.0.1:3868",
+            "IPAddress": "192.168.1.102:3868",
             "connectionPolicy": "active"
         }
     ],
 
     "management":{
-        "IPAddress": "127.0.0.1",
+        "IPAddress": "samsung.jativa",
         "httpPort": 9000
     }
 };
@@ -76,19 +76,19 @@ var diameterConfigToshiba=
             {
                 "name": "8950AAA-toshiba",
                 "originHost": "8950AAA",
-                "IPAddress": "127.0.0.1:13868",
+                "IPAddress": "192.168.1.102:13868",
                 "connectionPolicy": "active"
             },
             {
                 "name": "lever-samsung",
                 "originHost": "lever-samsung",
-                "IPAddress": "10.0.0.1:3868",
+                "IPAddress": "192.168.1.101:3868",
                 "connectionPolicy": "active"
             }
         ],
 
     "management":{
-        "IPAddress": "127.0.0.1",
+        "IPAddress": "toshiba.jativa",
         "httpPort": 9000
     }
 };

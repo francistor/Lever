@@ -101,7 +101,7 @@ var createConnection=function(diameterStateMachine, socket, hostName, state)
 
     // Error received. Just log. TODO
     dc.socket.on("error", function(err){
-        dLogger.error("Error event received: "+err.message);
+        dLogger.error("Error event received for connection "+dc.hostName+": "+err.message);
     });
 
     return dc;

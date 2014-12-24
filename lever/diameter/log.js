@@ -1,7 +1,5 @@
 // For sharing winston logging
 
-var debugEnabled=true;
-
 var winston=require("winston");
 var fs=require("fs");
 // Read and configure logging configuration, logging.json MUST
@@ -15,6 +13,10 @@ if("file" in logConfig["diameter"]) diameterTransports.push(new (winston.transpo
 var dLogger=new (winston.Logger)({
 	"transports": diameterTransports
 });
+
+var logMessage=function(originHost, destinationHost, message){
+    dLogger.verbose(originHost+"-->"+destinationHost+":"+message.applicationId+":"+message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+};
 
 // handler functions handlers
 var handlerTransports=[];
@@ -32,10 +34,16 @@ var mLogger=new (winston.Logger)({
     "transports": managementTransports
 });
 
-dLogger["debugEnabled"]=debugEnabled;
-hLogger["debugEnabled"]=debugEnabled;
-mLogger["debugEnabled"]=debugEnabled;
+dLogger["inDebug"]=logConfig.diameter.console.level==="debug" || logConfig.diameter.console.level=="silly" ||logConfig.diameter.file.level==="debug" || logConfig.diameter.file.level=="silly";
+hLogger["inDdebug"]=logConfig.handlers.console.level==="debug" || logConfig.handlers.console.level=="silly" ||logConfig.handlers.file.level==="debug" || logConfig.handlers.file.level=="silly";
+mLogger["inDdebug"]=logConfig.management.console.level==="debug" || logConfig.management.console.level=="silly" ||logConfig.management.file.level==="debug" || logConfig.management.file.level=="silly";
+
+dLogger["inVerbose"]=logConfig.diameter.console.level==="verbose" || logConfig.diameter.console.level=="debug" ||logConfig.diameter.file.level==="verbose" || logConfig.diameter.file.level=="debug";
+hLogger["inVerbose"]=logConfig.handlers.console.level==="verbose" || logConfig.handlers.console.level=="debug" ||logConfig.handlers.file.level==="verbose" || logConfig.handlers.file.level=="debug";
+mLogger["inVerbose"]=logConfig.management.console.level==="verbose" || logConfig.management.console.level=="debug" ||logConfig.management.file.level==="verbose" || logConfig.management.file.level=="debug";
 
 exports.dLogger=dLogger;
 exports.hLogger=hLogger;
 exports.mLogger=mLogger;
+
+exports.logMessage=logMessage;

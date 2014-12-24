@@ -1,4 +1,22 @@
 <br>
+<legend>Connections</legend>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Diameter host name</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="connection in connections">
+            <td>{{connection.hostName}}</td>
+            <td>{{connection.state}}</td>
+        </tr>
+    </tbody>
+</table>
+
+<br>
 <legend>Node statistics</legend>
 
 <abn-tree
