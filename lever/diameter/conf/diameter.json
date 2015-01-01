@@ -1,13 +1,13 @@
 {
   "_id": {
-    "$oid": "54943f0b0e8ee5c39a752d9a"
+    "$oid": "54a54ea9c29b3d965c5f9a01"
   },
   "_version": 1001,
-  "serverName": "frodriguezgpw7",
+  "hostName": "frodriguezgpw7",
   "IPAddress-not-used": "127.0.0.1",
   "port": 3868,
-  "originHost": "lever-toshiba",
-  "originRealm": "jativa",
+  "diameterHost": "lever-toshiba",
+  "diameterRealm": "toshiba",
   "vendorId": 1101,
   "productName": "Lever",
   "firmwareRevision": 1,
@@ -15,24 +15,25 @@
   "peers": [
     {
       "name": "diameterTool",
-      "originHost": "diameterTool",
+      "diameterHost": "diameterTool",
       "IPAddress": "127.0.0.1:3868",
       "connectionPolicy": "passive"
     },
     {
       "name": "8950AAA-toshiba",
-      "originHost": "8950AAA",
-      "IPAddress": "127.0.0.1:13868",
+      "diameterHost": "8950AAA",
+      "IPAddress": "192.168.1.102:13868",
       "connectionPolicy": "active"
     },
     {
       "name": "lever-samsung",
-      "originHost": "lever-samsung",
-      "IPAddress": "10.0.0.1:3868",
+      "diameterHost": "lever-samsung",
+      "IPAddress": "192.168.1.101:3868",
       "connectionPolicy": "active"
     }
   ],
   "management": {
+    "IPAddress": "toshiba.jativa",
     "httpPort": 9000
   }
 }

@@ -39,8 +39,8 @@ var sendCer=function(connection){
     requestMessage.commandCode="Capabilities-Exchange";
 
     // Set mandatory parameters
-    request["Origin-Host"]=diameterConfig["originHost"];
-    request["Origin-Realm"]=diameterConfig["originRealm"];
+    request["Origin-Host"]=diameterConfig["diameterHost"];
+    request["Origin-Realm"]=diameterConfig["diameterRealm"];
     request["Host-IP-Address"]=getIPAddresses();
     request["Vendor-Id"]=diameterConfig["vendorId"];
     request["Product-Name"]=diameterConfig["productName"];
@@ -58,25 +58,24 @@ var sendCer=function(connection){
     request["Acct-Application-Id"]=acctApplications;
 
     // Send message
-    connection.diameterStateMachine.sendRequest(connection.hostName, requestMessage, DEFAULT_TIMEOUT, function(err, message){
+    connection.diameterServer.sendRequest(connection, requestMessage, DEFAULT_TIMEOUT, function(err, message){
         // TODO: Check response
         if(!err){
             if(message.avps["Result-Code"][0]===resultCodes.DIAMETER_SUCCESS){
-                connection.diameterStateMachine.onCEAReceived(connection);
+                connection.setOpen();
             }
             else{
                 hLogger.error("CEA Error. Unsuccessful result code");
                 // Connection will be deleted in the "close" event handler
-                connection.socket.end();
+                connection.end();
             }
         }
         else{
             hLogger.error("Error in CEA: "+err.message);
             // Connection will be deleted in the "close" event handler
-            connection.socket.end();
+            connection.end();
         }
     });
-
 };
 
 var cerHandler=function(connection, message){
@@ -87,12 +86,10 @@ var cerHandler=function(connection, message){
     var replyMessage=createMessage(message);
 	var reply=replyMessage.avps;
     var request=message.avps;
-
-    if(!connection.diameterStateMachine.onCERReceived(connection, request["Origin-Host"][0])) return;
 	
 	// Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
-    reply["Origin-Realm"]=diameterConfig["originRealm"];
+    reply["Origin-Host"]=diameterConfig["diameterHost"];
+    reply["Origin-Realm"]=diameterConfig["diameterRealm"];
     reply["Host-IP-Address"]=getIPAddresses();
 	reply["Vendor-Id"]=diameterConfig["vendorId"];
 	reply["Firmware-Revision"]=diameterConfig["firmwareRevision"];
@@ -110,43 +107,50 @@ var cerHandler=function(connection, message){
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
-	
-	// Send reply
-	connection.diameterStateMachine.sendReply(connection, replyMessage);
+
+    // Check that the Origin-Host matches the one for the connection
+    if(connection.diameterHost==request["Origin-Host"][0]){
+        reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
+        connection.setOpen();
+        // Send reply
+        connection.diameterServer.sendReply(connection, replyMessage);
+    }
+    else{
+        hLogger.warn("Origin-Host mismatch. Expecting "+connection.diameterHost+" and got "+request["Origin-Host"][0]);
+        connection.end();
+    }
 };
 
 var watchdogHandler=function(connection, message){
     var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Host"]=diameterConfig["diameterHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
 
     // Send reply
-    connection.diameterStateMachine.sendReply(connection, replyMessage);
+    connection.diameterServer.sendReply(connection, replyMessage);
 };
 
 var disconnectPeerHandler=function(connection, message){
     var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;
 
     // Set mandatory parameters
-    reply["Origin-Host"]=diameterConfig["originHost"];
+    reply["Origin-Host"]=diameterConfig["diameterHost"];
 	
 	// Result code
 	reply["Result-Code"]=resultCodes.DIAMETER_SUCCESS;
 	
 	// Send reply
-    connection.diameterStateMachine.sendReply(connection, replyMessage);
+    connection.diameterServer.sendReply(connection, replyMessage);
 };
 
 // Declare handlers

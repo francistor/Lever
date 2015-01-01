@@ -1,6 +1,10 @@
-mongoexport --db leverConfig --collection diameterConfig --query "{'serverName':'$1'}" --out diameter.json > out.txt
+mongoexport --db leverConfig --collection diameterConfig --query "{'hostName':'`hostname`'}" --out diameter.json > out.txt
 node prettyprint.js diameter.json > ../diameter/conf/diameter.json
 rm diameter.json
+
+mongoexport --db leverConfig --collection routeConfig --query "{'hostName':'`hostname`'}" --out routes.json >> out.txt
+node prettyprint.js routes.json > ../diameter/conf/routes.json
+rm routes.json
 
 mongoexport --db leverConfig --collection dictionaryConfig --out dictionary.json >> out.txt
 node prettyprint.js dictionary.json > ../diameter/conf/dictionary.json

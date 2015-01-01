@@ -17,14 +17,14 @@
             <div class="row">
                 <div class="col-lg-12">
                     <div class="col-lg-6">
-                        <div class="form-group" ng-class="{'has-error': basicConfigForm.serverName.$invalid}">
-                            <label>Server Name:</label>
-                            <input name="serverName" type="text" class="form-control" ng-model="diameterConfig.serverName" ng-pattern="/.{3,}/">
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.hostName.$invalid}">
+                            <label>Host Name:</label>
+                            <input name="hostName" type="text" class="form-control" ng-model="diameterConfig.hostName" ng-pattern="/.{3,}/">
                             <p class="help-block">Server hostname</p>
                         </div>
-                        <div class="form-group" ng-class="{'has-error': basicConfigForm.originHost.$invalid}">
+                        <div class="form-group" ng-class="{'has-error': basicConfigForm.diameterHost.$invalid}">
                             <label>Diameter Host Name:</label>
-                            <input name="originHost" type="text" class="form-control" ng-model="diameterConfig.originHost" ng-pattern="/.{3,}/">
+                            <input name="diameterHost" type="text" class="form-control" ng-model="diameterConfig.diameterHost" ng-pattern="/.{3,}/">
                         </div>
                         <div class="form-group" ng-class="{'has-error': basicConfigForm.realm.$invalid}">
                             <label>Diameter Realm:</label>
@@ -95,9 +95,9 @@
                                                     <input name="name" class="form-control" ng-model="peer.name" ng-pattern="/.{3,}/">
                                                     <p class="help-block">Required field</p>
                                                 </div>
-                                                <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.originHost.$invalid}">
-                                                    <label>Diameter host name:</label>
-                                                    <input name="originHost" class="form-control" ng-model="peer.originHost" ng-pattern="/.{3,}/">
+                                                <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.diameterHost.$invalid}">
+                                                    <label>Diameter Host Name:</label>
+                                                    <input name="diameterHost" class="form-control" ng-model="peer.diameterHost" ng-pattern="/.{3,}/">
                                                     <p class="help-block">Required field</p>
                                                 </div>
                                                 <button type="button" ng-click="deletePeer(peer.name)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
@@ -105,7 +105,7 @@
                                             <div class="col-lg-6">
                                                 <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.IPAddress.$invalid}">
                                                     <label>IP Address:</label>
-                                                    <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
+                                                    <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{3,5}){0,1}$/">
                                                     <p class="help-block">Required field</p>
                                                 </div>
                                                 <div class="form-group">

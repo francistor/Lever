@@ -3,10 +3,10 @@ var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers', 'a
 managerApp.config(['$routeProvider',
   function($routeProvider) {
     $routeProvider.
-      when('/node/:serverName', {
+      when('/node/:hostName', {
         templateUrl: 'partials/node.html',
         controller: 'DiameterConfigController'
-      }).when('/nodeStats/:serverName', {
+      }).when('/nodeStats/:hostName', {
           templateUrl: 'partials/nodeStats.html',
           controller: 'NodeStatsController'
       }).when('/diameterDictionary', {

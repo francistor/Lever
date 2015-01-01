@@ -15,11 +15,17 @@ var ccrHandler=function(connection, message){
 
     proxyMessage.commandCode="Credit-Control";
     proxyMessage.applicationId="Credit-Control";
-    request["Origin-Host"]=diameterConfig["originHost"];
+    // Mandatory attributes
+    request["Origin-Host"]=diameterConfig["diameterHost"];
     request["Session-Id"]="thesessionid";
+    request["Origin-Realm"]=diameterConfig["diameterRealm"];
+    if(diameterConfig["diameterRealm"]=="toshiba") request["Destination-Realm"]="samsung"; else request["Destination-Realm"]="toshiba";
+    request["Auth-Application-Id"]="Credit-Control";
+    request["CC-Request-Type"]="Initial";
+    request["CC-Request-Number"]=1;
 
     // Send message to proxy
-    connection.diameterStateMachine.sendRequest("8950AAA", proxyMessage, 1000, function(error, response){
+    connection.diameterServer.sendRequest(null, proxyMessage, 3000, function(error, response){
 
         if(error){
             hLogger.error(error.message);
@@ -31,16 +37,16 @@ var ccrHandler=function(connection, message){
 
             var request = message.avps;
 
-            // Set mandatory parameters
-            reply["Origin-Host"] = diameterConfig["originHost"];
+            // Set mandatory parameters (according to 8950AAA)
+            reply["Origin-Host"] = diameterConfig["diameterHost"];
             reply["Session-Id"] = request["Session-Id"];
-            // TODO: Rest of parameters
+            // TODO: Other parameters
 
             // Result code
             reply["Result-Code"] = resultCodes.DIAMETER_SUCCESS;
 
             // Send reply
-            connection.diameterStateMachine.sendReply(connection, replyMessage);
+            connection.diameterServer.sendReply(connection, replyMessage);
         }
     });
 

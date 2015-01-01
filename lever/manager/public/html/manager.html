@@ -116,8 +116,8 @@
                                 <i class="fa fa-sitemap"></i> Nodes<span class="fa arrow"></span>
                             </a>
                             <ul class="nav nav-second-level">
-                                <li ng-repeat="serverName in nodes">
-                                    <a href="#/node/{{serverName}}"> {{serverName}}</a>
+                                <li ng-repeat="hostName in nodes">
+                                    <a href="#/node/{{hostName}}"> {{hostName}}</a>
                                 </li>
                             </ul>
 						</li>
@@ -134,8 +134,8 @@
                         <li>
                             <a href="#"><i class="fa fa-tasks"></i> Node Reports<span class="fa arrow"></span></a>
                             <ul class="nav nav-second-level">
-                                <li ng-repeat="serverName in nodes">
-                                    <a href="#/nodeStats/{{serverName}}">{{serverName}}</a>
+                                <li ng-repeat="hostName in nodes">
+                                    <a href="#/nodeStats/{{hostName}}">{{hostName}}</a>
                                 </li>
 
                             </ul>

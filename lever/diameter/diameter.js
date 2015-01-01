@@ -1,6 +1,5 @@
 // Main file for Diameter server
 // Implements state machine
-
 // TODO: Implement duplicate detection.
 // --- Cache of Ent2EndId being processed and processed
 
@@ -8,172 +7,222 @@ var net=require("net");
 var dLogger=require("./log").dLogger;
 var logMessage=require("./log").logMessage;
 var config=require("./config").config;
-var createConnection=require("./connections").createConnection;
+var createConnection=require("./connection").createConnection;
 var createMessage=require("./message").createMessage;
 var stats=require("./stats").stats;
 var createAgent=require("./agent").createAgent;
 
-var sendCer=require("./baseHandler").sendCer;
-
 // Singleton
-var createDiameterStateMachine=function(){
-
-    // Transient variables
-    var ipAddress;
-    var peer;
-    var connection;
-    var i;
-
+var createDiameterServer=function(){
+    
     // State machine
-    var diameterStateMachine={};
+    var diameterServer={};
 
-    // Connections indexed by hostname or origin ipAddr:port
-    var connections={};
+    // Peer table
+    // Entries as {<diameterHost>: <connection object>}
+    var peerConnections={};
 
     // Reference to messages sent and waiting for answer
     // Holds a reference to the callback function and timer for each destinationHost+HopByHopID
     var requestPointers={};
 
-    // Invoked by the connection when a new complete message is available
-    // Call handler if request, or call callback if response and original request is found
-    diameterStateMachine.onMessageReceived=function(connection, buffer){
+    // TODO: Test routing using * as realm and as application-id
+    // TODO: Test fixed and random policies
+    /** Returns the appropriate connection
+     *
+     * @param message
+     * @returns peerConnectionsEntry
+     */
+    var findConnection=function(message){
+        var i;
+        
+        // If Destination-Host is present, use it
+        if(message.avps["Destination-Host"]) return peerConnections[message.avps["Destination-Host"]];
+        
+        // Otherwise, route based on Destination-Realm
+        else if(message.avps["Destination-Realm"]){
+            // Lookup in routing configuration
+            var realms=config.routes.realms;
+            var peerConfig=(realms[message.avps["Destination-Realm"]]||realms["*"]||{})[message.applicationId] || (realms[message.avps["Destination-Realm"]]||realms["*"]||{})["*"];
+            if(peerConfig){
+                if(peerConfig["policy"]=="fixed") {
+                    for (i=0; i<peerConfig["peers"].length; i++) {
+                        dLogger.debug("Checking peer "+peerConfig["peers"][i]);
+                        if(peerConnections[peerConfig["peers"][i]]) if(peerConnections[peerConfig["peers"][i]].getState()=="Open") return peerConnections[peerConfig["peers"][i]];
+                    }
+                    dLogger.verbose("All routes closed [fixed policy]");
+                    return null;
+                }
+                else {
+                    // Policy is "random"
+                    var activePeerEntries=[];
+                    for (i = 0; i < peerConfig["peers"]; i++) {
+                        if (peerConnections[peerConfig["peers"][i]].getState() == "Open") activePeerEntries.push(peerConnections[peerConfig["peers"][i]]);
+                    }
+                    if(activePeerEntries.length>0) return activePeerEntries[Math.floor(Math.random()*activePeerEntries.length)];
+                    else dLogger.verbose("All routes closed [random policy]");
+                }
+            }
+            else{
+                dLogger.warn("No route for Destination-Realm: "+message.avps["Destination-Realm"]+" and Application-Id: "+message.applicationId);
+                return null;
+            }
+        }
+        // Unable to deliver
+        else{
+            dLogger.warn("Message has no routing AVP");
+            return null;
+        }
+    };
+
+    /**
+     * Invoked by the connection when a new complete message is available
+     * Call handler if request, or call callback if response and original request is found
+     * @param connection
+     * @param buffer
+     */
+    diameterServer.onMessageReceived=function(connection, buffer){
         var requestPointer;
         var message;
 
         var dispatcher=config.dispatcher;
 
         try {
-            message = createMessage().decode(buffer);
+            message=createMessage().decode(buffer);
         }catch(e){
             // Message decoding error
             dLogger.error("Diameter decoding error: "+e.message);
             dLogger.error(e.stack);
-            connection.socket.end();
-            connection.state="Closing";
-            // Will be deleted when close event arrives
+            connection.end();
             return;
         }
 
         if(dLogger["inDebug"]) {
             dLogger.debug("");
             dLogger.debug("Received message");
-            dLogger.debug(JSON.stringify(message, undefined, 2));
+            dLogger.debug(JSON.stringify(message, null, 2));
             dLogger.debug("");
         }
 
-        if(dLogger["inVerbose"]) logMessage(connection.hostName, config.diameterConfig["originHost"], message);
+        if(dLogger["inVerbose"]) logMessage(connection.diameterHost, config.diameterConfig["diameterHost"], message);
 
         if (message.isRequest) {
             // Handle message if there is a handler configured for this type of request
-            stats.incrementServerRequest(connection.hostName, message.commandCode);
-            if(dLogger["inDebug"]) dLogger.debug(JSON.stringify(dispatcher, undefined, 2));
+            stats.incrementServerRequest(connection.diameterHost, message.commandCode);
             // if(there is a handler)
             if(((dispatcher[message.applicationId]||{})[message.commandCode]||{})["handler"]){
-                if(dLogger["inDebug"]) dLogger.debug("Message is Request. Dispatching message to: " + dispatcher[message.applicationId][message.commandCode].functionName);
+                if(dLogger["inDebug"]) dLogger.debug("Message is Request. Dispatching message to: "+dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
                     dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
-                    stats.incrementServerError(connection.hostName, message.commandCode);
+                    stats.incrementServerError(connection.diameterHost, message.commandCode);
                     dLogger.error("Handler error in "+dispatcher[message.applicationId][message.commandCode].functionName);
                     dLogger.error(e.message);
                     dLogger.error(e.stack);
                 }
             }
             else{
-                stats.incrementServerError(connection.hostName, message.commandCode);
+                stats.incrementServerError(connection.diameterHost, message.commandCode);
                 dLogger.warn("No handler defined for Application: " + message.applicationId + " and command: " + message.commandCode);
             }
         } else {
             dLogger.debug("Message is Response");
-            stats.incrementClientResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
-            requestPointer=requestPointers[connection.hostName+"."+message.hopByHopId];
+            stats.incrementClientResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
+            requestPointer=requestPointers[connection.diameterHost+"."+message.hopByHopId];
             if(requestPointer) {
                 clearTimeout(requestPointer.timer);
-                delete requestPointers[connection.hostName+"."+message.hopByHopId];
+                delete requestPointers[connection.diameterHost+"."+message.hopByHopId];
                 dLogger.debug("Executing callback");
                 requestPointer.callback(null, message);
             } else{
-                dLogger.debug("Unsolicited response message");
+                dLogger.warn("Unsolicited or stale response message");
             }
         }
     };
 
-    // Sends a reply using the specified connection
-    diameterStateMachine.sendReply=function(connection, message){
+    /**
+     * Sends a reply using the specified connection
+     * @param connection
+     * @param message
+     */
+    diameterServer.sendReply=function(connection, message){
 
-        dLogger.debug("");
-        dLogger.debug("Sending reply");
-        dLogger.debug(JSON.stringify(message, undefined, 2));
-        dLogger.debug("");
+        if(dLogger["inDebug"]) {
+            dLogger.debug("");
+            dLogger.debug("Sending reply");
+            dLogger.debug(JSON.stringify(message, null, 2));
+            dLogger.debug("");
+        }
 
-        if(connection.state!=="Open"){
+        if(connection.getState()!=="Open"){
             dLogger.warn("SendReply - Connection is not in 'Open' state. Discarding message");
+            stats.incrementServerError(connection.diameterHost, message.commandCode);
         }
         else try {
-            if(dLogger["inVerbose"]) logMessage(config.diameterConfig["originHost"], connection.hostName, message);
-            connection.socket.write(message.encode());
-            stats.incrementServerResponse(connection.hostName, message.commandCode, message.avps["Result-Code"]||0);
+            if(dLogger["inVerbose"]) logMessage(config.diameterConfig["diameterHost"], connection.diameterHost, message);
+            connection.write(message.encode());
+            stats.incrementServerResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
         }
         catch(e){
             // Message encoding error
-            stats.incrementServerError(connection.hostName, message.commandCode);
+            stats.incrementServerError(connection.diameterHost, message.commandCode);
             dLogger.error("Could not encode & send reply: "+e.message);
             dLogger.error("Closing connection");
             dLogger.error(e.stack);
-            connection.socket.end();
-            connection.state="Closing";
-            // Will be deleted when close event arrives
+            connection.end();
         }
     };
 
-    // Sends a request message to he specified hostName
-    diameterStateMachine.sendRequest=function(hostName, message, timeout, callback){	// callback is fnc(error, message)
+    /**
+     * Sends a request message to the destination specified by the Destination-Host or Destination-Realm attributes
+     * in the message. If the "connection" parameter is present, the request is sent using the specified connection
+     * @param connection. If null, the request will be routed based on the Destination-Host or Destination-Realm attributes of the message
+     * @param message
+     * @param timeout
+     * @param callback
+     */
+    diameterServer.sendRequest=function(connection, message, timeout, callback){	// callback is fnc(error, message)
 
-        dLogger.debug("");
-        dLogger.debug("Sending request");
-        dLogger.debug(JSON.stringify(message, undefined, 2));
-        dLogger.debug("");
+        if(dLogger["inDebug"]) {
+            dLogger.debug("");
+            dLogger.debug("Sending request");
+            dLogger.debug(JSON.stringify(message, null, 2));
+            dLogger.debug("");
+        }
 
-        connection=connections[hostName];
+        // Route Message if no connection was specified
+        if(!connection) connection=findConnection(message);
+
         if(connection) {
-            if(message.applicationId!=="Base" && connection.state!=="Open"){
-                stats.incrementClientError(hostName, message.commandCode);
+            if(message.applicationId!=="Base" && connection.getState()!=="Open"){
+                stats.incrementClientError(connection.diameterHost, message.commandCode);
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
             }
             else try {
-                if(dLogger["inVerbose"]) logMessage(config.diameterConfig["originHost"], connection.hostName, message);
-                connection.socket.write(message.encode());
-                stats.incrementClientRequest(hostName, message.commandCode);
-                requestPointers[hostName+"."+message.hopByHopId] = {
+                if(dLogger["inVerbose"]) logMessage(config.diameterConfig["diameterHost"], connection.diameterHost, message);
+                connection.write(message.encode());
+                stats.incrementClientRequest(connection.diameterHost, message.commandCode);
+                requestPointers[connection.diameterHost+"."+message.hopByHopId] = {
                     "timer": setTimeout(function () {
-                        delete requestPointers[hostName+"."+message.hopByHopId];
-                        stats.incrementClientError(hostName, message.commandCode);
+                        delete requestPointers[connection.diameterHost+"."+message.hopByHopId];
+                        stats.incrementClientError(connection.diameterHost, message.commandCode);
                         callback(new Error("timeout"), null);
                     }, timeout),
                     "callback": callback
                 };
             } catch(e){
                 // Message encoding error
-                stats.incrementClientError(connection.hostName, message.commandCode);
+                stats.incrementClientError(connection.diameterHost, message.commandCode);
                 dLogger.error("Could not encode & send request: "+e.message);
                 dLogger.error("Closing connection");
                 dLogger.error(e.stack);
-                connection.socket.end();
-                connection.state="Closing";
-                // Will be deleted when close event arrives
+                connection.end();
             }
         }
         else {
-            dLogger.warn("Could not send request. No connection to "+hostName);
+            dLogger.warn("Could not send request. No route to destination");
+            callback(new Error("No route to destination"), null);
         }
-    };
-
-    // State machine functions
-
-    // Terminate connection
-    diameterStateMachine.onConnectionClosed=function(connection){
-        dLogger.info("Closing connection to "+connection.hostName);
-        if(connections[connection.hostName]) delete connections[connection.hostName];
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -181,161 +230,91 @@ var createDiameterStateMachine=function(){
     ///////////////////////////////////////////////////////////////////////////
 
     // Establishes connections with peers with "active" connection policy, if not already established
-    diameterStateMachine.establishConnections=function(){
+    diameterServer.manageConnections=function(){
         dLogger.debug("Checking connections");
+        var i;
+        
         // Iterate through peers and check if a new connection has to be established
         for(i=0; i<config.diameterConfig["peers"].length; i++){
-            peer=config.diameterConfig["peers"][i];
-            if(peer["connectionPolicy"]==="active" && !connections[peer["originHost"]]){
-                dLogger.verbose("Connecting to "+peer["originHost"]+" in address "+peer["IPAddress"]);
-                connections[peer["originHost"]]=createConnection(diameterStateMachine, net.connect(peer["IPAddress"].split(":")[1]||3868, peer["IPAddress"].split(":")[0]) , peer["originHost"], "Wait-Conn-Ack");
+            var peer=config.diameterConfig["peers"][i];
+
+            // Make sure entry exists in peer table
+            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"]);
+
+            // Establish connection if necessary
+            if(peer["connectionPolicy"]==="active" && peerConnections[peer["diameterHost"]].getState()=="Closed"){
+                dLogger.info("Connecting to "+peer["diameterHost"]+" in address "+peer["IPAddress"]);
+                peerConnections[peer["diameterHost"]].connect(peer["IPAddress"].split(":")[1]||3868, peer["IPAddress"].split(":")[0]);
             }
         }
-        // Iterate through connections and check if a connection has to be closed
-        // TODO:
-    };
 
-    diameterStateMachine.onConnectionACK=function(connection){
-        dLogger.verbose("Connection established with "+connection.hostName);
-        sendCer(connection);
-        connection.state="Wait-CEA";
-    };
-
-    diameterStateMachine.onCEAReceived=function(connection){
-        // Already handled
-        dLogger.debug("CEA received from "+connection.hostName);
-        connection.state="Open";
+        // Iterate through current peers and check if a connection has to be closed
+        var found;
+        for(var diameterHost in peerConnections) if(peerConnections.hasOwnProperty(diameterHost)){
+            found=false;
+            for(i=0; i<config.diameterConfig["peers"].length; i++){
+                if(config.diameterConfig["peers"][i]["diameterHost"]==diameterHost){
+                    found=true;
+                    break;
+                }
+            }
+            if(!found) peerConnections[diameterHost].end();
+        }
     };
 
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
     ///////////////////////////////////////////////////////////////////////////
 
-    // DEPRECATED. ALLOWS MORE THAN ONE ORIGIN-HOST WITH THE SAME IP-ADDRESS
-    diameterStateMachine.onConnectionReceived2=function(socket){
-        var tmpHostName;
-
-        dLogger.verbose("got connection from "+socket["remoteAddress"]);
-
-        // Check whether there is at least one peer with that IP Address
-        peer=null;
-        for(i=0; i<config.diameterConfig["peers"].length; i++){
-            if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]) peer=config.diameterConfig["peers"][i];
-        }
-        if(peer===null){
-            dLogger.info("Received connection from unknown peer "+socket["remoteAddress"]);
-            socket.end();
-            return;
-        }
-
-        // Create new connection. Temporary key is IPAddress:port
-        tmpHostName=socket["remoteAddress"]+":"+socket["remotePort"];
-        connections[tmpHostName]=createConnection(diameterStateMachine, socket, tmpHostName, "Wait-CER");
-    };
-
-    // DEPRECATED. ALLOWS MORE THAN ONE ORIGIN-HOST WITH THE SAME IP-ADDRESS
-    diameterStateMachine.onCERReceived2=function(connection, hostName){
-        var peerFound=false;
-        var tmpHostName=connection.socket["remoteAddress"]+":"+connection.socket["remotePort"];
-        connection=connections[tmpHostName];
-        if(connection && connection.state==="Wait-CER"){
-            // Check that Origin-Host is declared as peer with the received origin IP address
-            ipAddress=connection.socket["remoteAddress"];
-            for(i=0; i<config.diameterConfig["peers"].length; i++){
-                peer=config.diameterConfig["peers"][i];
-
-                if(peer["originHost"]===hostName && peer["IPAddress"].split(":")[0]===connection.socket["remoteAddress"]){
-                    peerFound=true;
-                    // TODO: Election process should be implemented here
-                    // Here we make sure that only one connection from/to a specific host will be established
-                    if(!connections[hostName]) {
-                        // Index by hostName
-                        connections[hostName]=connection;
-                        // Remove old entry
-                        delete connections[tmpHostName];
-                        // Change connection properties
-                        connection.hostName = hostName;
-                        connection.state = "Open";
-                        // Everything OK
-                        return true;
-                    }
-                    else dLogger.warn("Connection already established with "+hostName);
-                    break;
-                }
-            }
-        }else{
-            dLogger.warn("CER out of sequence for originHost "+connection.socket["remoteAddress"]);
-        }
-
-        if(!peerFound) dLogger.warn(hostName+" peer, connecting from "+connection.socket["remoteAddress"]+" not configured");
-
-        // If here, something went wrong
-        connection.socket.end();
-        connection.state="Closing";
-        // Connection will be deleted when close event arrives
-        return false;
-    };
-
-    // Only one peer for each IPAddress is allowed
-    diameterStateMachine.onConnectionReceived=function(socket){
+    /**
+     * Invoked when a new connection is received.
+     * @param socket
+     */
+    diameterServer.onConnectionReceived=function(socket){
         dLogger.verbose("Got connection from "+socket["remoteAddress"]);
 
         // Look for Origin-Host in peer table
-        peer=null;
+        var peer=null;
+        var i;
         for(i=0; i<config.diameterConfig["peers"].length; i++) if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]){
             // Peer found
             peer=config.diameterConfig["peers"][i];
 
-            // Create new connection if does not already exist. Origin-Host is the only one for the connecting IP address
-            if(!connections[peer["originHost"]]) connections[peer["originHost"]]=createConnection(diameterStateMachine, socket, peer["originHost"], "Wait-CER");
+            // Make sure that entry exist in peer table, or create it otherwise
+            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"]);
+
+            // If closed, set socket to newly received connection
+            if(peerConnections[peer["diameterHost"]].getState()=="Closed"){
+                peerConnections[peer["diameterHost"]].attachConnection(socket);
+            }
             else{
-                dLogger.warn("Connection to host already exists");
+                dLogger.warn("There is already a non closed connection to the host "+peer["diameterHost"]);
                 socket.end();
             }
-
             return;
         }
 
         // If here, peer was not found for the origin IP-Address
         dLogger.warn("Received connection from unknown peer "+socket["remoteAddress"]);
         socket.end();
-        return;
-    };
-
-    // Here the peer declares the origin-host, which must match the one in the peer table
-    diameterStateMachine.onCERReceived=function(connection, hostName){
-        // Check that the hostName matches the one for the connection
-        if(connections[hostName] && connections[hostName].socket["remoteAddress"]==connection.socket["remoteAddress"]){ //if(connections[hostName]===connection))
-            connection.state="Open";
-            // Everything OK
-            return true;
-        }
-
-        // If here, something went wrong
-        dLogger.warn("Origin-Host "+hostName+" does not match");
-        connection.socket.end();
-        connection.state="Closing";
-        // Connection will be deleted when close event arrives
-        return false;
     };
 
     ///////////////////////////////////////////////////////////////////////////
     // Instrumentation
     ///////////////////////////////////////////////////////////////////////////
-    diameterStateMachine.getConnectionsStatus=function(){
-        var connectionStatus=[];
-        var hostName;
-        for(var hostName in connections) if(connections.hasOwnProperty(hostName)){
-            connectionStatus.push({hostName: hostName, state: connections[hostName]["state"]});
+    diameterServer.getPeerStatus=function(){
+        var peerStatus=[];
+        for(var diameterHost in peerConnections) if(peerConnections.hasOwnProperty(diameterHost)){
+            peerStatus.push({hostName: diameterHost, state: peerConnections[diameterHost].getState()});
         }
-        return connectionStatus;
+        return peerStatus;
     };
 
     ///////////////////////////////////////////////////////////////////////////
     // Startup
     ///////////////////////////////////////////////////////////////////////////
 
-    var diameterServer;
+    var diameterSocket;
 
     // Read configuration and initialize
     config.readAll(function(err){
@@ -350,27 +329,28 @@ var createDiameterStateMachine=function(){
             ////////////////////////////////////////////
 
             // Create Listener on Diameter port (or configured)
-            diameterServer=net.createServer();
+            diameterSocket=net.createServer();
 
-            diameterServer.on("connection", diameterStateMachine.onConnectionReceived);
+            diameterSocket.on("connection", diameterServer.onConnectionReceived);
 
-            diameterServer.listen(config.diameterConfig.port||3868);
+            diameterSocket.listen(config.diameterConfig.port||3868);
             dLogger.info("Diameter listening in port "+config.diameterConfig.port);
 
             // Create management HTTP server
-            createAgent(diameterStateMachine);
+            createAgent(diameterServer);
 
             // Establish outgoing connections
-            diameterStateMachine.establishConnections();
+            diameterServer.manageConnections();
+
             // Set timer for periodically checking connections
-            setInterval(diameterStateMachine.establishConnections, config.diameterConfig["connectionInterval"]||10000);
+            setInterval(diameterServer.manageConnections, config.diameterConfig["connectionInterval"]||10000);
         }
     });
 
-    return diameterStateMachine;
+    return diameterServer;
 };
 
-exports.diameterStateMachine=createDiameterStateMachine();
+exports.diameterServer=createDiameterServer();
 
 
 

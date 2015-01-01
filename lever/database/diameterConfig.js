@@ -16,32 +16,32 @@ print("----------------------------------");
 var diameterConfigSamsung=
 {
     "_version": 1001,
-	"serverName": "samsung-jativa",
+	"hostName": "samsung-jativa",
     "IPAddress-not-used": "127.0.0.1",
     "port": 3868,
-    "originHost": "lever-samsung",
-    "originRealm": "jativa",
+    "diameterHost": "lever-samsung",
+    "diameterRealm": "samsung",
     "vendorId": 1101,
     "productName": "Lever",
     "firmwareRevision": 1,
-    "connectionInterval": 5000,
+    "connectionInterval": 10000,
     "peers":
     [
         {
             "name": "diameterTool",
-            "originHost": "diameterTool",
+            "diameterHost": "diameterTool",
             "IPAddress": "127.0.0.1:3868",
             "connectionPolicy": "passive"
         },
         {
             "name": "8950AAA-samsung",
-            "originHost": "8950AAA",
+            "diameterHost": "8950AAA",
             "IPAddress": "192.168.1.101:13868",
             "connectionPolicy": "active"
         },
         {
             "name": "lever-toshiba",
-            "originHost": "lever-toshiba",
+            "diameterHost": "lever-toshiba",
             "IPAddress": "192.168.1.102:3868",
             "connectionPolicy": "active"
         }
@@ -56,32 +56,32 @@ var diameterConfigSamsung=
 var diameterConfigToshiba=
 {
     "_version": 1001,
-    "serverName": "frodriguezgpw7",
+    "hostName": "frodriguezgpw7",
     "IPAddress-not-used": "127.0.0.1",
     "port": 3868,
-    "originHost": "lever-toshiba",
-    "originRealm": "jativa",
+    "diameterHost": "lever-toshiba",
+    "diameterRealm": "toshiba",
     "vendorId": 1101,
     "productName": "Lever",
     "firmwareRevision": 1,
-    "connectionInterval": 5000,
+    "connectionInterval": 10000,
     "peers":
         [
             {
                 "name": "diameterTool",
-                "originHost": "diameterTool",
+                "diameterHost": "diameterTool",
                 "IPAddress": "127.0.0.1:3868",
                 "connectionPolicy": "passive"
             },
             {
                 "name": "8950AAA-toshiba",
-                "originHost": "8950AAA",
+                "diameterHost": "8950AAA",
                 "IPAddress": "192.168.1.102:13868",
                 "connectionPolicy": "active"
             },
             {
                 "name": "lever-samsung",
-                "originHost": "lever-samsung",
+                "diameterHost": "lever-samsung",
                 "IPAddress": "192.168.1.101:3868",
                 "connectionPolicy": "active"
             }
@@ -140,7 +140,7 @@ print("done");
 print("");
 
 print("----------------------------------");
-print("Creating Dictionary confiuration");
+print("Creating Dictionary configuration");
 print("----------------------------------");
 
 var dictionaryConfig=
@@ -432,7 +432,7 @@ var dictionaryConfig=
 					"name": "Accounting",
 					"request":
 					{
-						"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
+						"Session-Id":{"minOccurs": 1, "maxOccurs": 1},
 						"Origin-Host": {"minOccurs": 1, "maxOccurs": 1},
 						"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
 						"Destination-Realm":{"minOccurs": 1, "maxOccurs": 1},
@@ -454,7 +454,7 @@ var dictionaryConfig=
 					},
 					"response":
 					{
-						"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
+						"Session-Id":{"minOccurs": 1, "maxOccurs": 1},
 						"Result-Code":{"minOccurs": 1, "maxOccurs": 1},
 						"Origin-Host":{"minOccurs": 1, "maxOccurs": 1},
 						"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
@@ -488,34 +488,66 @@ var dictionaryConfig=
 					"name": "Credit-Control",
 					"request":
 					{
-						"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
-						"Origin-Host": {"minOccurs": 1, "maxOccurs": 1},
-						"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
-						"Destination-Realm":{"minOccurs": 1, "maxOccurs": 1},
-						"Auth-Application-Id":{"minOccurs": 1, "maxOccurs": 1},
-						"CC-Request-Type":{"minOccurs": 1, "maxOccurs": 1},
-						"CC-Request-Number":{"minOccurs": 1, "maxOccurs": 1},
+						"Session-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"Origin-Host": {"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"Origin-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"Destination-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"Auth-Application-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"CC-Request-Type":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+						"CC-Request-Number":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"AVP":{}
 					},
-					"response":
-					{
-						"Session-ID":{"minOccurs": 1, "maxOccurs": 1},
-						"Result-Code":{"minOccurs": 1, "maxOccurs": 1},
-						"Origin-Host":{"minOccurs": 1, "maxOccurs": 1},
-						"Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
-						"Auth-Application-Id":{"minOccurs": 1, "maxOccurs": 1},
-						"CC-Request-Type":{"minOccurs": 1, "maxOccurs": 1},
-						"CC-Request-Number":{"minOccurs": 1, "maxOccurs": 1},
-						"AVP":{}
-					}
+                    "response":
+                    {
+                        "Session-Id":{"minOccurs": 1, "maxOccurs": 1},
+                        "Result-Code":{"minOccurs": 1, "maxOccurs": 1},
+                        "Origin-Host":{"minOccurs": 1, "maxOccurs": 1},
+                        "Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
+                        "Auth-Application-Id":{"minOccurs": 1, "maxOccurs": 1},
+                        "CC-Request-Type":{"minOccurs": 1, "maxOccurs": 1},
+                        "CC-Request-Number":{"minOccurs": 1, "maxOccurs": 1},
+                        "AVP":{}
+                        }
 				}
 			]
 		}
 	]
-}
+};
 
 db.dictionaryConfig.insert(dictionaryConfig);
 print("done");
 print("");
 
 
+print("----------------------------------");
+print("Creating Routing table configuration");
+print("----------------------------------");
+
+var routeConfigSamsung={
+    "hostName": "samsung-jativa",
+    "realms": {
+        "toshiba":{
+            "Credit-Control":{
+                "peers": ["lever-toshiba", "8950AAA"],
+                "policy": "fixed"
+            }
+        }
+    }
+};
+
+var routeConfigToshiba={
+    "hostName": "frodriguezgpw7",
+    "realms": {
+        "samsung":{
+            "Credit-Control":{
+                "peers": ["lever-samsung", "8950AAA"],
+                "policy": "fixed"
+            }
+        }
+    }
+};
+
+db.routeConfig.insert(routeConfigSamsung);
+db.routeConfig.insert(routeConfigToshiba);
+print("done");
+print("");

@@ -31,7 +31,7 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
         // Get diameterConfig
         $http({
             method  : 'GET',
-            url     : "/dyn/node/"+$routeParams.serverName+"/diameterConfiguration",
+            url     : "/dyn/node/"+$routeParams.hostName+"/diameterConfiguration",
             timeout: requestTimeout
         }).success(function(data){
             $scope.diameterConfig=data;
@@ -57,7 +57,7 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
 		// Adds a new, empty peer
 		$scope.addPeer=function(){
 			var peers=$scope.diameterConfig["peers"];
-			if(peers) peers.push({"name":"New_peer", "originHost":"-"});
+			if(peers) peers.push({"name":"New_peer", "diameterHost":"-"});
 		};
 
         // Saves the diameterConfiguration
@@ -127,7 +127,7 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
 
     $http({
         method  : 'GET',
-        url     : "/dyn/node/"+$routeParams.serverName+"/agent/getConnections",
+        url     : "/dyn/node/"+$routeParams.hostName+"/agent/getPeerStatus",
         timeout: requestTimeout
     }).success(function(data){
         $scope.connections=data;
@@ -138,7 +138,7 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
 
     $http({
         method  : 'GET',
-        url     : "/dyn/node/"+$routeParams.serverName+"/agent/getDiameterStats",
+        url     : "/dyn/node/"+$routeParams.hostName+"/agent/getDiameterStats",
         timeout: requestTimeout
     }).success(function(data){
 

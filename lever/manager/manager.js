@@ -43,13 +43,13 @@ mApp.use("/dyn", function (req, res, next){
 });
 
 // Node middleware. Operations that are node specific
-mApp.use("/dyn/node/:serverName/", function (req, res, next){
-    var serverName=req.params.serverName;
-    configDB.collection("diameterConfig").findOne({serverName: req.params.serverName}, {}, config["queryOptions"], function(err, item){
+mApp.use("/dyn/node/:hostName/", function (req, res, next){
+    var hostName=req.params.hostName;
+    configDB.collection("diameterConfig").findOne({hostName: req.params.hostName}, {}, config["queryOptions"], function(err, item){
         if(err){
             res.status(500).send(err.message);
         } else {
-            if (!item) res.status(500).send("ServerName " + serverName + " not found");
+            if (!item) res.status(500).send("HostName " + hostName + " not found");
             else {
                 req.serverConfig = item;
                 next();
@@ -59,7 +59,7 @@ mApp.use("/dyn/node/:serverName/", function (req, res, next){
 });
 
 // Node proxy. Just forwards the request to the specified node
-mApp.use("/dyn/node/:serverName/agent/:command", function(req, res, next){
+mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
     var command=req.params.command;
     var management=req.serverConfig.management;
     console.log("requesting "+"http://"+management.IPAddress+":"+management.httpPort+"/agent/"+command);
@@ -86,7 +86,7 @@ mApp.get("/dyn/config/nodeList", function(req, res){
     configDB.collection("diameterConfig").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
         if(!err){
             var nodeList=[];
-            docs.forEach(function(doc){nodeList.push(doc.serverName);});
+            docs.forEach(function(doc){nodeList.push(doc.hostName);});
             res.json(nodeList);
         }
         else res.status(500).send("Error: "+err.message);
@@ -94,7 +94,7 @@ mApp.get("/dyn/config/nodeList", function(req, res){
 });
 
 // Reads diameter configuration
-mApp.get("/dyn/node/:serverName/diameterConfiguration", function(req, res) {
+mApp.get("/dyn/node/:hostName/diameterConfiguration", function(req, res) {
     res.json(req.serverConfig);
 });
 

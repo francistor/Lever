@@ -5,7 +5,7 @@ var config=require("./config").config;
 var express=require("express");
 var bodyParser=require('body-parser');
 
-var createAgent=function(diameterStateMachine){
+var createAgent=function(diameterServer){
 
     // Instantiate express
     var httpServer=express();
@@ -23,14 +23,32 @@ var createAgent=function(diameterStateMachine){
         res.json({});
     });
 
+    httpServer.get("/agent/updateRoutes", function(req, res){
+        mLogger.debug("Reloading routing configuration");
+        config.readRoutes();
+        res.json({});
+    });
+
+    httpServer.get("/agent/updateDispatcherConfig", function(req, res){
+        mLogger.debug("Reloading dispatcher configuration");
+        config.readDispatcher();
+        res.json({});
+    });
+
+    httpServer.get("/agent/updateDictionary", function(req, res){
+        mLogger.debug("Reloading dictionary configuration");
+        config.readDictionary();
+        res.json({});
+    });
+
     httpServer.get("/agent/getDiameterStats", function(req, res){
         mLogger.debug("Getting stats");
         res.json(stats);
     });
 
-    httpServer.get("/agent/getConnections", function(req, res){
+    httpServer.get("/agent/getPeerStatus", function(req, res){
         mLogger.debug("Getting connection status");
-        res.json(diameterStateMachine.getConnectionsStatus());
+        res.json(diameterServer.getPeerStatus());
     });
 };
 

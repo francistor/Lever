@@ -7,7 +7,7 @@ var Db=require("mongodb").Db;
 
 // Read database configuration
 var dbParams=JSON.parse(fs.readFileSync("./conf/database.json", {encoding: "utf8"}));
-var serverName=os.hostname();
+var hostName=os.hostname();
 
 var createDatabaseConfig=function(){
 
@@ -23,7 +23,7 @@ var createDatabaseConfig=function(){
             else{
                 db.collection(collectionName).findOne(filter, function(err, doc){
                     if(err) updaterFunction(err, null);
-                    else if(!doc) updaterFunction(new Error(collectionName+" not found for "+serverName), null);
+                    else if(!doc) updaterFunction(new Error(collectionName+" not found for "+hostName), null);
                     else{
                         try{ updaterFunction(null, doc);}
                         catch(e){updaterFunction(e, null);}
@@ -35,7 +35,11 @@ var createDatabaseConfig=function(){
     };
 
     databaseConfig.getDiameterConfiguration=function(updaterFunction){
-        databaseConfig.getConfigurationItem("diameterConfig", {"serverName": serverName}, updaterFunction);
+        databaseConfig.getConfigurationItem("diameterConfig", {"hostName": hostName}, updaterFunction);
+    };
+
+    databaseConfig.getRouteConfiguration=function(updaterFunction){
+        databaseConfig.getConfigurationItem("routeConfig", {"hostName": hostName}, updaterFunction);
     };
 
     databaseConfig.getDispatcherConfiguration=function(updaterFunction){

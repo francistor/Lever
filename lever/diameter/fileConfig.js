@@ -23,7 +23,25 @@ var createFileConfig=function(){
                 }
             }
         });
+    };
 
+    // Updates the routing configuration for the config object
+    // updaterFunction(err, routeConfig)
+    fileConfig.getRouteConfiguration=function(updaterFunction){
+        var routeConfig;
+        fs.readFile("./conf/routes.json", {encoding: "utf8"}, function(err, data){
+            if(err){
+                updaterFunction(err, null);
+            }
+            else{
+                try{
+                    diameterConfig=JSON.parse(data);
+                    updaterFunction(null, routeConfig);
+                }catch(e){
+                    updaterFunction(e, null);
+                }
+            }
+        });
     };
 
     // Updates the dispatcher configuration for the config object
