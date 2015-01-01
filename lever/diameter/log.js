@@ -15,7 +15,8 @@ var dLogger=new (winston.Logger)({
 });
 
 var logMessage=function(originHost, destinationHost, message){
-    dLogger.verbose(originHost+"-->"+destinationHost+":"+message.applicationId+":"+message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+    var header=message.isRequest ? "[REQUEST]":"[RESPONSE]";
+    dLogger.verbose(header+" "+originHost+"-->"+destinationHost+":"+message.applicationId+":"+message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
 };
 
 // handler functions handlers
