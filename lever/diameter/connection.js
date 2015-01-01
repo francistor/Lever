@@ -3,12 +3,13 @@
 // for each complete message
 
 var dLogger=require("./log").dLogger;
-var sendCer=require("./baseHandler").sendCer;
+var sendCER=require("./baseHandler").sendCER;
+var sendWDR=require("./baseHandler").sendDWR;
 var net=require("net");
 
 var MAX_MESSAGE_SIZE=4096;
 
-var createConnection=function(diameterServer, diameterHost)
+var createConnection=function(diameterServer, diameterHost, dwrInterval)
 {
     var dc={};
 
@@ -17,6 +18,7 @@ var createConnection=function(diameterServer, diameterHost)
     dc.diameterHost=diameterHost;
 
     // Private properties
+    var dwrIntervalMs=dwrInterval||30000;
     var socket;
     var state="Closed";
 
@@ -49,6 +51,7 @@ var createConnection=function(diameterServer, diameterHost)
 
     dc.setOpen=function(){
         state="Open";
+        setTimeout(watchdog, dwrIntervalMs);
     };
     
     dc.getState=function(){
@@ -141,7 +144,7 @@ var createConnection=function(diameterServer, diameterHost)
      */
     var onConnect=function(){
         dLogger.verbose("Connection established with "+dc.diameterHost);
-        sendCer(dc);
+        sendCER(dc);
     };
 
     /**
@@ -151,9 +154,16 @@ var createConnection=function(diameterServer, diameterHost)
         state="Closed";
     };
 
-    // Error received. Just log.
+    // Error received. Just log. End event will be received
     var onError=function(err){
         dLogger.error("Error event received for connection "+dc.diameterHost+": "+err.message);
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Watchdog
+    ///////////////////////////////////////////////////////////////////////////
+    var watchdog=function() {
+        if (state == "Open") sendWDR(dc);
     };
 
     return dc;

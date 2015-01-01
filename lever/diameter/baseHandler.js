@@ -28,7 +28,7 @@ function getIPAddresses(){
     return IPAddresses;
 }
 
-var sendCer=function(connection){
+var sendCER=function(connection){
     var diameterConfig=config.diameterConfig;
     var dictionary=config.dictionary;
 
@@ -121,6 +121,37 @@ var cerHandler=function(connection, message){
     }
 };
 
+var sendDWR=function(connection){
+    var diameterConfig=config.diameterConfig;
+    var dictionary=config.dictionary;
+
+    var requestMessage=createMessage();
+    var request=requestMessage.avps;
+
+    requestMessage.applicationId="Base";
+    requestMessage.commandCode="Device-Watchdog";
+
+    // Set mandatory parameters
+    request["Origin-Host"]=diameterConfig["diameterHost"];
+    request["Origin-Realm"]=diameterConfig["diameterRealm"];
+
+    // Send message
+    connection.diameterServer.sendRequest(connection, requestMessage, DEFAULT_TIMEOUT, function(err, message){
+        if(!err){
+            if(message.avps["Result-Code"][0]===resultCodes.DIAMETER_SUCCESS){
+            }
+            else{
+                hLogger.error("DWR Error. Unsuccessful result code");
+                connection.end();
+            }
+        }
+        else{
+            hLogger.error("DWR Error: "+err.message);
+            connection.end();
+        }
+    });
+};
+
 var watchdogHandler=function(connection, message){
     var diameterConfig=config.diameterConfig;
 
@@ -136,6 +167,7 @@ var watchdogHandler=function(connection, message){
     // Send reply
     connection.diameterServer.sendReply(connection, replyMessage);
 };
+
 
 var disconnectPeerHandler=function(connection, message){
     var diameterConfig=config.diameterConfig;
@@ -159,5 +191,6 @@ exports.watchdogHandler=watchdogHandler;
 exports.disconnectPeerHandler=disconnectPeerHandler;
 
 // Other exports
-exports.sendCer=sendCer;
+exports.sendDWR=sendDWR;
+exports.sendCER=sendCER;
 

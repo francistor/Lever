@@ -19,7 +19,7 @@ var ccrHandler=function(connection, message){
     request["Origin-Host"]=diameterConfig["diameterHost"];
     request["Session-Id"]="thesessionid";
     request["Origin-Realm"]=diameterConfig["diameterRealm"];
-    if(diameterConfig["diameterRealm"]=="toshiba") request["Destination-Realm"]="samsung"; else request["Destination-Realm"]="toshiba";
+    request["Destination-Realm"]="forward";
     request["Auth-Application-Id"]="Credit-Control";
     request["CC-Request-Type"]="Initial";
     request["CC-Request-Number"]=1;

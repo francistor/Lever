@@ -56,8 +56,8 @@ var createDiameterServer=function(){
                 else {
                     // Policy is "random"
                     var activePeerEntries=[];
-                    for (i = 0; i < peerConfig["peers"]; i++) {
-                        if (peerConnections[peerConfig["peers"][i]].getState() == "Open") activePeerEntries.push(peerConnections[peerConfig["peers"][i]]);
+                    for (i = 0; i < peerConfig["peers"].length; i++) {
+                        if(peerConnections[peerConfig["peers"][i]]) if (peerConnections[peerConfig["peers"][i]].getState() == "Open") activePeerEntries.push(peerConnections[peerConfig["peers"][i]]);
                     }
                     if(activePeerEntries.length>0) return activePeerEntries[Math.floor(Math.random()*activePeerEntries.length)];
                     else dLogger.verbose("All routes closed [random policy]");
@@ -239,7 +239,7 @@ var createDiameterServer=function(){
             var peer=config.diameterConfig["peers"][i];
 
             // Make sure entry exists in peer table
-            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"]);
+            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"], peer["dwrInterval"]);
 
             // Establish connection if necessary
             if(peer["connectionPolicy"]==="active" && peerConnections[peer["diameterHost"]].getState()=="Closed"){
@@ -281,7 +281,7 @@ var createDiameterServer=function(){
             peer=config.diameterConfig["peers"][i];
 
             // Make sure that entry exist in peer table, or create it otherwise
-            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"]);
+            if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"], peer["dwrInterval"]);
 
             // If closed, set socket to newly received connection
             if(peerConnections[peer["diameterHost"]].getState()=="Closed"){

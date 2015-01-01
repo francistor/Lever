@@ -71,7 +71,7 @@ mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
         function(err, response, body){
             if (!err && response.statusCode==200) {
                 res.json(JSON.parse(body));
-            } else err ? res.status(500).send("Could not get "+route+" from server. "+err.message) : res.status(500).send("Status: "+response.statusCode);
+            } else err ? res.status(500).send("Could not get "+command+" from server. "+err.message) : res.status(500).send("Status: "+response.statusCode);
         });
 });
 

@@ -28,7 +28,7 @@
                         </div>
                         <div class="form-group" ng-class="{'has-error': basicConfigForm.realm.$invalid}">
                             <label>Diameter Realm:</label>
-                            <input name="realm" type="text" class="form-control" ng-model="diameterConfig.originRealm">
+                            <input name="diameterRealm" type="text" class="form-control" ng-model="diameterConfig.diameterRealm">
                         </div>
                         <div class="form-group" ng-class="basicConfigForm.IPAddress.$invalid ? 'has-error': '' ">
                             <label>Listen Address:</label>
@@ -99,6 +99,11 @@
                                                     <label>Diameter Host Name:</label>
                                                     <input name="diameterHost" class="form-control" ng-model="peer.diameterHost" ng-pattern="/.{3,}/">
                                                     <p class="help-block">Required field</p>
+                                                </div>
+                                                <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.watchdogInterval.$invalid}">
+                                                    <label>Watchdog interval:</label>
+                                                    <input name="watchdogInterval" class="form-control" ng-model="peer.watchdogInterval" ng-pattern="/[0-9]*/">
+                                                    <p class="help-block">Milliseconds</p>
                                                 </div>
                                                 <button type="button" ng-click="deletePeer(peer.name)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
                                             </div>
