@@ -146,6 +146,7 @@ mApp.post("/dyn/config/diameterDictionary", function(req, res){
     });
 });
 
+
 // Connect to mongodb and start server
 MongoClient.connect(config["databaseURL"], config["databaseOptions"], function(err, db){
     if(!err && db){

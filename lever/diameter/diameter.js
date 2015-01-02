@@ -42,7 +42,7 @@ var createDiameterServer=function(){
         // Otherwise, route based on Destination-Realm
         else if(message.avps["Destination-Realm"]){
             // Lookup in routing configuration
-            var realms=config.routes.realms;
+            var realms=config.diameterConfig.routeMap;
             var peerConfig=(realms[message.avps["Destination-Realm"]]||realms["*"]||{})[message.applicationId] || (realms[message.avps["Destination-Realm"]]||realms["*"]||{})["*"];
             if(peerConfig){
                 if(peerConfig["policy"]=="fixed") {

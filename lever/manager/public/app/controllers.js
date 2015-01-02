@@ -60,6 +60,16 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
 			if(peers) peers.push({"name":"New_peer", "diameterHost":"-"});
 		};
 
+        // Adds a new entry in the routing table
+        $scope.addRoute=function(){
+            var routes=$scope.diameterConfig["routes"].push({realm:"New_realm", applicationId:"New_ApplicationId", peers:[], policy:"fixed"});
+        };
+
+        // Deletes a route
+        $scope.deleteRoute=function(index){
+            var routes=$scope.diameterConfig["routes"].splice(index, 1);
+        };
+
         // Saves the diameterConfiguration
         $scope.updateDiameterConfig=function(){
             if(!$scope.diameterConfig) return;

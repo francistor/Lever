@@ -9,7 +9,7 @@ var dLogger=require("./log").dLogger;
 // called synchronously (sync=true), to be used on startup
 var createConfig=function(){
 
-    var config={"diameterConfig":null, "dispatcher":null, "dictionary":null, "routes":null};
+    var config={"diameterConfig":null, "dispatcher":null, "dictionary":null};
 
     // Updates basic Diameter configuration
     // Callback expects a single error parameter
@@ -20,23 +20,21 @@ var createConfig=function(){
            }
            else{
                config.diameterConfig=diameterConfig;
+
+               // Hook route map
+               var appConfig;
+               var routeMap={};
+               var routes=config.diameterConfig.routes;
+               if(routes) for(var i=0; i<routes.length; i++){
+                   appConfig={peers:routes[i]["peers"], policy:routes[i].policy};
+                   if(!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]]={};
+                   routeMap[routes[i]["realm"]][routes[i]["applicationId"]]=appConfig;
+               }
+               config.diameterConfig.routeMap=routeMap;
+
                if(callback) callback(null);
            }
        });
-    };
-
-    // Updates routing configuration
-    // Callback expects a single error parameter
-    config.readRoutes=function(callback){
-        backendConfig.getRouteConfiguration(function(err, routeConfig){
-            if(err){
-                if(callback) callback(err);
-            }
-            else{
-                config.routes=routeConfig;
-                if(callback) callback(null);
-            }
-        });
     };
 
     // Updates the dispatcher configuration
@@ -243,13 +241,13 @@ var createConfig=function(){
     // Reads all configuration and invokes callback when finished
     // TODO: replace by promises
     config.readAll=function(callback){
-        var diameterConfigurationError=null, dictionaryError=null, dispatcherError=null, routesError=null;
-        var diameterConfigurationFinished=false, dictionaryFinished=false, dispatcherFinished=false, routesFinished=false;
+        var diameterConfigurationError=null, dictionaryError=null, dispatcherError=null;
+        var diameterConfigurationFinished=false, dictionaryFinished=false, dispatcherFinished=false;
 
         // Helper function. To invoke callback just once
         var checkReady=function(callback){
-            if(diameterConfigurationFinished && dictionaryFinished && dispatcherFinished && routesFinished)
-                callback(diameterConfigurationError || dictionaryError || dispatcherError || routesError);
+            if(diameterConfigurationFinished && dictionaryFinished && dispatcherFinished)
+                callback(diameterConfigurationError || dictionaryError || dispatcherError);
         };
 
         config.readDiameterConfiguration(function(err){
@@ -257,14 +255,6 @@ var createConfig=function(){
             if(err){
                 diameterConfigurationError=err;
                 dLogger.error("Error reading Diameter configuration: "+err.message);
-            }
-            checkReady(callback);
-        });
-        config.readRoutes(function(err){
-            routesFinished=true;
-            if(err){
-                routesError=err;
-                dLogger.error("Error reading routes configuration: "+err.message);
             }
             checkReady(callback);
         });

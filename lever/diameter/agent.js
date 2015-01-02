@@ -23,12 +23,6 @@ var createAgent=function(diameterServer){
         res.json({});
     });
 
-    httpServer.get("/agent/updateRoutes", function(req, res){
-        mLogger.debug("Reloading routing configuration");
-        config.readRoutes();
-        res.json({});
-    });
-
     httpServer.get("/agent/updateDispatcherConfig", function(req, res){
         mLogger.debug("Reloading dispatcher configuration");
         config.readDispatcher();

@@ -2,16 +2,10 @@ conn=new Mongo();
 db=conn.getDB("leverConfig");
 
 print("----------------------------------");
-print("Deleting Database leverConfig");
-print("----------------------------------");
-
-db.dropDatabase();
-print("done");
-print("");
-
-print("----------------------------------");
 print("Creating diameterConfig");
 print("----------------------------------");
+
+db.diameterConfig.drop();
 
 var diameterConfigSamsung=
 {
@@ -37,14 +31,29 @@ var diameterConfigSamsung=
             "name": "8950AAA-samsung",
             "diameterHost": "8950AAA",
             "IPAddress": "192.168.1.101:13868",
-            "connectionPolicy": "active"
+            "connectionPolicy": "active",
+            "watchdogInterval": 10000
         },
         {
             "name": "lever-toshiba",
             "diameterHost": "lever-toshiba",
             "IPAddress": "192.168.1.102:3868",
-            "connectionPolicy": "active"
+            "connectionPolicy": "active",
+            "watchdogInterval": 10000
         }
+    ],
+
+    "routes2": {
+        "*":{
+            "*":{
+                "peers": ["8950AAA"],
+                "policy": "fixed"
+            }
+        }
+    },
+
+    "routes": [
+        {"realm": "*", "applicationId":"*", "peers": ["8950AAA"], "policy":"fixed"}
     ],
 
     "management":{
@@ -77,15 +86,30 @@ var diameterConfigToshiba=
                 "name": "8950AAA-toshiba",
                 "diameterHost": "8950AAA",
                 "IPAddress": "192.168.1.102:13868",
-                "connectionPolicy": "active"
+                "connectionPolicy": "active",
+                "watchdogInterval": 10000
             },
             {
                 "name": "lever-samsung",
                 "diameterHost": "lever-samsung",
                 "IPAddress": "192.168.1.101:3868",
-                "connectionPolicy": "active"
+                "connectionPolicy": "active",
+                "watchdogInterval": 10000
             }
         ],
+
+    "routes2": {
+        "forward":{
+            "Credit-Control":{
+                "peers": ["lever-samsung", "8950AAA"],
+                "policy": "random"
+            }
+        }
+    },
+
+    "routes": [
+        {"realm": "forward", "applicationId":"Credit-Control", "peers": ["lever-samsung", "8950AAA"], "policy":"random"}
+    ],
 
     "management":{
         "IPAddress": "toshiba.jativa",
@@ -101,6 +125,8 @@ print("");
 print("----------------------------------");
 print("Creating Dispatcher configuration");
 print("----------------------------------");
+
+db.dispatcherConfig.drop();
 
 var dispatcherConfig=
 {
@@ -142,6 +168,8 @@ print("");
 print("----------------------------------");
 print("Creating Dictionary configuration");
 print("----------------------------------");
+
+db.dictionaryConfig.drop();
 
 var dictionaryConfig=
 {
@@ -515,39 +543,5 @@ var dictionaryConfig=
 };
 
 db.dictionaryConfig.insert(dictionaryConfig);
-print("done");
-print("");
-
-
-print("----------------------------------");
-print("Creating Routing table configuration");
-print("----------------------------------");
-
-var routeConfigSamsung={
-    "hostName": "samsung-jativa",
-    "realms": {
-        "toshiba":{
-            "Credit-Control":{
-                "peers": ["lever-toshiba", "8950AAA"],
-                "policy": "fixed"
-            }
-        }
-    }
-};
-
-var routeConfigToshiba={
-    "hostName": "frodriguezgpw7",
-    "realms": {
-        "samsung":{
-            "Credit-Control":{
-                "peers": ["lever-samsung", "8950AAA"],
-                "policy": "fixed"
-            }
-        }
-    }
-};
-
-db.routeConfig.insert(routeConfigSamsung);
-db.routeConfig.insert(routeConfigToshiba);
 print("done");
 print("");

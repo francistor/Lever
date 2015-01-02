@@ -60,3 +60,4 @@ managerApp.factory("niceAlert", function(){
         }
     }
 });
+
