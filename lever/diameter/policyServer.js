@@ -7,16 +7,19 @@ var net=require("net");
 var dLogger=require("./log").dLogger;
 var logMessage=require("./log").logMessage;
 var config=require("./config").config;
-var createConnection=require("./connection").createConnection;
+var createConnection=require("./diameterConnection").createConnection;
 var createMessage=require("./message").createMessage;
 var stats=require("./stats").stats;
 var createAgent=require("./agent").createAgent;
 
 // Singleton
-var createDiameterServer=function(){
+var createPolicyServer=function(){
     
-    // State machine
+    // Diameter Server
     var diameterServer={};
+
+    // Radius server
+    var radiusServer={};
 
     // Peer table
     // Entries as {<diameterHost>: <connection object>}
@@ -24,16 +27,14 @@ var createDiameterServer=function(){
 
     // Reference to messages sent and waiting for answer
     // Holds a reference to the callback function and timer for each destinationHost+HopByHopID
-    var requestPointers={};
+    var diameterRequestPointers={};
 
-    // TODO: Test routing using * as realm and as application-id
-    // TODO: Test fixed and random policies
-    /** Returns the appropriate connection
+    /** Returns the appropriate diameter connection
      *
      * @param message
      * @returns peerConnectionsEntry
      */
-    var findConnection=function(message){
+    diameterServer.findConnection=function(message){
         var i;
         
         // If Destination-Host is present, use it
@@ -128,10 +129,10 @@ var createDiameterServer=function(){
         } else {
             dLogger.debug("Message is Response");
             stats.incrementClientResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
-            requestPointer=requestPointers[connection.diameterHost+"."+message.hopByHopId];
+            requestPointer=diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
             if(requestPointer) {
                 clearTimeout(requestPointer.timer);
-                delete requestPointers[connection.diameterHost+"."+message.hopByHopId];
+                delete diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
                 dLogger.debug("Executing callback");
                 requestPointer.callback(null, message);
             } else{
@@ -191,7 +192,7 @@ var createDiameterServer=function(){
         }
 
         // Route Message if no connection was specified
-        if(!connection) connection=findConnection(message);
+        if(!connection) connection=diameterServer.findConnection(message);
 
         if(connection) {
             if(message.applicationId!=="Base" && connection.getState()!=="Open"){
@@ -202,9 +203,9 @@ var createDiameterServer=function(){
                 if(dLogger["inVerbose"]) logMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
                 connection.write(message.encode());
                 stats.incrementClientRequest(connection.diameterHost, message.commandCode);
-                requestPointers[connection.diameterHost+"."+message.hopByHopId] = {
+                diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId] = {
                     "timer": setTimeout(function () {
-                        delete requestPointers[connection.diameterHost+"."+message.hopByHopId];
+                        delete diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
                         stats.incrementClientError(connection.diameterHost, message.commandCode);
                         callback(new Error("timeout"), null);
                     }, timeout),
@@ -300,6 +301,11 @@ var createDiameterServer=function(){
     };
 
     ///////////////////////////////////////////////////////////////////////////
+    // Radius functions
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////////////////////////////////////////////////////////////
     // Instrumentation
     ///////////////////////////////////////////////////////////////////////////
     diameterServer.getPeerStatus=function(){
@@ -315,6 +321,8 @@ var createDiameterServer=function(){
     ///////////////////////////////////////////////////////////////////////////
 
     var diameterSocket;
+    var radiusAuthSocket;
+    var radiusAcctSocket;
 
     // Read configuration and initialize
     config.readAll(function(err){
@@ -328,29 +336,31 @@ var createDiameterServer=function(){
             // Initialization
             ////////////////////////////////////////////
 
-            // Create Listener on Diameter port (or configured)
+            // Diameter
+
+            // Create Listener on Diameter port
             diameterSocket=net.createServer();
-
             diameterSocket.on("connection", diameterServer.onConnectionReceived);
-
             diameterSocket.listen(config.node.diameter.port||3868);
             dLogger.info("Diameter listening in port "+config.node.diameter.port);
-
-            // Create management HTTP server
-            createAgent(diameterServer);
 
             // Establish outgoing connections
             diameterServer.manageConnections();
 
             // Set timer for periodically checking connections
             setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
+
+            // Create management HTTP server
+            createAgent(diameterServer, radiusServer);
+
+            // Radius
+
         }
     });
 
-    return diameterServer;
 };
 
-exports.diameterServer=createDiameterServer();
+createPolicyServer();
 
 
 
