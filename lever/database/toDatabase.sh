@@ -1,2 +1,2 @@
-mongo diameterConfig.js
+mongo baseConfig.js
 mongo serviceConfig.js

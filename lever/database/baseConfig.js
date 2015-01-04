@@ -2,59 +2,63 @@ conn=new Mongo();
 db=conn.getDB("leverConfig");
 
 print("----------------------------------");
-print("Creating diameterConfig");
+print("Creating nodes configuration");
 print("----------------------------------");
 
-db.diameterConfig.drop();
+db.nodes.drop();
 
-var diameterConfigSamsung=
+var diameterSamsung=
 {
     "_version": 1001,
 	"hostName": "samsung-jativa",
-    "IPAddress-not-used": "127.0.0.1",
-    "port": 3868,
-    "diameterHost": "lever-samsung",
-    "diameterRealm": "samsung",
-    "vendorId": 1101,
-    "productName": "Lever",
-    "firmwareRevision": 1,
-    "connectionInterval": 10000,
-    "peers":
-    [
-        {
-            "name": "diameterTool",
-            "diameterHost": "diameterTool",
-            "IPAddress": "127.0.0.1:3868",
-            "connectionPolicy": "passive"
-        },
-        {
-            "name": "8950AAA-samsung",
-            "diameterHost": "8950AAA",
-            "IPAddress": "192.168.1.101:13868",
-            "connectionPolicy": "active",
-            "watchdogInterval": 10000
-        },
-        {
-            "name": "lever-toshiba",
-            "diameterHost": "lever-toshiba",
-            "IPAddress": "192.168.1.102:3868",
-            "connectionPolicy": "active",
-            "watchdogInterval": 10000
-        }
-    ],
 
-    "routes2": {
-        "*":{
-            "*":{
-                "peers": ["8950AAA"],
-                "policy": "fixed"
-            }
-        }
+    "radius": {
+        "_version": 1001,
+        "IPAddress": 0,
+        "authPort": 1812,
+        "acctPort": 1813,
+
+        "clients": [
+            {"name": "mybigcient", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+        ]
     },
 
-    "routes": [
-        {"realm": "*", "applicationId":"*", "peers": ["8950AAA"], "policy":"fixed"}
-    ],
+    "diameter": {
+        "IPAddress-not-used": "127.0.0.1",
+        "port": 3868,
+        "diameterHost": "lever-samsung",
+        "diameterRealm": "samsung",
+        "vendorId": 1101,
+        "productName": "Lever",
+        "firmwareRevision": 1,
+        "connectionInterval": 10000,
+        "peers": [
+            {
+                "name": "diameterTool",
+                "diameterHost": "diameterTool",
+                "IPAddress": "127.0.0.1:3868",
+                "connectionPolicy": "passive"
+            },
+            {
+                "name": "8950AAA-samsung",
+                "diameterHost": "8950AAA",
+                "IPAddress": "192.168.1.101:13868",
+                "connectionPolicy": "active",
+                "watchdogInterval": 10000
+            },
+            {
+                "name": "lever-toshiba",
+                "diameterHost": "lever-toshiba",
+                "IPAddress": "192.168.1.102:3868",
+                "connectionPolicy": "active",
+                "watchdogInterval": 10000
+            }
+        ],
+
+        "routes": [
+            {"realm": "*", "applicationId": "*", "peers": ["8950AAA"], "policy": "fixed"}
+        ]
+    },
 
     "management":{
         "IPAddress": "samsung.jativa",
@@ -62,20 +66,32 @@ var diameterConfigSamsung=
     }
 };
 
-var diameterConfigToshiba=
+var diameterToshiba=
 {
     "_version": 1001,
     "hostName": "frodriguezgpw7",
-    "IPAddress-not-used": "127.0.0.1",
-    "port": 3868,
-    "diameterHost": "lever-toshiba",
-    "diameterRealm": "toshiba",
-    "vendorId": 1101,
-    "productName": "Lever",
-    "firmwareRevision": 1,
-    "connectionInterval": 10000,
-    "peers":
-        [
+
+    "radius": {
+        "_version": 1001,
+        "IPAddress": 0,
+        "authPort": 1812,
+        "acctPort": 1813,
+
+        "clients": [
+            {"name": "mybigclient", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+        ]
+    },
+
+    "diameter": {
+        "IPAddress-not-used": "127.0.0.1",
+        "port": 3868,
+        "diameterHost": "lever-toshiba",
+        "diameterRealm": "toshiba",
+        "vendorId": 1101,
+        "productName": "Lever",
+        "firmwareRevision": 1,
+        "connectionInterval": 10000,
+        "peers": [
             {
                 "name": "diameterTool",
                 "diameterHost": "diameterTool",
@@ -98,18 +114,10 @@ var diameterConfigToshiba=
             }
         ],
 
-    "routes2": {
-        "forward":{
-            "Credit-Control":{
-                "peers": ["lever-samsung", "8950AAA"],
-                "policy": "random"
-            }
-        }
+        "routes": [
+            {"realm": "forward", "applicationId": "Credit-Control", "peers": ["lever-samsung", "8950AAA"], "policy": "random"}
+        ]
     },
-
-    "routes": [
-        {"realm": "forward", "applicationId":"Credit-Control", "peers": ["lever-samsung", "8950AAA"], "policy":"random"}
-    ],
 
     "management":{
         "IPAddress": "toshiba.jativa",
@@ -117,8 +125,8 @@ var diameterConfigToshiba=
     }
 };
 
-db.diameterConfig.insert(diameterConfigSamsung);
-db.diameterConfig.insert(diameterConfigToshiba);
+db.nodes.insert(diameterSamsung);
+db.nodes.insert(diameterToshiba);
 print("done");
 print("");
 
@@ -126,9 +134,9 @@ print("----------------------------------");
 print("Creating Dispatcher configuration");
 print("----------------------------------");
 
-db.dispatcherConfig.drop();
+db.dispatcher.drop();
 
-var dispatcherConfig=
+var dispatcher=
 {
 	"_version": 1001,
 	"dispatcher":{
@@ -161,7 +169,7 @@ var dispatcherConfig=
 	}
 };
 
-db.dispatcherConfig.insert(dispatcherConfig);
+db.dispatcher.insert(dispatcher);
 print("done");
 print("");
 
@@ -169,9 +177,9 @@ print("----------------------------------");
 print("Creating Dictionary configuration");
 print("----------------------------------");
 
-db.dictionaryConfig.drop();
+db.diameterDictionary.drop();
 
-var dictionaryConfig=
+var diameterDictionary=
 {
 	"_version": 1001,
 	"vendor":
@@ -542,6 +550,6 @@ var dictionaryConfig=
 	]
 };
 
-db.dictionaryConfig.insert(dictionaryConfig);
+db.diameterDictionary.insert(diameterDictionary);
 print("done");
 print("");

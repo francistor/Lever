@@ -42,7 +42,7 @@ var createDiameterServer=function(){
         // Otherwise, route based on Destination-Realm
         else if(message.avps["Destination-Realm"]){
             // Lookup in routing configuration
-            var realms=config.diameterConfig.routeMap;
+            var realms=config.node.diameter.routeMap;
             var peerConfig=(realms[message.avps["Destination-Realm"]]||realms["*"]||{})[message.applicationId] || (realms[message.avps["Destination-Realm"]]||realms["*"]||{})["*"];
             if(peerConfig){
                 if(peerConfig["policy"]=="fixed") {
@@ -104,7 +104,7 @@ var createDiameterServer=function(){
             dLogger.debug("");
         }
 
-        if(dLogger["inVerbose"]) logMessage(connection.diameterHost, config.diameterConfig["diameterHost"], message);
+        if(dLogger["inVerbose"]) logMessage(connection.diameterHost, config.node.diameter["diameterHost"], message);
 
         if (message.isRequest) {
             // Handle message if there is a handler configured for this type of request
@@ -159,7 +159,7 @@ var createDiameterServer=function(){
             stats.incrementServerError(connection.diameterHost, message.commandCode);
         }
         else try {
-            if(dLogger["inVerbose"]) logMessage(config.diameterConfig["diameterHost"], connection.diameterHost, message);
+            if(dLogger["inVerbose"]) logMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
             connection.write(message.encode());
             stats.incrementServerResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
         }
@@ -199,7 +199,7 @@ var createDiameterServer=function(){
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
             }
             else try {
-                if(dLogger["inVerbose"]) logMessage(config.diameterConfig["diameterHost"], connection.diameterHost, message);
+                if(dLogger["inVerbose"]) logMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
                 connection.write(message.encode());
                 stats.incrementClientRequest(connection.diameterHost, message.commandCode);
                 requestPointers[connection.diameterHost+"."+message.hopByHopId] = {
@@ -235,8 +235,8 @@ var createDiameterServer=function(){
         var i;
         
         // Iterate through peers and check if a new connection has to be established
-        for(i=0; i<config.diameterConfig["peers"].length; i++){
-            var peer=config.diameterConfig["peers"][i];
+        for(i=0; i<config.node.diameter["peers"].length; i++){
+            var peer=config.node.diameter["peers"][i];
 
             // Make sure entry exists in peer table
             if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"], peer["dwrInterval"]);
@@ -252,8 +252,8 @@ var createDiameterServer=function(){
         var found;
         for(var diameterHost in peerConnections) if(peerConnections.hasOwnProperty(diameterHost)){
             found=false;
-            for(i=0; i<config.diameterConfig["peers"].length; i++){
-                if(config.diameterConfig["peers"][i]["diameterHost"]==diameterHost){
+            for(i=0; i<config.node.diameter["peers"].length; i++){
+                if(config.node.diameter["peers"][i]["diameterHost"]==diameterHost){
                     found=true;
                     break;
                 }
@@ -276,9 +276,9 @@ var createDiameterServer=function(){
         // Look for Origin-Host in peer table
         var peer=null;
         var i;
-        for(i=0; i<config.diameterConfig["peers"].length; i++) if(config.diameterConfig["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]){
+        for(i=0; i<config.node.diameter["peers"].length; i++) if(config.node.diameter["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]){
             // Peer found
-            peer=config.diameterConfig["peers"][i];
+            peer=config.node.diameter["peers"][i];
 
             // Make sure that entry exist in peer table, or create it otherwise
             if(!peerConnections[peer["diameterHost"]]) peerConnections[peer["diameterHost"]]=createConnection(diameterServer, peer["diameterHost"], peer["dwrInterval"]);
@@ -333,8 +333,8 @@ var createDiameterServer=function(){
 
             diameterSocket.on("connection", diameterServer.onConnectionReceived);
 
-            diameterSocket.listen(config.diameterConfig.port||3868);
-            dLogger.info("Diameter listening in port "+config.diameterConfig.port);
+            diameterSocket.listen(config.node.diameter.port||3868);
+            dLogger.info("Diameter listening in port "+config.node.diameter.port);
 
             // Create management HTTP server
             createAgent(diameterServer);
@@ -343,7 +343,7 @@ var createDiameterServer=function(){
             diameterServer.manageConnections();
 
             // Set timer for periodically checking connections
-            setInterval(diameterServer.manageConnections, config.diameterConfig["connectionInterval"]||10000);
+            setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
         }
     });
 

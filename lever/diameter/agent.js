@@ -14,8 +14,8 @@ var createAgent=function(diameterServer){
     httpServer.use(bodyParser.json());
 
     // Start server
-    httpServer.listen(config.diameterConfig["management"]["httpPort"]);
-    mLogger.info("HTTP manager listening on port "+config.diameterConfig["management"]["httpPort"]);
+    httpServer.listen(config.node["management"]["httpPort"]);
+    mLogger.info("HTTP manager listening on port "+config.node["management"]["httpPort"]);
 
     httpServer.get("/agent/updateDiameterConfig", function(req, res){
         mLogger.debug("Reloading diameter configuration");

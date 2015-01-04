@@ -51,7 +51,7 @@ var nextEndToEndId=(new Date().getTime() % 65535)+Math.floor(Math.random()*10485
 // }
 
 function createMessage(request){
-    var dictionary=config.dictionary;
+    var dictionary=config.diameterDictionary;
 
 	var message={};
 	message.avps={};
@@ -212,7 +212,7 @@ function createMessage(request){
 	// encode method
 	// Returns a buffer with the binary contents, to be sent to the wire
 	message.encode=function(){
-        var dictionary=config.dictionary;
+        var dictionary=config.diameterDictionary;
 		
 		var buff=new Buffer(INITIAL_BUFF_LEN);
 		var commandCode, applicationId;
@@ -267,7 +267,7 @@ function createMessage(request){
 			var avpName;
 			var initialPtr=ptr;
 			for(avpName in root) if(root.hasOwnProperty(avpName)) {
-                if(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true ) isMandatory=true; else isMandatory=false;
+                isMandatory = !!(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true);
                 if (Array.isArray(root[avpName])) for (i = 0; i < root[avpName].length; i++) {
                     ptr += encodeAVP(ptr, avpName, root[avpName][i], isMandatory);
                 } else {

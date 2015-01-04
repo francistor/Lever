@@ -13,7 +13,7 @@ var createDatabaseConfig=function(){
 
     var databaseConfig={};
 
-    // Updates the diameter configuration for the config object
+    // Updates the node configuration for the config object
     // updaterFunction(err, diameterConfig)
     databaseConfig.getConfigurationItem=function(collectionName, filter, updaterFunction){
         Db.connect(dbParams["databaseURL"], dbParams["databaseOptions"], function(err, db){
@@ -34,20 +34,16 @@ var createDatabaseConfig=function(){
         });
     };
 
-    databaseConfig.getDiameterConfiguration=function(updaterFunction){
-        databaseConfig.getConfigurationItem("diameterConfig", {"hostName": hostName}, updaterFunction);
-    };
-
-    databaseConfig.getRouteConfiguration=function(updaterFunction){
-        databaseConfig.getConfigurationItem("routeConfig", {"hostName": hostName}, updaterFunction);
+    databaseConfig.getNodeConfiguration=function(updaterFunction){
+        databaseConfig.getConfigurationItem("nodes", {"hostName": hostName}, updaterFunction);
     };
 
     databaseConfig.getDispatcherConfiguration=function(updaterFunction){
-        databaseConfig.getConfigurationItem("dispatcherConfig", {}, updaterFunction);
+        databaseConfig.getConfigurationItem("dispatcher", {}, updaterFunction);
     };
 
-    databaseConfig.getDictionaryConfiguration=function(updaterFunction){
-        databaseConfig.getConfigurationItem("dictionaryConfig", {}, updaterFunction);
+    databaseConfig.getDiameterDictionary=function(updaterFunction){
+        databaseConfig.getConfigurationItem("diameterDictionary", {}, updaterFunction);
     };
 
     return databaseConfig;

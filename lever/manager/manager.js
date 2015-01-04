@@ -45,7 +45,7 @@ mApp.use("/dyn", function (req, res, next){
 // Node middleware. Operations that are node specific
 mApp.use("/dyn/node/:hostName/", function (req, res, next){
     var hostName=req.params.hostName;
-    configDB.collection("diameterConfig").findOne({hostName: req.params.hostName}, {}, config["queryOptions"], function(err, item){
+    configDB.collection("nodes").findOne({hostName: req.params.hostName}, {}, config["queryOptions"], function(err, item){
         if(err){
             res.status(500).send(err.message);
         } else {
@@ -83,7 +83,7 @@ mApp.get("/", function(req,res){
 
 // Get list of nodes
 mApp.get("/dyn/config/nodeList", function(req, res){
-    configDB.collection("diameterConfig").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
+    configDB.collection("nodes").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
         if(!err){
             var nodeList=[];
             docs.forEach(function(doc){nodeList.push(doc.hostName);});
@@ -94,24 +94,24 @@ mApp.get("/dyn/config/nodeList", function(req, res){
 });
 
 // Reads diameter configuration
-mApp.get("/dyn/node/:hostName/diameterConfiguration", function(req, res) {
+mApp.get("/dyn/node/:hostName/nodeConfiguration", function(req, res) {
     res.json(req.serverConfig);
 });
 
-// Updates diameter configuration (_id based)
-mApp.post("/dyn/config/diameterConfiguration", function(req, res){
+// Updates node configuration (_id based)
+mApp.post("/dyn/config/nodeConfiguration", function(req, res){
     req.body._id=ObjectID.createFromHexString(req.body._id);
-    configDB.collection("diameterConfig").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+    configDB.collection("nodes").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
         if(!err && result===1){
-            logger.info("Updated diameter configuration");
+            logger.info("Updated node configuration");
             res.json({});
         }
         else if(result===0){
-            logger.error("Error updating diameter configuration: Data was modified by another user");
+            logger.error("Error updating node configuration: Data was modified by another user");
             res.status(500).send("Configuration modified by another user");
         }
         else{
-            logger.error("Error updating diameter configuration: "+err.message);
+            logger.error("Error updating node configuration: "+err.message);
             res.status(500).send(err.message);
         }
     });
@@ -119,7 +119,7 @@ mApp.post("/dyn/config/diameterConfiguration", function(req, res){
 
 // Reads diameter dictionary
 mApp.get("/dyn/config/diameterDictionary", function(req, res){
-    configDB.collection("dictionaryConfig").findOne({}, {}, config["queryOptions"], function(err, item){
+    configDB.collection("diameterDictionary").findOne({}, {}, config["queryOptions"], function(err, item){
         if(!err){
             if(item) res.json(item);else res.status(500).send("Error: dictionary not found");
         }
@@ -130,7 +130,7 @@ mApp.get("/dyn/config/diameterDictionary", function(req, res){
 // Updates diameter dictionary
 mApp.post("/dyn/config/diameterDictionary", function(req, res){
     req.body._id=ObjectID.createFromHexString(req.body._id);
-    configDB.collection("dictionaryConfig").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+    configDB.collection("diameterDictionary").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
         if(!err && result===1){
             logger.info("Updated diameter dictionary");
             res.json({});

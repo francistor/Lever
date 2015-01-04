@@ -23,65 +23,56 @@ managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAle
 }]);
 	
 // Diameter configuration
-managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
+managerControllers.controller("NodeConfigController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
 
-		$scope.diameterConfig={};
+		$scope.nodeConfig={};
         $scope.isDisabled=false;
 
         // Get diameterConfig
         $http({
             method  : 'GET',
-            url     : "/dyn/node/"+$routeParams.hostName+"/diameterConfiguration",
+            url     : "/dyn/node/"+$routeParams.hostName+"/nodeConfiguration",
             timeout: requestTimeout
         }).success(function(data){
-            $scope.diameterConfig=data;
+            $scope.nodeConfig=data;
         }).error(function(data, status, headers, config, statusText){
             // Shows inline error message
             niceAlert.error(data);
         });
 
-		// Deletes the peer with the specified originHost
-		$scope.deletePeer=function(name){
-			var peers=$scope.diameterConfig["peers"];
-			if(!peers) return;
-			
-			var i;
-			for(i=0; i<peers.length; i++){
-				if(peers[i].name===name){
-					peers.splice(i, 1);
-					break;
-				}
-			}
+		// Deletes the peer with the specified index
+		$scope.deletePeer=function(index){
+            $scope.nodeConfig.diameter["peers"].splice(index, 1);
 		};
 		
 		// Adds a new, empty peer
 		$scope.addPeer=function(){
-			var peers=$scope.diameterConfig["peers"];
+			var peers=$scope.nodeConfig.diameterConfig["peers"];
 			if(peers) peers.push({"name":"New_peer", "diameterHost":"-"});
 		};
 
         // Adds a new entry in the routing table
         $scope.addRoute=function(){
-            var routes=$scope.diameterConfig["routes"].push({realm:"New_realm", applicationId:"New_ApplicationId", peers:[], policy:"fixed"});
+            $scope.nodeConfig.diameter["routes"].push({realm:"New_realm", applicationId:"New_ApplicationId", peers:[], policy:"fixed"});
         };
 
         // Deletes a route
         $scope.deleteRoute=function(index){
-            var routes=$scope.diameterConfig["routes"].splice(index, 1);
+            $scope.nodeConfig.diameter["routes"].splice(index, 1);
         };
 
-        // Saves the diameterConfiguration
-        $scope.updateDiameterConfig=function(){
-            if(!$scope.diameterConfig) return;
+        // Saves the node
+        $scope.updateNodeConfig=function(){
+            if(!$scope.nodeConfig) return;
             $scope.isDisabled=true;
 
             // Update version of diameter config
-            $scope.diameterConfig["_version"]++;
+            $scope.nodeConfig["_version"]++;
             // Post update
             $http({
                 method  : 'POST',
-                url     : "/dyn/config/diameterConfiguration",
-                data    : $scope.diameterConfig,
+                url     : "/dyn/config/nodeConfiguration",
+                data    : $scope.nodeConfig,
                 timeout: requestTimeout
             }).success(function(data){
                 niceAlert.info("Configuration updated.");
@@ -90,14 +81,21 @@ managerControllers.controller("DiameterConfigController", ['$scope', '$http', '$
                 niceAlert.error(data);
             });
         };
-		
-		$scope.showJSON=function(){
-			alert(JSON.stringify($scope.diameterConfig, undefined, 2));
-		}
+
+        // Deletes the radius client with the specified index
+        $scope.deleteClient=function(index){
+            $scope.nodeConfig.radius["clients"].splice(index, 1);
+        };
+
+        // Adds a new, empty radius client
+        $scope.addClient=function(){
+            var clients=$scope.nodeConfig.radius["clients"];
+            if(clients) clients.push({"name":"New_Client", "IPAddress":"127.0.0.1", "secret":"secret", "class": ""});
+        };
 	}]);
 
 // Diameter Dictionary
-managerControllers.controller("DiameterDictionaryController", ['$scope', '$http', function($scope, $http){
+managerControllers.controller("DiameterDictionaryController", ['$scope', '$http', 'niceAlert', function($scope, $http, $niceAlert){
 
     $scope.diameterDictionary={};
     $scope.vendors=[];

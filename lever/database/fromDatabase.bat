@@ -1,14 +1,14 @@
 @echo off
 
-call mongoexport --db leverConfig --collection diameterConfig --query {'hostName':'frodriguezgpw7'} --out diameter.json > out.txt
-call node prettyprint.js diameter.json > ../diameter/conf/diameter.json
-call del diameter.json
+call mongoexport --db leverConfig --collection nodes --query {'hostName':'frodriguezgpw7'} --out nodes.json > out.txt
+call node prettyprint.js nodes.json > ../diameter/conf/nodes.json
+call del nodes.json
 
-call mongoexport --db leverConfig --collection dictionaryConfig --out dictionary.json >> out.txt
-call node prettyprint.js dictionary.json > ../diameter/conf/dictionary.json
-call del dictionary.json
+call mongoexport --db leverConfig --collection diameterDictionary --out diameterDictionary.json >> out.txt
+call node prettyprint.js diameterDictionary.json > ../diameter/conf/diameterDictionary.json
+call del diameterDictionary.json
 
-call mongoexport --db leverConfig --collection dispatcherConfig --out dispatcher.json >> out.txt
+call mongoexport --db leverConfig --collection dispatcher --out dispatcher.json >> out.txt
 call node prettyprint.js dispatcher.json > ../diameter/conf/dispatcher.json
 call del dispatcher.json
 

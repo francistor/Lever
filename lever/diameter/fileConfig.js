@@ -6,37 +6,18 @@ var createFileConfig=function(){
 
     var fileConfig={};
 
-    // Updates the diameter configuration for the config object
+    // Updates the node configuration for the config object
     // updaterFunction(err, diameterConfig)
-    fileConfig.getDiameterConfiguration=function(updaterFunction){
+    fileConfig.getNodeConfiguration=function(updaterFunction){
         var diameterConfig;
-        fs.readFile("./conf/diameter.json", {encoding: "utf8"}, function(err, data){
+        fs.readFile("./conf/node.json", {encoding: "utf8"}, function(err, data){
             if(err){
                 updaterFunction(err, null);
             }
             else{
                 try{
-                    diameterConfig=JSON.parse(data);
-                    updaterFunction(null, diameterConfig);
-                }catch(e){
-                    updaterFunction(e, null);
-                }
-            }
-        });
-    };
-
-    // Updates the routing configuration for the config object
-    // updaterFunction(err, routeConfig)
-    fileConfig.getRouteConfiguration=function(updaterFunction){
-        var routeConfig;
-        fs.readFile("./conf/routes.json", {encoding: "utf8"}, function(err, data){
-            if(err){
-                updaterFunction(err, null);
-            }
-            else{
-                try{
-                    diameterConfig=JSON.parse(data);
-                    updaterFunction(null, routeConfig);
+                    nodeConfig=JSON.parse(data);
+                    updaterFunction(null, nodeConfig);
                 }catch(e){
                     updaterFunction(e, null);
                 }
@@ -65,9 +46,9 @@ var createFileConfig=function(){
 
     // Updates the dictionary configuration for the config object
     // updaterFunction(err, dictionary)
-    fileConfig.getDictionaryConfiguration=function(updaterFunction){
+    fileConfig.getDiameterDictionary=function(updaterFunction){
         var dictionary;
-        fs.readFile("./conf/dictionary.json", {encoding: "utf8"}, function(err, data){
+        fs.readFile("./conf/diameterDictionary.json", {encoding: "utf8"}, function(err, data){
             if(err){
                 updaterFunction(err, null);
             }

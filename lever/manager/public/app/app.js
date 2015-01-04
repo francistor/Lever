@@ -5,7 +5,7 @@ managerApp.config(['$routeProvider',
     $routeProvider.
       when('/node/:hostName', {
         templateUrl: 'partials/node.html',
-        controller: 'DiameterConfigController'
+        controller: 'NodeConfigController'
       }).when('/nodeStats/:hostName', {
           templateUrl: 'partials/nodeStats.html',
           controller: 'NodeStatsController'

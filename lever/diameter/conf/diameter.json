@@ -1,6 +1,6 @@
 {
   "_id": {
-    "$oid": "54a54ea9c29b3d965c5f9a01"
+    "$oid": "54a6e819c51a6e049424c1d5"
   },
   "_version": 1001,
   "hostName": "frodriguezgpw7",
@@ -11,7 +11,7 @@
   "vendorId": 1101,
   "productName": "Lever",
   "firmwareRevision": 1,
-  "connectionInterval": 5000,
+  "connectionInterval": 10000,
   "peers": [
     {
       "name": "diameterTool",
@@ -23,13 +23,37 @@
       "name": "8950AAA-toshiba",
       "diameterHost": "8950AAA",
       "IPAddress": "192.168.1.102:13868",
-      "connectionPolicy": "active"
+      "connectionPolicy": "active",
+      "watchdogInterval": 10000
     },
     {
       "name": "lever-samsung",
       "diameterHost": "lever-samsung",
       "IPAddress": "192.168.1.101:3868",
-      "connectionPolicy": "active"
+      "connectionPolicy": "active",
+      "watchdogInterval": 10000
+    }
+  ],
+  "routes2": {
+    "forward": {
+      "Credit-Control": {
+        "peers": [
+          "lever-samsung",
+          "8950AAA"
+        ],
+        "policy": "random"
+      }
+    }
+  },
+  "routes": [
+    {
+      "realm": "forward",
+      "applicationId": "Credit-Control",
+      "peers": [
+        "lever-samsung",
+        "8950AAA"
+      ],
+      "policy": "random"
     }
   ],
   "management": {

@@ -9,7 +9,7 @@ var createMessage=require("./message").createMessage;
 var DEFAULT_TIMEOUT=10000;
 
 function getIPAddresses(){
-    var diameterConfig=config.diameterConfig;
+    var diameterConfig=config.node.diameter;
 
     var i;
     var ifzName, interfaces;
@@ -29,8 +29,8 @@ function getIPAddresses(){
 }
 
 var sendCER=function(connection){
-    var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
+    var diameterConfig=config.node.diameter;
+    var dictionary=config.diameterDictionary;
 
     var requestMessage=createMessage();
     var request=requestMessage.avps;
@@ -80,8 +80,8 @@ var sendCER=function(connection){
 
 var cerHandler=function(connection, message){
 
-    var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
+    var diameterConfig=config.node.diameter;
+    var dictionary=config.diameterDictionary;
 
     var replyMessage=createMessage(message);
 	var reply=replyMessage.avps;
@@ -122,8 +122,8 @@ var cerHandler=function(connection, message){
 };
 
 var sendDWR=function(connection){
-    var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
+    var diameterConfig=config.node.diameter;
+    var dictionary=config.diameterDictionary;
 
     var requestMessage=createMessage();
     var request=requestMessage.avps;
@@ -153,7 +153,7 @@ var sendDWR=function(connection){
 };
 
 var watchdogHandler=function(connection, message){
-    var diameterConfig=config.diameterConfig;
+    var diameterConfig=config.node.diameter;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;
@@ -170,7 +170,7 @@ var watchdogHandler=function(connection, message){
 
 
 var disconnectPeerHandler=function(connection, message){
-    var diameterConfig=config.diameterConfig;
+    var diameterConfig=config.node.diameter;
 
     var replyMessage=createMessage(message);
     var reply=replyMessage.avps;

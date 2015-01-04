@@ -1,3 +1,3 @@
 @echo off
-call mongo diameterConfig.js
+call mongo baseConfig.js
 call mongo serviceConfig.js

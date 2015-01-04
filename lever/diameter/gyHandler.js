@@ -7,8 +7,8 @@ var createMessage=require("./message").createMessage;
 
 var ccrHandler=function(connection, message){
 
-    var diameterConfig=config.diameterConfig;
-    var dictionary=config.dictionary;
+    var diameterConfig=config.node.diameter;
+    var dictionary=config.diameterDictionary;
 
     var proxyMessage=createMessage();
     var request=proxyMessage.avps;

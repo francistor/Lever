@@ -9,28 +9,28 @@ var dLogger=require("./log").dLogger;
 // called synchronously (sync=true), to be used on startup
 var createConfig=function(){
 
-    var config={"diameterConfig":null, "dispatcher":null, "dictionary":null};
+    var config={"node":null, "dispatcher":null, "diameterDictionary":null};
 
-    // Updates basic Diameter configuration
+    // Updates basic node configuration
     // Callback expects a single error parameter
-    config.readDiameterConfiguration=function(callback){
-       backendConfig.getDiameterConfiguration(function(err, diameterConfig){
+    config.readNodeConfiguration=function(callback){
+       backendConfig.getNodeConfiguration(function(err, nodeConfig){
            if(err){
                if(callback) callback(err);
            }
            else{
-               config.diameterConfig=diameterConfig;
+               config.node=nodeConfig;
 
                // Hook route map
                var appConfig;
                var routeMap={};
-               var routes=config.diameterConfig.routes;
+               var routes=config.node.diameter.routes;
                if(routes) for(var i=0; i<routes.length; i++){
                    appConfig={peers:routes[i]["peers"], policy:routes[i].policy};
                    if(!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]]={};
                    routeMap[routes[i]["realm"]][routes[i]["applicationId"]]=appConfig;
                }
-               config.diameterConfig.routeMap=routeMap;
+               config.node.diameter.routeMap=routeMap;
 
                if(callback) callback(null);
            }
@@ -109,14 +109,15 @@ var createConfig=function(){
     // }
     // Updates the dictionary object within the config object
     // Callback expects a single error parameter
-    config.readDictionary=function(callback) {
-        backendConfig.getDictionaryConfiguration(function(err, dictionary){
+    config.readDiameterDictionary=function(callback) {
+        backendConfig.getDiameterDictionary(function(err, dictionary){
             if(err){
-                config.dictionary={};
+                config.diameterDictionary={};
                 if(callback) callback(err);
             }
             else {
                 try {
+                    console.log("3");
                     // Add Maps (code map and name map)
                     // avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
                     // avpNameMap={<avpname>:{<avpDef>}, ...}
@@ -187,9 +188,7 @@ var createConfig=function(){
                     if(callback) callback(e);
                     return;
                 }
-
-                // Everything went well, replace dictionary
-                config.dictionary = dictionary;
+                config.diameterDictionary=dictionary;
                 //config.dumpDictionaryMaps();
                 if(callback) callback(null);
             }
@@ -241,24 +240,25 @@ var createConfig=function(){
     // Reads all configuration and invokes callback when finished
     // TODO: replace by promises
     config.readAll=function(callback){
-        var diameterConfigurationError=null, dictionaryError=null, dispatcherError=null;
-        var diameterConfigurationFinished=false, dictionaryFinished=false, dispatcherFinished=false;
+        var nodeConfigurationError=null, dictionaryError=null, dispatcherError=null;
+        var nodeConfigurationFinished=false, dictionaryFinished=false, dispatcherFinished=false;
 
         // Helper function. To invoke callback just once
         var checkReady=function(callback){
-            if(diameterConfigurationFinished && dictionaryFinished && dispatcherFinished)
-                callback(diameterConfigurationError || dictionaryError || dispatcherError);
+            if(nodeConfigurationFinished && dictionaryFinished && dispatcherFinished)
+                callback(nodeConfigurationError || dictionaryError || dispatcherError);
         };
 
-        config.readDiameterConfiguration(function(err){
-            diameterConfigurationFinished=true;
+        config.readNodeConfiguration(function(err){
+            nodeConfigurationFinished=true;
             if(err){
-                diameterConfigurationError=err;
-                dLogger.error("Error reading Diameter configuration: "+err.message);
+                nodeConfigurationError=err;
+                dLogger.error("Error reading node configuration: "+err.message);
             }
             checkReady(callback);
         });
-        config.readDictionary(function(err){
+
+        config.readDiameterDictionary(function(err){
             dictionaryFinished=true;
             if(err){
                 dictionaryError=err;
