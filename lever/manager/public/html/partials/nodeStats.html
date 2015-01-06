@@ -17,13 +17,31 @@
 </table>
 
 <br>
-<legend>Node statistics</legend>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="col-lg-6">
+            <legend>Diameter statistics</legend>
 
-<abn-tree
-        tree-data         = "stats"
-        icon-leaf         = ""
-        icon-expand       = "fa fa-plus"
-        icon-collapse     = "fa fa-minus"
-        on-select         = "">
-</abn-tree>
+            <abn-tree
+                    tree-data         = "diameterStats"
+                    icon-leaf         = ""
+                    icon-expand       = "fa fa-plus"
+                    icon-collapse     = "fa fa-minus"
+                    on-select         = "">
+            </abn-tree>
+        </div>
+        <div class="col-lg-6">
+            <legend>Radius statistics</legend>
+
+            <abn-tree
+                    tree-data         = "radiusStats"
+                    icon-leaf         = ""
+                    icon-expand       = "fa fa-plus"
+                    icon-collapse     = "fa fa-minus"
+                    on-select         = "">
+            </abn-tree>
+        </div>
+    </div>
+</div>
+
 

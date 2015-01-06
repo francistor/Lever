@@ -130,7 +130,8 @@ managerControllers.controller("DiameterDictionaryController", ['$scope', '$http'
 // Node statistics
 managerControllers.controller("NodeStatsController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
 
-    $scope.stats=[];
+    $scope.diameterStats=[];
+    $scope.radiusStats=[];
     $scope.connections=[];
 
     $http({
@@ -144,12 +145,19 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
         niceAlert.error(data);
     });
 
+    // Get diameter statistics
     $http({
         method  : 'GET',
         url     : "/dyn/node/"+$routeParams.hostName+"/agent/getDiameterStats",
         timeout: requestTimeout
     }).success(function(data){
 
+        // Need to compose a tree like this
+        /*
+        {label: <first level label>, children:[
+            {label: <second level label>, children:[...]}, ...
+            ]
+         */
         var originHost;
         var commandCode;
         var resultCode;
@@ -223,12 +231,125 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
             }
         }
 
-        $scope.stats.push(sReq);
-        $scope.stats.push(sRes);
-        $scope.stats.push(cReq);
-        $scope.stats.push(cRes);
-        $scope.stats.push(sErr);
-        $scope.stats.push(cErr);
+        $scope.diameterStats.push(sReq);
+        $scope.diameterStats.push(sRes);
+        $scope.diameterStats.push(cReq);
+        $scope.diameterStats.push(cRes);
+        $scope.diameterStats.push(sErr);
+        $scope.diameterStats.push(cErr);
+
+    }).error(function(data, status, headers, config, statusText){
+        // Shows inline error message
+        niceAlert.error(data);
+    });
+
+    // Get radius statistics
+    $http({
+        method  : 'GET',
+        url     : "/dyn/node/"+$routeParams.hostName+"/agent/getRadiusStats",
+        timeout: requestTimeout
+    }).success(function(data){
+
+        // Need to compose a tree like this
+        /*
+         {label: <first level label>, children:[
+         {label: <second level label>, children:[...]}, ...
+         ]
+         */
+        var clientName;
+        var ipAddress;
+
+        var sAccessRequests={label: "Server Access Requests", children:[]};
+        for(clientName in data.serverAccessRequests) if(data.serverAccessRequests.hasOwnProperty(clientName)){
+            sAccessRequests.children.push({label: clientName+" "+data.serverAccessRequests[clientName]});
+        }
+
+        var sAccessAccepts={label: "Server Access Accepts", children:[]};
+        for(clientName in data.serverAccessAccepts) if(data.serverAccessAccepts.hasOwnProperty(clientName)){
+            sAccessAccepts.children.push({label: clientName+" "+data.serverAccessAccepts[clientName]});
+        }
+
+        var sAccessRejects={label: "Server Access Rejects", children:[]};
+        for(clientName in data.serverAccessRejects) if(data.serverAccessRejects.hasOwnProperty(clientName)){
+            sAccessRejects.children.push({label: clientName+" "+data.serverAccessRejects[clientName]});
+        }
+
+        var sAccountingRequests={label: "Server Accounting Requests", children:[]};
+        for(clientName in data.serverAccountingRequests) if(data.serverAccountingRequests.hasOwnProperty(clientName)){
+            sAccountingRequests.children.push({label: clientName+" "+data.serverAccountingRequests[clientName]});
+        }
+
+        var sAccountingResponses={label: "Server Accounting Responses", children:[]};
+        for(clientName in data.serverAccountingResponses) if(data.serverAccountingResponses.hasOwnProperty(clientName)){
+            sAccountingResponses.children.push({label: clientName+" "+data.serverAccountingResponses[clientName]});
+        }
+
+        var cAccessRequests={label: "Client Access Requests", children:[]};
+        for(ipAddress in data.clientAccessRequests) if(data.clientAccessRequests.hasOwnProperty(ipAddress)){
+            cAccessRequests.children.push({label: ipAddress+" "+data.clientAccessRequests[ipAddress]});
+        }
+
+        var cAccessAccepts={label: "Client Access Accepts", children:[]};
+        for(ipAddress in data.clientAccessAccepts) if(data.clientAccessAccepts.hasOwnProperty(ipAddress)){
+            cAccessAccepts.children.push({label: ipAddress+" "+data.clientAccessAccepts[ipAddress]});
+        }
+
+        var cAccessRejects={label: "Client Access Rejects", children:[]};
+        for(ipAddress in data.clientAccessRejects) if(data.clientAccessRejects.hasOwnProperty(ipAddress)){
+            cAccessRejects.children.push({label: ipAddress+" "+data.clientAccessRejects[ipAddress]});
+        }
+
+        var cAccountingRequests={label: "Client Accounting Requests", children:[]};
+        for(ipAddress in data.clientAccountingRequests) if(data.clientAccountingRequests.hasOwnProperty(ipAddress)){
+            cAccountingRequests.children.push({label: ipAddress+" "+data.clientAccountingRequests[ipAddress]});
+        }
+
+        var cAccountingResponses={label: "Client Accounting Responses", children:[]};
+        for(ipAddress in data.clientAccountingResponses) if(data.clientAccountingResponses.hasOwnProperty(ipAddress)){
+            cAccountingResponses.children.push({label: ipAddress+" "+data.clientAccountingResponses[ipAddress]});
+        }
+
+        var cCoARequests={label: "Client CoA Requests", children:[]};
+        for(ipAddress in data.clientCoARequests) if(data.clientCoARequests.hasOwnProperty(ipAddress)){
+            cCoARequests.children.push({label: ipAddress+" "+data.clientCoARequests[ipAddress]});
+        }
+
+        var cCoAAccepts={label: "Client CoA Accepts", children:[]};
+        for(ipAddress in data.clientCoAAccepts) if(data.clientCoAAccepts.hasOwnProperty(ipAddress)){
+            cCoAAccepts.children.push({label: ipAddress+" "+data.clientCoAAccepts[ipAddress]});
+        }
+
+        var cCoARejects={label: "Client CoA Rejects", children:[]};
+        for(ipAddress in data.clientCoARejects) if(data.clientCoARejects.hasOwnProperty(ipAddress)){
+            cCoARejects.children.push({label: ipAddress+" "+data.clientCoARejects[ipAddress]});
+        }
+
+        var sErrors={label: "Server Errors", children:[]};
+        for(clientName in data.serverErrors) if(data.serverErrors.hasOwnProperty(clientName)){
+            sErrors.children.push({label: clientName+" "+data.serverErrors[clientName]});
+        }
+
+        var cErrors={label: "Client errors", children:[]};
+        for(ipAddress in data.clientErrors) if(data.clientErrors.hasOwnProperty(ipAddress)){
+            cErrors.children.push({label: ipAddress+" "+data.clientErrors[ipAddress]});
+        }
+
+        $scope.radiusStats.push(sAccessRequests);
+        $scope.radiusStats.push(sAccessAccepts);
+        $scope.radiusStats.push(sAccessRejects);
+        $scope.radiusStats.push(sAccountingRequests);
+        $scope.radiusStats.push(sAccountingResponses);
+        $scope.radiusStats.push(cAccessRequests);
+        $scope.radiusStats.push(cAccessAccepts);
+        $scope.radiusStats.push(cAccessRejects);
+        $scope.radiusStats.push(cAccountingRequests);
+        $scope.radiusStats.push(cAccountingResponses);
+        $scope.radiusStats.push(cCoARequests);
+        $scope.radiusStats.push(cCoAAccepts);
+        $scope.radiusStats.push(cCoARejects);
+        $scope.radiusStats.push(sErrors);
+        $scope.radiusStats.push(cErrors);
+
 
     }).error(function(data, status, headers, config, statusText){
         // Shows inline error message

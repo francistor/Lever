@@ -228,6 +228,11 @@
                                ng-model="nodeConfig.radius.IPAddress">
                     </div>
                     <div class="form-group">
+                        <label>Base client port:</label>
+                        <input name="baseClientPort" class="form-control" ng-pattern="/^[0-9]{4,5}$/"
+                               ng-model="nodeConfig.radius.baseClientPort">
+                    </div>
+                    <div class="form-group">
                         <button type="button" ng-disabled="isDisabled" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
                             <i class="fa fa-check">
                             </i>
@@ -238,6 +243,10 @@
                     <div class="form-group" ng-class="{'has-error': radiusConfigForm.acctPort.$invalid}">
                         <label>Acct Port:</label>
                         <input name="acctPort" class="form-control" ng-model="nodeConfig.radius.acctPort" ng-pattern="/[0-9]{4,5}/">
+                    </div>
+                    <div class="form-group" ng-class="{'has-error': radiusConfigForm.numClientPorts.$invalid}">
+                        <label>Number of client ports:</label>
+                        <input name="numClientPorts" class="form-control" ng-model="nodeConfig.radius.numClientPorts" ng-pattern="/[0-9]{4,5}/">
                     </div>
                 </div>
             </div>
@@ -285,7 +294,7 @@
                                             </div>
                                             <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.class.$invalid}">
                                                 <label>Class:</label>
-                                                <input name="class" class="form-control" ng-model="client.ckass" ng-pattern="/.{3,}/">
+                                                <input name="class" class="form-control" ng-model="client.class" ng-pattern="/.{3,}/">
                                                 <p class="help-block">Required field</p>
                                             </div>
                                         </div>

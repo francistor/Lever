@@ -14,9 +14,25 @@ var dLogger=new (winston.Logger)({
 	"transports": diameterTransports
 });
 
-var logMessage=function(originHost, destinationHost, message){
+dLogger.logDiameterMessage=function(originHost, destinationHost, message){
     var header=message.isRequest ? "[REQUEST]":"[RESPONSE]";
     dLogger.verbose(header+" "+originHost+"-->"+destinationHost+":"+message.applicationId+":"+message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+};
+
+dLogger.logRadiusServerRequest=function(clientName, code){
+    dLogger.verbose(clientName+"-->ME:"+code);
+};
+
+dLogger.logRadiusServerResponse=function(clientName, code){
+    dLogger.verbose("ME-->"+clientName+":"+code);
+};
+
+dLogger.logRadiusClientRequest=function(ipAddress, code, tried){
+    dLogger.verbose("ME-->"+ipAddress+":"+code+(tried>0 ? " [retransmission]":""));
+};
+
+dLogger.logRadiusClientResponse=function(ipAddress, code){
+    dLogger.verbose(ipAddress+"-->ME:"+code);
 };
 
 // handler functions handlers
@@ -47,4 +63,3 @@ exports.dLogger=dLogger;
 exports.hLogger=hLogger;
 exports.mLogger=mLogger;
 
-exports.logMessage=logMessage;

@@ -16,7 +16,7 @@
     "express": "^4.8.7",
     "ipaddr.js": "^0.1.3",
     "mongodb": "^1.4.17",
-    "protractor": "^1.1.1",
+    "radius": "^1.1.0",
     "winston": "^0.7.3"
   }
 }

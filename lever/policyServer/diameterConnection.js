@@ -100,7 +100,7 @@ var createConnection=function(diameterServer, diameterHost, dwrInterval)
         }
 
         var messageBuffer;
-        dLogger.debug("Receiving " + buffer.length + " bytes from " + dc.diameterHost);
+        if(dLogger["inDebug"]) dLogger.debug("Receiving " + buffer.length + " bytes from " + dc.diameterHost);
 
         try{
             // Iterate until all the received buffer has been copied

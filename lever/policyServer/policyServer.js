@@ -4,12 +4,16 @@
 // --- Cache of Ent2EndId being processed and processed
 
 var net=require("net");
+var dgram=require("dgram");
+var radius=require("radius");
+var radiusHandler=require("./radiusHandler").radiusHandler;
 var dLogger=require("./log").dLogger;
-var logMessage=require("./log").logMessage;
 var config=require("./config").config;
 var createConnection=require("./diameterConnection").createConnection;
+var createRadiusClientConnections=require("./radiusConnection").createRadiusClientConnections;
 var createMessage=require("./message").createMessage;
-var stats=require("./stats").stats;
+var diameterStats=require("./stats").diameterStats;
+var radiusStats=require("./stats").radiusStats;
 var createAgent=require("./agent").createAgent;
 
 // Singleton
@@ -25,9 +29,17 @@ var createPolicyServer=function(){
     // Entries as {<diameterHost>: <connection object>}
     var peerConnections={};
 
-    // Reference to messages sent and waiting for answer
+    // Radius client connections helper object
+    var radiusClientConnections;
+
+    // Reference to diameter messages sent and waiting for answer (both requests or responses)
     // Holds a reference to the callback function and timer for each destinationHost+HopByHopID
     var diameterRequestPointers={};
+
+    // Reference to client messages sent and waiting for answer (can only be requests)
+    // Holds a reference to the callback function and timer for each destinationClient+RadiusIdentifier
+
+    var radiusRequestPointers={};
 
     /** Returns the appropriate diameter connection
      *
@@ -105,38 +117,43 @@ var createPolicyServer=function(){
             dLogger.debug("");
         }
 
-        if(dLogger["inVerbose"]) logMessage(connection.diameterHost, config.node.diameter["diameterHost"], message);
+        if(dLogger["inVerbose"]) dLogger.logDiameterMessage(connection.diameterHost, config.node.diameter["diameterHost"], message);
 
         if (message.isRequest) {
             // Handle message if there is a handler configured for this type of request
-            stats.incrementServerRequest(connection.diameterHost, message.commandCode);
+            diameterStats.incrementServerRequest(connection.diameterHost, message.commandCode);
             // if(there is a handler)
             if(((dispatcher[message.applicationId]||{})[message.commandCode]||{})["handler"]){
                 if(dLogger["inDebug"]) dLogger.debug("Message is Request. Dispatching message to: "+dispatcher[message.applicationId][message.commandCode].functionName);
                 try {
                     dispatcher[message.applicationId][message.commandCode]["handler"](connection, message);
                 }catch(e){
-                    stats.incrementServerError(connection.diameterHost, message.commandCode);
+                    diameterStats.incrementServerError(connection.diameterHost, message.commandCode);
                     dLogger.error("Handler error in "+dispatcher[message.applicationId][message.commandCode].functionName);
                     dLogger.error(e.message);
                     dLogger.error(e.stack);
                 }
             }
             else{
-                stats.incrementServerError(connection.diameterHost, message.commandCode);
+                diameterStats.incrementServerError(connection.diameterHost, message.commandCode);
                 dLogger.warn("No handler defined for Application: " + message.applicationId + " and command: " + message.commandCode);
             }
         } else {
             dLogger.debug("Message is Response");
-            stats.incrementClientResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
+            diameterStats.incrementClientResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
             requestPointer=diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
             if(requestPointer) {
                 clearTimeout(requestPointer.timer);
                 delete diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
                 dLogger.debug("Executing callback");
-                requestPointer.callback(null, message);
+                try {
+                    requestPointer.callback(null, message);
+                }
+                catch(err){
+                    dLogger.error("Error in diameter response callback: "+err.message);
+                }
             } else{
-                dLogger.warn("Unsolicited or stale response message");
+                dLogger.warn("Unsolicited or stale response message from "+connection.diameterHost);
             }
         }
     };
@@ -157,16 +174,16 @@ var createPolicyServer=function(){
 
         if(connection.getState()!=="Open"){
             dLogger.warn("SendReply - Connection is not in 'Open' state. Discarding message");
-            stats.incrementServerError(connection.diameterHost, message.commandCode);
+            diameterStats.incrementServerError(connection.diameterHost, message.commandCode);
         }
         else try {
-            if(dLogger["inVerbose"]) logMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
+            if(dLogger["inVerbose"]) dLogger.logDiameterMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
             connection.write(message.encode());
-            stats.incrementServerResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
+            diameterStats.incrementServerResponse(connection.diameterHost, message.commandCode, message.avps["Result-Code"]||0);
         }
         catch(e){
             // Message encoding error
-            stats.incrementServerError(connection.diameterHost, message.commandCode);
+            diameterStats.incrementServerError(connection.diameterHost, message.commandCode);
             dLogger.error("Could not encode & send reply: "+e.message);
             dLogger.error("Closing connection");
             dLogger.error(e.stack);
@@ -196,24 +213,24 @@ var createPolicyServer=function(){
 
         if(connection) {
             if(message.applicationId!=="Base" && connection.getState()!=="Open"){
-                stats.incrementClientError(connection.diameterHost, message.commandCode);
+                diameterStats.incrementClientError(connection.diameterHost, message.commandCode);
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
             }
             else try {
-                if(dLogger["inVerbose"]) logMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
+                if(dLogger["inVerbose"]) dLogger.logDiameterMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
                 connection.write(message.encode());
-                stats.incrementClientRequest(connection.diameterHost, message.commandCode);
+                diameterStats.incrementClientRequest(connection.diameterHost, message.commandCode);
                 diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId] = {
                     "timer": setTimeout(function () {
                         delete diameterRequestPointers[connection.diameterHost+"."+message.hopByHopId];
-                        stats.incrementClientError(connection.diameterHost, message.commandCode);
+                        diameterStats.incrementClientError(connection.diameterHost, message.commandCode);
                         callback(new Error("timeout"), null);
                     }, timeout),
                     "callback": callback
                 };
             } catch(e){
                 // Message encoding error
-                stats.incrementClientError(connection.diameterHost, message.commandCode);
+                diameterStats.incrementClientError(connection.diameterHost, message.commandCode);
                 dLogger.error("Could not encode & send request: "+e.message);
                 dLogger.error("Closing connection");
                 dLogger.error(e.stack);
@@ -303,7 +320,172 @@ var createPolicyServer=function(){
     ///////////////////////////////////////////////////////////////////////////
     // Radius functions
     ///////////////////////////////////////////////////////////////////////////
+    radiusServer.onSocketError=function(err){
+        dLogger.error("Radius server socket error: "+err.message);
+    };
 
+    /**
+     * Called when a datagram is received on any of the server sockets (auth or acct)
+     * @param buffer
+     * @param rinfo
+     */
+    radiusServer.onRequestReceived=function(buffer, rinfo){
+        if(dLogger["inDebug"]) dLogger.debug("Radius request received from "+rinfo.address+" with "+buffer.length+" bytes of data");
+        var client=config.node.radius.radiusClientMap[rinfo.address];
+        if(!client){
+            dLogger.warn("Radius request from unknown client: "+rinfo.address);
+            return;
+        }
+
+        try {
+            var radiusMessage=radius.decode({packet: buffer, secret: client.secret});
+            dLogger.logRadiusServerRequest(client.name, radiusMessage.code);
+            radiusStats.incrementServerRequest(client.name, radiusMessage.code);
+
+            // Decorate message
+            radiusMessage._ipAddress=rinfo.address;
+            radiusMessage._port=rinfo.port;
+            radiusMessage._secret=client.secret;
+            radiusMessage._clientName=client.name;
+        }
+        catch(e){
+            radiusStats.incrementServerError(client.name);
+            dLogger.error("Error decoding radius packet: "+e.message);
+            return;
+        }
+
+        try {
+            // Handle message
+            if (radiusMessage.code=="Access-Request") {
+                radiusHandler.handleAccessRequest(radiusServer, radiusMessage);
+            }
+            else if (radiusMessage.code=="Accounting-Request") {
+                radiusHandler.handleAccountingRequest(radiusServer, radiusMessage);
+            }
+            else dLogger.error("Unknown code: "+radiusMessage.code);
+        }
+        catch(e){
+            radiusStats.incrementServerError(client.name);
+            dLogger.error("Radius Handler error: "+e.message);
+        }
+    };
+
+    /**
+     * Invoked by the handlers to send a reply radius message
+     * @param requestMessage the original request message
+     * @param code of the message to send
+     * @param attributes to send
+     */
+    radiusServer.sendReply=function(requestMessage, code, attributes){
+        var radiusReply={
+            code:code,
+            packet: requestMessage,
+            secret: requestMessage._secret,
+            attributes:attributes};
+
+        var buffer=radius.encode_response(radiusReply);
+
+        radiusStats.incrementServerResponse(requestMessage._clientName, code);
+        radiusAuthSocket.send(buffer, 0, buffer.length, requestMessage._port, requestMessage._ipAddress);
+    };
+
+    /**
+     * Invoked by the handlers to send a radius message.
+     * @param code
+     * @param attributes
+     * @param ipAddress
+     * @param port
+     * @param secret
+     * @param timeout
+     * @param nTries
+     * @param callback
+     */
+    radiusServer.sendRequest=function(code, attributes, ipAddress, port, secret, timeout, nTries, callback){
+        // Checks
+        if(nTries<=0) throw new Error("nTries should be >0");
+        if(!callback) throw new Error("Callback parameter is required");
+
+        // Number of packets already sent
+        var tried=0;
+
+        try {
+            var rParams=radiusClientConnections.getClientSocket();
+            var radiusRequest={
+                code: code,
+                secret: secret,
+                identifier: rParams.id,
+                attributes: attributes
+                /*add_message_authenticator: false */};
+
+            var buffer=radius.encode(radiusRequest);
+            radiusStats.incrementClientRequest(code, ipAddress);
+
+            // Send the message
+            dLogger.logRadiusClientRequest(ipAddress, code, false);
+            rParams.socket.send(buffer, 0, buffer.length, port, ipAddress);
+
+            // Setup response hook
+            var timeoutFnc=function(){
+                tried++;
+                if(tried==nTries){
+                    // Timeout and retries expired
+                    delete radiusRequestPointers[ipAddress+":"+rParams.id];
+                    radiusStats.incrementClientError(ipAddress);
+                    if(callback) callback(new Error("timeout"));
+                }
+                else {
+                    // Re-send the message
+                    dLogger.logRadiusClientRequest(ipAddress, code, true);
+                    rParams.socket.send(buffer, 0, buffer.length, port, ipAddress);
+
+                    // Re-set response hook
+                    radiusRequestPointers[ipAddress+":"+rParams.id]["timer"]=setTimeout(timeoutFnc, timeout);
+                }
+            };
+
+            radiusRequestPointers[ipAddress+":"+rParams.id]={
+                "timer": setTimeout(timeoutFnc, timeout),
+                "callback": callback,
+                "secret": secret
+            };
+        }
+        catch(err){
+            dLogger.error("Could not send radius request: "+err.message);
+            radiusStats.incrementClientError(ipAddress);
+        }
+    };
+
+    radiusServer.onResponseReceived=function(buffer, rinfo){
+        if(dLogger["inDebug"]) dLogger.debug("Radius response received from "+rinfo.address+" with "+buffer.length+" bytes of data");
+
+        // Pre-decode message
+        var response=radius.decode_without_secret({packet: buffer});
+
+        // Lookup in response hooks
+        var requestPointer=radiusRequestPointers[rinfo.address+":"+response.identifier];
+        if(!requestPointer){
+            dLogger.warn("Unsolicited or stale response from "+rinfo.address);
+            return;
+        }
+
+        // decode message
+        response=radius.decode({packet: buffer, secret: requestPointer.secret});
+
+        // Log and increment counter
+        dLogger.logRadiusClientResponse(rinfo.address, response.code);
+        radiusStats.incrementClientResponse(rinfo.address, response.code);
+
+        // Process message
+        clearTimeout(requestPointer.timer);
+        delete radiusRequestPointers[rinfo.address+"."+response.identifier];
+        dLogger.debug("Executing callback");
+        try{
+            requestPointer.callback(null, response);
+        }
+        catch(err){
+            dLogger.error("Error in diameter response callback: "+err.message);
+        }
+    };
 
     ///////////////////////////////////////////////////////////////////////////
     // Instrumentation
@@ -336,8 +518,8 @@ var createPolicyServer=function(){
             // Initialization
             ////////////////////////////////////////////
 
-            // Diameter
-
+            // Diameter //
+            /*
             // Create Listener on Diameter port
             diameterSocket=net.createServer();
             diameterSocket.on("connection", diameterServer.onConnectionReceived);
@@ -349,12 +531,27 @@ var createPolicyServer=function(){
 
             // Set timer for periodically checking connections
             setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
+            */
+
+            // Radius //
+
+            // Server sockets
+            radiusAuthSocket=dgram.createSocket("udp4");
+            radiusAcctSocket=dgram.createSocket("udp4");
+            radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
+            radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
+            radiusAuthSocket.on("message", radiusServer.onRequestReceived);
+            radiusAcctSocket.on("message", radiusServer.onRequestReceived);
+            radiusAuthSocket.on("error", radiusServer.onSocketError);
+            radiusAcctSocket.on("error", radiusServer.onSocketError);
+            dLogger.info("Radius auth listening in port "+config.node.radius.authPort);
+            dLogger.info("Radius acct listening in port "+config.node.radius.acctPort);
+
+            // Client sockets
+            radiusClientConnections=createRadiusClientConnections(radiusServer, config.node.radius.baseClientPort, 10, config.node.radius.IPAddress);
 
             // Create management HTTP server
             createAgent(diameterServer, radiusServer);
-
-            // Radius
-
         }
     });
 

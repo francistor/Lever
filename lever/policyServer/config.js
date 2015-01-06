@@ -32,6 +32,14 @@ var createConfig=function(){
                }
                config.node.diameter.routeMap=routeMap;
 
+               // Hook radius client map
+               var radiusClientMap={};
+               var clients=config.node.radius.clients;
+               for(i=0; i<clients.length; i++){
+                   radiusClientMap[clients[i].IPAddress]={secret:clients[i].secret, class: clients[i].class, name:clients[i].name};
+               }
+               config.node.radius.radiusClientMap=radiusClientMap;
+
                if(callback) callback(null);
            }
        });

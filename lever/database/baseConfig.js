@@ -19,8 +19,11 @@ var diameterSamsung=
         "acctPort": 1813,
 
         "clients": [
-            {"name": "mybigcient", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
-        ]
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+        ],
+
+        "baseClientPort": 40000,
+        "numClientPorts": 10
     },
 
     "diameter": {
@@ -57,7 +60,10 @@ var diameterSamsung=
 
         "routes": [
             {"realm": "*", "applicationId": "*", "peers": ["8950AAA"], "policy": "fixed"}
-        ]
+        ],
+
+        "baseClientPort": 40000,
+        "numClientPorts": 10
     },
 
     "management":{
@@ -78,8 +84,11 @@ var diameterToshiba=
         "acctPort": 1813,
 
         "clients": [
-            {"name": "mybigclient", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
-        ]
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+        ],
+
+        "baseClientPort": 40000,
+        "numClientPorts": 10
     },
 
     "diameter": {

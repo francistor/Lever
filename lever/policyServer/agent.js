@@ -1,6 +1,7 @@
 // Instrumentation agent
 var mLogger=require("./log").mLogger;
-var stats=require("./stats").stats;
+var diameterStats=require("./stats").diameterStats;
+var radiusStats=require("./stats").radiusStats;
 var config=require("./config").config;
 var express=require("express");
 var bodyParser=require('body-parser');
@@ -17,9 +18,9 @@ var createAgent=function(diameterServer, radiusServer){
     httpServer.listen(config.node["management"]["httpPort"]);
     mLogger.info("HTTP manager listening on port "+config.node["management"]["httpPort"]);
 
-    httpServer.get("/agent/updateDiameterConfig", function(req, res){
-        mLogger.debug("Reloading diameter configuration");
-        config.readDiameterConfiguration();
+    httpServer.get("/agent/updateNodeConfig", function(req, res){
+        mLogger.debug("Reloading basic configuration");
+        config.readNodeConfiguration();
         res.json({});
     });
 
@@ -29,15 +30,20 @@ var createAgent=function(diameterServer, radiusServer){
         res.json({});
     });
 
-    httpServer.get("/agent/updateDictionary", function(req, res){
-        mLogger.debug("Reloading dictionary configuration");
-        config.readDictionary();
+    httpServer.get("/agent/updateDiameterDictionary", function(req, res){
+        mLogger.debug("Reloading diameter dictionary configuration");
+        config.readDiameterDictionary();
         res.json({});
     });
 
     httpServer.get("/agent/getDiameterStats", function(req, res){
-        mLogger.debug("Getting stats");
-        res.json(stats);
+        mLogger.debug("Getting diameter stats");
+        res.json(diameterStats);
+    });
+
+    httpServer.get("/agent/getRadiusStats", function(req, res){
+        mLogger.debug("Getting radius stats");
+        res.json(radiusStats);
     });
 
     httpServer.get("/agent/getPeerStatus", function(req, res){
