@@ -4,7 +4,7 @@ var winston=require("winston");
 var fs=require("fs");
 // Read and configure logging configuration, logging.json MUST
 // contain properties for the transport configurations
-var logConfig=JSON.parse(fs.readFileSync("./conf/logging.json", {encoding: "utf8"}));
+var logConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/logging.json", {encoding: "utf8"}));
 
 // Diameter server
 var diameterTransports=[];

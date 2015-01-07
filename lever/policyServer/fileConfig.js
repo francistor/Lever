@@ -10,7 +10,7 @@ var createFileConfig=function(){
     // updaterFunction(err, diameterConfig)
     fileConfig.getNodeConfiguration=function(updaterFunction){
         var diameterConfig;
-        fs.readFile("./conf/node.json", {encoding: "utf8"}, function(err, data){
+        fs.readFile(__dirname+"/conf/node.json", {encoding: "utf8"}, function(err, data){
             if(err){
                 updaterFunction(err, null);
             }
@@ -29,7 +29,7 @@ var createFileConfig=function(){
     // updaterFunction(err, dispatcher)
     fileConfig.getDispatcherConfiguration=function(updaterFunction){
         var dispatcher;
-        fs.readFile("./conf/dispatcher.json", {encoding: "utf8"}, function(err, data){
+        fs.readFile(__dirname+"/conf/dispatcher.json", {encoding: "utf8"}, function(err, data){
             if(err){
                 updaterFunction(err, null);
             }
@@ -48,7 +48,7 @@ var createFileConfig=function(){
     // updaterFunction(err, dictionary)
     fileConfig.getDiameterDictionary=function(updaterFunction){
         var dictionary;
-        fs.readFile("./conf/diameterDictionary.json", {encoding: "utf8"}, function(err, data){
+        fs.readFile(__dirname+"/conf/diameterDictionary.json", {encoding: "utf8"}, function(err, data){
             if(err){
                 updaterFunction(err, null);
             }

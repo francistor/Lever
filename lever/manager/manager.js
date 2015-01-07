@@ -16,6 +16,8 @@ var MongoClient=require("mongodb").MongoClient;
 var ObjectID=require('mongodb').ObjectID;
 var bodyParser=require('body-parser');
 
+process.title="lever-manager";
+
 // Database connection
 var configDB;
 
@@ -23,7 +25,7 @@ var configDB;
 var requestTimeout=1000;
 
 // Read dmanager configuration
-var config=JSON.parse(fs.readFileSync("./conf/manager.json", {encoding: "utf8"}));
+var config=JSON.parse(fs.readFileSync(__dirname+"/conf/manager.json", {encoding: "utf8"}));
 
 // Instantiate express
 var mApp=express();

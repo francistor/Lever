@@ -6,7 +6,7 @@ var os=require("os");
 var Db=require("mongodb").Db;
 
 // Read database configuration
-var dbParams=JSON.parse(fs.readFileSync("./conf/database.json", {encoding: "utf8"}));
+var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
 var hostName=os.hostname();
 
 var createDatabaseConfig=function(){

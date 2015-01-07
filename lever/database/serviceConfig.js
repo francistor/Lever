@@ -1,12 +1,8 @@
 printjson("----------------------------------");
-printjson("Deleting Database leverService"); 
-printjson("----------------------------------");
-
-db.dropDatabase();
-
-printjson("----------------------------------");
 printjson("Creating Calendar");
 printjson("----------------------------------");
+
+db.calendars.drop();
 
 // Array items must be in the appropriate order
 var speedyNightCalendar=
@@ -51,6 +47,7 @@ printjson("----------------------------------");
 printjson("Creating Service Configuration");
 printjson("----------------------------------");
 
+db.plans.drop();
 
 var plan1001=
 {
@@ -204,6 +201,8 @@ printjson("----------------------------------");
 printjson("Creating Clients");
 printjson("----------------------------------");
 
+db.clients.drop();
+
 // Unique index: legacyClientId, deletedDate
 db.clients.ensureIndex({legacyClientId: 1, deletedDate: 1}, {unique: true});
 
@@ -240,8 +239,6 @@ var client1=
 };
 
 
-db.clients.insert(client1);
-
 var client2=
 {
 	legacyClientId: "lci1002",
@@ -266,7 +263,6 @@ var client2=
 	]
 };
 
-db.clients.insert(client2);
 
 var client3=
 {
@@ -294,8 +290,10 @@ var client3=
 	captureSets:
 	[
 	]
-}
+};
 
+db.clients.insert(client1);
+db.clients.insert(client2);
 db.clients.insert(client3);
 
 printjson("Created Clients");
@@ -303,6 +301,9 @@ printjson("Created Clients");
 printjson("----------------------------------");
 printjson("Creating Capturesets");
 printjson("----------------------------------");
+
+db.captureSets.drop();
+db.captureEvents.drop();
 
 var captureSet1=
 {

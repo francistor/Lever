@@ -16,6 +16,8 @@ var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
 var createAgent=require("./agent").createAgent;
 
+process.title="lever-policyserver";
+
 // Singleton
 var createPolicyServer=function(){
     
