@@ -1,5 +1,5 @@
-conn=new Mongo();
-db=conn.getDB("leverConfig");
+//conn=new Mongo();
+//db=conn.getDB("leverConfig");
 
 print("----------------------------------");
 print("Creating nodes configuration");

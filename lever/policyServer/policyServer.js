@@ -519,7 +519,7 @@ var createPolicyServer=function(){
             ////////////////////////////////////////////
 
             // Diameter //
-            /*
+
             // Create Listener on Diameter port
             diameterSocket=net.createServer();
             diameterSocket.on("connection", diameterServer.onConnectionReceived);
@@ -531,7 +531,7 @@ var createPolicyServer=function(){
 
             // Set timer for periodically checking connections
             setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
-            */
+
 
             // Radius //
 

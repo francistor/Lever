@@ -1,6 +1,3 @@
-conn=new Mongo();
-db=conn.getDB("leverService");
-
 printjson("----------------------------------");
 printjson("Deleting Database leverService"); 
 printjson("----------------------------------");

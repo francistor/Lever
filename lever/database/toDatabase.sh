@@ -1,2 +1,4 @@
-mongo baseConfig.js
-mongo serviceConfig.js
+#!/bin/bash
+
+mongo ${leverConfigDatabaseURL#mongodb://} baseConfig.js
+mongo ${serviceConfigDatabaseURL#mongodb://} serviceConfig.js
