@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Start manager
 cd lever/manager
 nohup npm start &

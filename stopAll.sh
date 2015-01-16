@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Stop manager
 pkill --signal SIGINT lever-manager
 
