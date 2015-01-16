@@ -1,5 +1,5 @@
 {
-	"port": 9001,
+	"port": 8080,
     "databaseURL":"mongodb://configdb.lever/leverConfig",
     "databaseOptions":{
         "server":{
