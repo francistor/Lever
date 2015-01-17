@@ -1,6 +1,0 @@
-{
-	"scripts":{
-		"start": "./startAll.sh",
-		"stop": "./stopAll.sh"
-	}
-}
