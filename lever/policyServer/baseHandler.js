@@ -3,7 +3,7 @@
 var hLogger=require("./log").hLogger;
 var os=require("os");
 var resultCodes=require("./message").resultCodes;
-var config=require("./config").config;
+var config=require("./configService").config;
 var createMessage=require("./message").createMessage;
 
 var DEFAULT_TIMEOUT=10000;

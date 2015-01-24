@@ -2,7 +2,7 @@
 
 var hLogger=require("./log").hLogger;
 var resultCodes=require("./message").resultCodes;
-var config=require("./config").config;
+var config=require("./configService").config;
 var createMessage=require("./message").createMessage;
 
 var ccrHandler=function(connection, message){

@@ -246,7 +246,7 @@
                     </div>
                     <div class="form-group" ng-class="{'has-error': radiusConfigForm.numClientPorts.$invalid}">
                         <label>Number of client ports:</label>
-                        <input name="numClientPorts" class="form-control" ng-model="nodeConfig.radius.numClientPorts" ng-pattern="/[0-9]{4,5}/">
+                        <input name="numClientPorts" class="form-control" ng-model="nodeConfig.radius.numClientPorts" ng-pattern="/.+/">
                     </div>
                 </div>
             </div>

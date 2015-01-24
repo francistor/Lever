@@ -3,6 +3,7 @@
 // TODO: Implement duplicate detection.
 // --- Cache of Ent2EndId being processed and processed
 
+var Q=require("q");
 var net=require("net");
 var dgram=require("dgram");
 var radius=require("radius");
@@ -15,8 +16,10 @@ var createMessage=require("./message").createMessage;
 var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
 var createAgent=require("./agent").createAgent;
+var config=require("./configService").config;
 
 process.title="lever-policyserver";
+
 
 // Singleton
 var createPolicyServer=function(){
@@ -509,7 +512,7 @@ var createPolicyServer=function(){
     var radiusAcctSocket;
 
     // Read configuration and initialize
-    config.readAll(function(err){
+    config.updateAll(function(err){
         if(err){
             dLogger.error("Initialization error");
             dLogger.error(err.stack);
@@ -519,7 +522,6 @@ var createPolicyServer=function(){
             /////////////////////////////////////////////
             // Initialization
             ////////////////////////////////////////////
-
             // Diameter //
 
             // Create Listener on Diameter port
@@ -533,7 +535,6 @@ var createPolicyServer=function(){
 
             // Set timer for periodically checking connections
             setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
-
 
             // Radius //
 
@@ -553,7 +554,7 @@ var createPolicyServer=function(){
             radiusClientConnections=createRadiusClientConnections(radiusServer, config.node.radius.baseClientPort, 10, config.node.radius.IPAddress);
 
             // Create management HTTP server
-            createAgent(diameterServer, radiusServer);
+            createAgent(config, diameterServer, radiusServer);
         }
     });
 

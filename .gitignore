@@ -1,4 +1,5 @@
 *.log
+_*
 nohup.out
 .idea/
 out.txt

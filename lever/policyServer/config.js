@@ -1,6 +1,6 @@
 // Holder for Configurations
 
-var backendConfig=require("./databaseConfig").config;
+var backendConfig=require("./fileConfig").config;
 var dLogger=require("./log").dLogger;
 
 // Holds basic Diameter configuration
@@ -125,7 +125,6 @@ var createConfig=function(){
             }
             else {
                 try {
-                    console.log("3");
                     // Add Maps (code map and name map)
                     // avpCodeMap={<vendor-id>:{<avpcode>:{<avpDef>}, ...} ...}
                     // avpNameMap={<avpname>:{<avpDef>}, ...}

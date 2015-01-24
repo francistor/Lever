@@ -2,11 +2,10 @@
 var mLogger=require("./log").mLogger;
 var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
-var config=require("./config").config;
 var express=require("express");
 var bodyParser=require('body-parser');
 
-var createAgent=function(diameterServer, radiusServer){
+var createAgent=function(config, diameterServer, radiusServer){
 
     // Instantiate express
     var httpServer=express();
@@ -20,19 +19,19 @@ var createAgent=function(diameterServer, radiusServer){
 
     httpServer.get("/agent/updateNodeConfig", function(req, res){
         mLogger.debug("Reloading basic configuration");
-        config.readNodeConfiguration();
+        config.updateNode();
         res.json({});
     });
 
     httpServer.get("/agent/updateDispatcherConfig", function(req, res){
         mLogger.debug("Reloading dispatcher configuration");
-        config.readDispatcher();
+        config.updateDispatcher();
         res.json({});
     });
 
     httpServer.get("/agent/updateDiameterDictionary", function(req, res){
         mLogger.debug("Reloading diameter dictionary configuration");
-        config.readDiameterDictionary();
+        config.updateDiameterDictionary();
         res.json({});
     });
 

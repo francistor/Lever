@@ -2,7 +2,7 @@
 
 var dLogger=require("./log").dLogger;
 var ipaddr=require('ipaddr.js');
-var config=require("./config").config;
+var config=require("./configService").config;
 
 var INITIAL_BUFF_LEN=1024;
 var INCREMENT_BUFF_THRESHOLD=512;
