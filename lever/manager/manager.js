@@ -27,6 +27,7 @@ var requestTimeout=1000;
 // Read dmanager configuration
 var config=JSON.parse(fs.readFileSync(__dirname+"/conf/manager.json", {encoding: "utf8"}));
 config.databaseURL=process.env["leverConfigDatabaseURL"];
+if(!config.databaseURL) throw Error("leverConfigDatabaseURL environment variable not set");
 
 // Instantiate express
 var mApp=express();
