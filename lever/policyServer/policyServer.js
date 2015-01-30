@@ -512,49 +512,58 @@ var createPolicyServer=function(){
     var radiusAcctSocket;
 
     // Read configuration and initialize
-    config.updateAll(function(err){
+    config.initialize(function(err){
         if(err){
-            dLogger.error("Initialization error");
+            dLogger.error("Configuration initialization error: "+err.message);
             dLogger.error(err.stack);
             process.exit(-1);
         }
         else{
-            /////////////////////////////////////////////
-            // Initialization
-            ////////////////////////////////////////////
-            // Diameter //
+            config.updateAll(function(err){
+                if(err){
+                    dLogger.error("Initialization error");
+                    dLogger.error(err.stack);
+                    process.exit(-1);
+                }
+                else{
+                    /////////////////////////////////////////////
+                    // Initialization
+                    ////////////////////////////////////////////
+                    // Diameter //
 
-            // Create Listener on Diameter port
-            diameterSocket=net.createServer();
-            diameterSocket.on("connection", diameterServer.onConnectionReceived);
-            diameterSocket.listen(config.node.diameter.port||3868);
-            dLogger.info("Diameter listening in port "+config.node.diameter.port);
+                    // Create Listener on Diameter port
+                    diameterSocket=net.createServer();
+                    diameterSocket.on("connection", diameterServer.onConnectionReceived);
+                    diameterSocket.listen(config.node.diameter.port||3868);
+                    dLogger.info("Diameter listening in port "+config.node.diameter.port);
 
-            // Establish outgoing connections
-            diameterServer.manageConnections();
+                    // Establish outgoing connections
+                    diameterServer.manageConnections();
 
-            // Set timer for periodically checking connections
-            setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
+                    // Set timer for periodically checking connections
+                    setInterval(diameterServer.manageConnections, config.node.diameter["connectionInterval"]||10000);
 
-            // Radius //
+                    // Radius //
 
-            // Server sockets
-            radiusAuthSocket=dgram.createSocket("udp4");
-            radiusAcctSocket=dgram.createSocket("udp4");
-            radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
-            radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
-            radiusAuthSocket.on("message", radiusServer.onRequestReceived);
-            radiusAcctSocket.on("message", radiusServer.onRequestReceived);
-            radiusAuthSocket.on("error", radiusServer.onSocketError);
-            radiusAcctSocket.on("error", radiusServer.onSocketError);
-            dLogger.info("Radius auth listening in port "+config.node.radius.authPort);
-            dLogger.info("Radius acct listening in port "+config.node.radius.acctPort);
+                    // Server sockets
+                    radiusAuthSocket=dgram.createSocket("udp4");
+                    radiusAcctSocket=dgram.createSocket("udp4");
+                    radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
+                    radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
+                    radiusAuthSocket.on("message", radiusServer.onRequestReceived);
+                    radiusAcctSocket.on("message", radiusServer.onRequestReceived);
+                    radiusAuthSocket.on("error", radiusServer.onSocketError);
+                    radiusAcctSocket.on("error", radiusServer.onSocketError);
+                    dLogger.info("Radius auth listening in port "+config.node.radius.authPort);
+                    dLogger.info("Radius acct listening in port "+config.node.radius.acctPort);
 
-            // Client sockets
-            radiusClientConnections=createRadiusClientConnections(radiusServer, config.node.radius.baseClientPort, 10, config.node.radius.IPAddress);
+                    // Client sockets
+                    radiusClientConnections=createRadiusClientConnections(radiusServer, config.node.radius.baseClientPort, 10, config.node.radius.IPAddress);
 
-            // Create management HTTP server
-            createAgent(config, diameterServer, radiusServer);
+                    // Create management HTTP server
+                    createAgent(config, diameterServer, radiusServer);
+                }
+            });
         }
     });
 
