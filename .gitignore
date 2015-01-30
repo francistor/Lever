@@ -1,6 +1,7 @@
 *.log
 _*
 nohup.out
+*~
 .idea/
 out.txt
 node_modules/

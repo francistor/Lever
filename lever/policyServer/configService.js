@@ -21,7 +21,7 @@ var MongoClient=require("mongodb").MongoClient;
 
 var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
 dbParams["databaseURL"]=process.env["leverConfigDatabaseURL"];
-if(!config.databaseURL) throw Error("leverConfigDatabaseURL environment variable not set");
+if(!dbParams["databaseURL"]) throw Error("leverConfigDatabaseURL environment variable not set");
 var hostName=os.hostname();
 
 var createConfig=function(){
@@ -37,6 +37,7 @@ var createConfig=function(){
 
     // Must be called before using the config object
     config.initialize=function(callback){
+	console.log("------------------------------------------------");
         MongoClient.connect(dbParams["databaseURL"], dbParams["databaseOptions"], function(err, db){
             if(err) callback(err);
             else{
