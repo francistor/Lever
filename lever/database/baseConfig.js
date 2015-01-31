@@ -7,7 +7,7 @@ print("----------------------------------");
 
 db.nodes.drop();
 
-var diameterSamsung=
+var samsung=
 {
     "_version": 1001,
 	"hostName": "samsung-jativa",
@@ -55,6 +55,13 @@ var diameterSamsung=
                 "IPAddress": "192.168.1.102:3868",
                 "connectionPolicy": "active",
                 "watchdogInterval": 10000
+            },
+            {
+                "name": "lever-ec2",
+                "diameterHost": "lever-ec2",
+                "IPAddress": "54.154.7.88:3868",
+                "connectionPolicy": "active",
+                "watchdogInterval": 10000
             }
         ],
 
@@ -72,7 +79,7 @@ var diameterSamsung=
     }
 };
 
-var diameterToshiba=
+var toshiba=
 {
     "_version": 1001,
     "hostName": "frodriguezgpw7",
@@ -134,8 +141,59 @@ var diameterToshiba=
     }
 };
 
-db.nodes.insert(diameterSamsung);
-db.nodes.insert(diameterToshiba);
+
+var ec2=
+{
+    "_version": 1001,
+    "hostName": "ec2",
+
+    "radius": {
+        "_version": 1001,
+        "IPAddress": 0,
+        "authPort": 1812,
+        "acctPort": 1813,
+
+        "clients": [
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+        ],
+
+        "baseClientPort": 40000,
+        "numClientPorts": 10
+    },
+
+    "diameter": {
+        "IPAddress-not-used": "127.0.0.1",
+        "port": 3868,
+        "diameterHost": "lever-ec2",
+        "diameterRealm": "amazon",
+        "vendorId": 1101,
+        "productName": "Lever",
+        "firmwareRevision": 1,
+        "connectionInterval": 10000,
+        "peers": [
+            {
+                "name": "lever-samsung",
+                "diameterHost": "lever-samsung",
+                "IPAddress": "88.12.22.222:13868",
+                "connectionPolicy": "passive",
+                "watchdogInterval": 10000
+            }
+        ],
+
+        "routes": [
+            {"realm": "forward", "applicationId": "Credit-Control", "peers": ["lever-samsung"], "policy": "random"}
+        ]
+    },
+
+    "management":{
+        "IPAddress": "ec2.amazon",
+        "httpPort": 9000
+    }
+};
+
+db.nodes.insert(samsung);
+db.nodes.insert(toshiba);
+db.nodes.insert(ec2);
 print("done");
 print("");
 
