@@ -1,5 +1,5 @@
 #!/bin/bash
 
 echo $leverConfigDatabaseURL
-mongo ${leverConfigDatabaseURL#mongodb://} baseConfig.js
-mongo ${leverConfigDatabaseURL#mongodb://} serviceConfig.js
+mongo ${LEVER_CONFIGDATABASE_URL#mongodb://} baseConfig.js
+mongo ${LEVER_CONFIGDATABASE_URL#mongodb://} serviceConfig.js
