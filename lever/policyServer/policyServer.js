@@ -9,7 +9,6 @@ var dgram=require("dgram");
 var radius=require("radius");
 var radiusHandler=require("./radiusHandler").radiusHandler;
 var dLogger=require("./log").dLogger;
-var config=require("./config").config;
 var createConnection=require("./diameterConnection").createConnection;
 var createRadiusClientConnections=require("./radiusConnection").createRadiusClientConnections;
 var createMessage=require("./message").createMessage;
