@@ -1,6 +1,8 @@
 #!/bin/bash
 #  --------------------------------------------------------------
 #  TECO RADIUS TEST
+#
+#  Parameter is number of packets to send
 #  --------------------------------------------------------------
 
 AAABASEDIR=/home/francisco/AAA
@@ -29,7 +31,7 @@ NAS_Port=\"1\"
 Acct_Session_Id=1-1
 Framed_IP_Address=10.0.0.1
 
-count=1
+count=${1:-1}
 overlap=1
 
 #  Delete Garbage

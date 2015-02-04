@@ -1,0 +1,15 @@
+[
+    {
+        "type": "file",
+        "location": "/var/tmp/cdr_",
+        "extension": ".txt",
+        "rolling": "minute",
+        "format": "livingstone"
+    },
+    {
+        "type": "database",
+        "location": "mongodb://cdrdb.lever/cdr",
+        "collection": "cdr",
+        "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"]
+    }
+]
