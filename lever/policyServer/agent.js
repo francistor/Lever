@@ -47,7 +47,7 @@ var createAgent=function(config, diameterServer, radiusServer){
 
     httpServer.get("/agent/getPeerStatus", function(req, res){
         mLogger.debug("Getting connection status");
-        res.json(diameterServer.getPeerStatus());
+       res.json(diameterServer?diameterServer.getPeerStatus():{});
     });
 };
 

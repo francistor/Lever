@@ -40,6 +40,8 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
     }
 
     // Chooses a port and Id and returns it
+    // PolicySever does not attempt to make sure that each socket+identifier has only
+    // one live (not timed-out) request
     radiusClientConnections.getClientSocket=function(){
 
         // Get the socket and Id to use
@@ -51,7 +53,7 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
         currentIndex=(currentIndex+1)%maxIndex;
 
         return({id: radiusIdentifier, socket:sockets[socketIndex]});
-    }
+    };
 
     return radiusClientConnections;
 };

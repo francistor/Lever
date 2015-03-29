@@ -51,6 +51,7 @@ var mLogger=new (winston.Logger)({
     "transports": managementTransports
 });
 
+// TODO: Change name from "diameter" to "engine" and add ==="verbose" to debug
 dLogger["inDebug"]=logConfig.diameter.console.level==="debug" || logConfig.diameter.console.level=="silly" ||logConfig.diameter.file.level==="debug" || logConfig.diameter.file.level=="silly";
 hLogger["inDdebug"]=logConfig.handlers.console.level==="debug" || logConfig.handlers.console.level=="silly" ||logConfig.handlers.file.level==="debug" || logConfig.handlers.file.level=="silly";
 mLogger["inDdebug"]=logConfig.management.console.level==="debug" || logConfig.management.console.level=="silly" ||logConfig.management.file.level==="debug" || logConfig.management.file.level=="silly";
