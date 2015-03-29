@@ -620,3 +620,94 @@ var diameterDictionary=
 db.diameterDictionary.insert(diameterDictionary);
 print("done");
 print("");
+
+print("----------------------------------");
+print("Creating Policy configuration");
+print("----------------------------------");
+
+
+db.policyParams.drop();
+
+// APN and Target
+
+var apn_internet_unifon={
+    setName:"apn",
+    key: "internet.unifon",
+    values: {
+        targets:["psa", "spb", "wap-gw"]
+    }
+};
+
+var apn_empresas={
+    setName:"apn",
+    key: "empresas",
+    values: {
+        targets:["psa", "spb", "rcs"]
+    }
+};
+
+var target_psa={
+    setName:"targets",
+    key: "psa",
+    values: {
+        ipAddresses: ["192.168.1.101", "192.168.1.102"],
+        timeoutMs: 750,
+        retries: 2
+    }
+};
+
+var target_spb={
+    setName:"targets",
+    key: "spb",
+    values: {
+        ipAddresses: ["192.168.1.101", "192.168.1.102"],
+        timeoutMs: 750,
+        retries: 2
+    }
+};
+
+var target_rcs={
+    setName:"targets",
+    key: "rcs",
+    values: {
+        ipAddresses: ["192.168.1.101"],
+        timeoutMs: 1500,
+        retries: 1
+    }
+};
+
+db.policyParams.insert(apn_internet_unifon);
+db.policyParams.insert(apn_empresas);
+db.policyParams.insert(target_psa);
+db.policyParams.insert(target_spb);
+db.policyParams.insert(target_rcs);
+
+// DomainConfig
+var domain_speedy={
+    setName: "domain",
+    key: "speedy",
+    values:{
+        doProxyAuth: false,
+        doProxyServiceAcct: true,
+        radiusProxyGroup: "speedy",
+        avps:{
+            "Unisphere-Virtual-Router": "wbc2"
+        }
+    }
+};
+
+var domain_arnet={
+    setName: "domain",
+    key: "arnet",
+    values:{
+        doProxyAuth: true,
+        doProxyServiceAcct: true,
+        radiusProxyGroup: "arnet",
+        avps:{
+            "Unisphere-Virtual-Router": "arnet"
+        }
+    }
+};
+
+db.policyParams.insert(domain_speedy);
+db.policyParams.insert(domain_arnet);

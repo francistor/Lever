@@ -22,4 +22,8 @@ mongoexport --host $host --db $database --collection dispatcher --out dispatcher
 node prettyprint.js dispatcher.json > conf/dispatcher.json
 rm dispatcher.json
 
+mongoexport --jsonArray --host $host --db $database --collection policyParams --out policyParams.json >> out.txt
+node prettyprint.js policyParams.json > conf/policyParams.json
+rm policyParams.json
+
 echo export done!

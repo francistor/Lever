@@ -30,7 +30,7 @@ var createConfig=function(){
         node: null,
         dispatcher: null,
         diameterDictionary: null,
-        policy: null
+        policyParams: {}
     };
 
     var DB;
@@ -279,11 +279,42 @@ var createConfig=function(){
         return deferred.promise;
     };
 
+    config.updatePolicyParams=function(){
+
+        var cookPolicyParams=function(docs){
+            var doc;
+            var params=config.policyParams;
+            for(var i=0; i<docs.length; i++){
+                doc=docs[i];
+                if(!doc.setName || !doc.key || !doc.values) throw Error("Bad PolicyParams syntax");
+                if(!params[doc.setName]) params[doc.setName]={}; // Create set if it does not exist
+                params[doc.setName][doc.key]=doc.values;
+            }
+        };
+
+        var deferred= Q.defer();
+
+        fs.readFile(__dirname+"/conf/policyParams.json", {encoding: "utf8"}, function(err, doc){
+            if(err && err.code==='ENOENT'){
+                // File not found. Read from database
+                DB.collection("policyParams").find({}).toArray(function(err, docs){
+                    if(err) deferred.reject(err); else deferred.resolve(cookPolicyParams(docs));
+                })
+            }
+            else{
+                // File found. Resolve
+                if(err) deferred.reject(err); else deferred.resolve(cookPolicyParams(JSON.parse(doc)));
+            }
+        });
+
+        return deferred.promise;
+    };
+
     /**
      * Updates all the config object, calling <callback(err)> when the full process has finished
      */
     config.updateAll=function(callback){
-        Q.all([config.updateNode(), config.updateDispatcher(), config.updateDiameterDictionary()]).then(function(){callback(null)}, callback);
+        Q.all([config.updateNode(), config.updateDispatcher(), config.updateDiameterDictionary(), config.updatePolicyParams()]).then(function(){callback(null)}, callback);
     };
 
     return config;
