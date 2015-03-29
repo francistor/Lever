@@ -1,10 +1,10 @@
-//conn=new Mongo();
-//db=conn.getDB("leverConfig");
+load("urlConfig.js");
 
 print("----------------------------------");
 print("Creating nodes configuration");
 print("----------------------------------");
 
+var db=connect(leverConfigDatabase.substring(10));
 db.nodes.drop();
 
 var samsung=

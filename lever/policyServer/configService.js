@@ -84,8 +84,10 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/node.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                DB.collection("nodes").findOne({"hostName": hostName}, function(err, doc){
-                    if(err) deferred.reject(err); else deferred.resolve(cookNode(doc));
+                DB.collection("nodes").findOne({"hostName": hostName}, function(err, dbDoc){
+                    // TODO: if cookNode throws exception shoud reject promise
+                    // TODO: cookNode does not return a value
+                    if(err) deferred.reject(err); else deferred.resolve(cookNode(dbDoc));
                 })
             }
             else{
