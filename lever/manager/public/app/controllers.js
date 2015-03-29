@@ -2,12 +2,6 @@ var managerControllers=angular.module('managerControllers', []);
 
 var requestTimeout=2000;
 
-var genericShowError=function(st){
-    if(!st) st="Error: No response from server";
-    console.error(st);
-    bootbox.alert(st);
-}
-
 // List of modes
 managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
@@ -355,4 +349,8 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
         // Shows inline error message
         niceAlert.error(data);
     });
+}]);
+
+managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
+
 }]);

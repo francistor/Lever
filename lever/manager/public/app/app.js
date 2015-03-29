@@ -7,8 +7,8 @@ managerApp.config(['$routeProvider',
         templateUrl: 'partials/node.html',
         controller: 'NodeConfigController'
       }).when('/nodeStats/:hostName', {
-          templateUrl: 'partials/nodeStats.html',
-          controller: 'NodeStatsController'
+         templateUrl: 'partials/nodeStats.html',
+         controller: 'NodeStatsController'
       }).when('/diameterDictionary', {
         templateUrl: 'partials/diameterDictionary.html',
         controller: 'DiameterDictionaryController'
@@ -17,8 +17,11 @@ managerApp.config(['$routeProvider',
         controller: 'RadiusDictionaryController'
       }).when('/dashboard', {
         templateUrl: 'partials/dashboard.html'
+      }).when('/clients', {
+         templateUrl: 'partials/client.html',
+         controller: 'ClientController'
       }).otherwise({
-		redirectTo: '/dashboard'
+         redirectTo: '/dashboard'
       });
   }]);
 
