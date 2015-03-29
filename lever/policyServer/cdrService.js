@@ -18,6 +18,9 @@ var createCDRService=function(){
 
     // Helper functions
     var rollChannelFile=function(channel){
+
+        if((new Date().getTime()-lastCheckDate) < checkIntervalMillis) return;
+
         var dateSpec=null;
         var now;
         var fileName;
@@ -85,15 +88,23 @@ var createCDRService=function(){
 
             // Write
             if(channel.type==="file"){
+                rollChannelFile(channel);
+
                 chunk="";
                 if(channel.format==="livingstone"){
+                    // Write date
+                    chunk+=new Date().toISOString()+endOfLine;
+
+                    // Write attributes
                     if(channel.filter) for(var j=0; j<channel.filter.length; j++){
-                        chunk+=channel.filter[j]+"="+avps[channel.filter[j]]+endOfLine;
+                        chunk+="\t"+channel.filter[j]+"="+avps[channel.filter[j]]+endOfLine;
                     } else for(avpName in avps) if(avps.hasOwnProperty(avpName)){
-                        chunk+=avpName+"="+avps[avpName]+endOfLine;
+                        chunk+="\t"+avpName+"="+avps[avpName]+endOfLine;
                     }
                     chunk+=endOfLine;
                 } else if(channel.format==="fixed"){
+
+                    // Write attributes
                     if(channel.filter) for(var j=0; j<channel.filter.length; j++){
                         chunk+=avps[channel.filter[j]]+endOfLine;
                     } else for(avpName in avps) if(avps.hasOwnProperty(avpName)){
@@ -114,7 +125,7 @@ var createCDRService=function(){
                 console.log("Not implemented")
             }
         }
-    }
+    };
 
     return cdrService;
 };
