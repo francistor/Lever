@@ -1,0 +1,138 @@
+<br>
+<legend>Client</legend>
+
+<div class="panel panel-success">
+    <div class="panel-heading">Search client</div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-12">
+                <form name="clientSearchForm" role="form" class="form-inline">
+                    <div class="form-group">
+                        <label for="searchTypeSelect">Search by: </label>
+                        <select id="searchTypeSelect" class="form-control" ng-model="search.field">
+                            <option value="phone">Phone</option>
+                            <option value="userName">User Name</option>
+                            <option value="line">Line</option>
+                            <option value="legacyClientId">IT Identifier</option>
+                        </select>
+                    </div>
+                    <div class="form-group" ng-if="search.field=='phone'">
+                        <label for="phoneText">Phone: </label>
+                        <input type="text" id="phoneText" class="form-control" ng-model="search.phone">
+                    </div>
+                    <div class="form-group" ng-if="search.field=='userName'">
+                        <label for="userNameText">User name: </label>
+                        <input type="text" id="userNameText" class="form-control" ng-model="search.userName">
+                    </div>
+                    <div class="form-group" ng-if="search.field=='line'">
+                        <label for="nasPortText">NAS-Port: </label>
+                        <input type="text" id="nasPortText" class="form-control" ng-model="search.nasPort">
+                    </div>
+                    <div class="form-group" ng-if="search.field=='line'">
+                        <label for="nasPortText">NAS-IP-Address: </label>
+                        <input type="text" id="nasIPAddressText" class="form-control" ng-model="search.nasIPAddress">
+                    </div>
+                    <div class="form-group" ng-if="search.field=='legacyClientId'">
+                        <label for="legacyClientIdText">IT Identifier: </label>
+                        <input type="text" id="legacyClientIdText" class="form-control" ng-model="search.legacyClientId">
+                    </div>
+                    <button type="button" ng-if="search.field" class="btn btn-primary" ng-click="clientSearch()">Search
+                        <i class="fa fa-search">
+                        </i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel panel-info">
+    <div class="panel-heading">Client Data</div>
+    <div class="panel-body">
+        <div class="row">
+            <form name="clientDataForm" role="form">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="legacyClientId">IT Client Id: </label>
+                        <input type="text" id="legacyClientId" class="form-control" ng-model="client.legacyClientId">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Client name: </label>
+                        <input type="text" id="name" class="form-control" ng-model="client.name">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">State: </label>
+                        <select id="status" class="form-control" ng-model="client.status">
+                            <option value="active">Active</option>
+                            <option value="restricted">Restricted</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                    </div>
+                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="clientUpdate()">Update
+                        <i class="fa fa-check">
+                        </i>
+                    </button>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="legacyClientIdSec">IT Client Id (sec): </label>
+                        <input type="text" id="legacyClientIdSec" class="form-control" ng-model="client.legacyClientIdSec">
+                    </div>
+                    <div class="form-group">
+                        <label for="planName">Plan: </label>
+                        <input type="text" id="planName" class="form-control" ng-model="client.planName">
+                    </div>
+                    <div class="form-group">
+                        <label for="timeZone">Time Zone: </label>
+                        <input type="text" id="timeZone" class="form-control" ng-model="client.timeZone">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="legalId">DNI: </label>
+                        <input type="text" id="legalId" class="form-control" ng-model="client.legalId">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingDay">Billing day: </label>
+                        <input type="number" id="billingDay" class="form-control" ng-model="client.billingDay">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="row">
+            <hr>
+        </div>
+    </div>
+</div>
+
+<div class="panel panel-info">
+    <div class="panel-heading">Points of usage</div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-12">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Phones</th>
+                        <th>User Names</th>
+                        <th>Lines</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>
+                            629629769 <i class="fa fa-times"></i>
+                        </td>
+                        <td>
+                            frg@tid.es <i class="fa fa-times"></i>
+                        </td>
+                        <td>
+                            1:127.0.0.1 <i class="fa fa-times"></i>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

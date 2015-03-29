@@ -1,7 +1,10 @@
+load("urlConfig.js");
+
 printjson("----------------------------------");
 printjson("Creating Calendar");
 printjson("----------------------------------");
 
+var db=connect(leverConfigDatabase.substring(10));
 db.calendars.drop();
 
 // Array items must be in the appropriate order
@@ -37,7 +40,7 @@ var speedyNightCalendar=
 	 		endTime: "20:00"
 	 	}
 	]	
-}
+};
 
 db.calendars.insert(speedyNightCalendar);
 
@@ -64,8 +67,8 @@ var plan1001=
 			autoactivated: true,
 			roamingAreas: null,
 			creditPoolNames: ["bytesrecurring", "bytespurchased"],
-			lastAction: 1,
-			poolSearchPolicy: 1,
+			lastAction: 1,          // Whether to deny access if no credit (1) or continue (0)
+			poolSearchPolicy: 1,    // May be 0 for fixed or 1 for expirationdate
 			recharges: 
 			[
 				{
@@ -73,8 +76,8 @@ var plan1001=
 					bytes: 1024,
 					seconds: 1000000000000,
 					validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
-					creationType: 3,		// Recurring
-					prepaidType: 2,			// Prepaid
+					creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
+					prepaidType: 2,			// 1: postpaid, 2: prepaid
 					creditPool: "bytesrecurring"
 				},
 				{
@@ -198,112 +201,10 @@ db.plans.insert(plan1003);
 printjson("Created plans");
 
 printjson("----------------------------------");
-printjson("Creating Clients");
-printjson("----------------------------------");
-
-db.clients.drop();
-
-// Unique index: legacyClientId, deletedDate
-db.clients.ensureIndex({legacyClientId: 1, deletedDate: 1}, {unique: true});
-
-var client1=
-{
-	legacyClientId: "lci1001",
-	legacyClientIdSec: null,
-	legalId: "50825186Q",
-	name: "Francisco Rodríguez",
-	planName: "1001",
-	deletedDate: 0,
-	status: 0,
-	billingDay: 1,
-	timeZone: "America/Sao Paulo",
-	creditPools:
-	[
-		{
-			poolName: "bytesrecurring",
-			prepaidType: 2, 		// Prepaid
-			bytes: 1024,
-			seconds: 1000000000000,
-			expirationDate: 1288329185000,
-			exhausted: false
-		},
-		{
-			poolName: "bytespurchased",
-			prepaidType: 2, 		// Prepaid
-			bytes: 2048,
-			seconds: 1000000000000,
-			expirationDate: 1488329185000,
-			exhausted: false
-		}
-	]
-};
-
-
-var client2=
-{
-	legacyClientId: "lci1002",
-	legacyClientIdSec: null,
-	legalId: "50825187Q",
-	name: "Celia Rodríguez",
-	planName: "1002",
-	deletedDate: 0,
-	status: 0,
-	billingDay: 1,
-	timeZone: "America/Sao Paulo",
-	creditPools:
-	[
-		{
-			poolName: "ppu",
-			prepaidType: 2, 		// Prepaid
-			bytes: 2048,
-			seconds: 1000000000000,
-			expirationDate: 1288329185000,
-			exhausted: false
-		}
-	]
-};
-
-
-var client3=
-{
-	legacyClientId: "lci1003",
-	legacyClientIdSec: null,
-	legalId: "1234567Q",
-	name: "Elena Fernández",
-	planName: "1003",
-	deletedDate: 0,
-	status: 0,
-	billingDay: 1,
-	timeZone: "America/Sao Paulo",
-	creditPools:
-	[
-		{
-			poolName: "speedyNightPeakPool",
-			prepaidType: 1, 					// Postpaid
-			calendarTags: ["default"],
-			bytes: 0,
-			seconds: 0,
-			expirationDate: 0,
-			exhausted: false
-		}
-	],
-	captureSets:
-	[
-	]
-};
-
-db.clients.insert(client1);
-db.clients.insert(client2);
-db.clients.insert(client3);
-
-printjson("Created Clients");
-
-printjson("----------------------------------");
 printjson("Creating Capturesets");
 printjson("----------------------------------");
 
 db.captureSets.drop();
-db.captureEvents.drop();
 
 var captureSet1=
 {
@@ -312,26 +213,8 @@ var captureSet1=
 	startDate: 0,
 	endDate: 0,
 	URL: "http://localhost:9999/blockedUser",
-	serviceName: "publi",
 	deactivateOnHit: true
 };
 
 db.captureSets.insert(captureSet1);
 
-// Add captureset1 to client lcid1003
-var capture1Id=db.captureSets.findOne({name: captureSet1.name})._id;
-db.clients.update({legacyClientId: "lcid1003"}, {$addToSet: {captureSets: capture1Id}});
-
-// Add capture event
-var client3Id=db.clients.findOne({legacyClientId: "lci1003"})._id;
-var captureEvent=
-{
-	captureId: capture1Id,
-	clientId: client3Id,
-	eventDate: 0,
-	type: 1,					// 1: hit, 2: response
-	content: "no content"
-}
-db.captureEvents.insert(captureEvent);
-
-printjson("Created Captures");
