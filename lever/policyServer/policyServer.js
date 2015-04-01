@@ -465,20 +465,23 @@ var createPolicyServer=function(){
      * @param attributes
      * @param serverName
      * @param callback
-     * @returns {boolean} true if the request was sent or false if the server was unavailable
+     * @returns
      */
     radiusServer.sendServerRequest=function(code, attributes, serverName, callback){
         var servers=config.node.radius.radiusServerMap;
         if(!servers[serverName]) throw serverName+" radius server is unknown";
 
         var server=servers[serverName];
-        if(server["quarantineDate"] && server["quarantineDate"].getTime()>new Date().getTime()) return false;
+        if(server["quarantineDate"] && server["quarantineDate"].getTime()>new Date().getTime()){
+            callback(new Error(serverName+" in quarantine"));
+        }
 
         radiusServer.sendRequest(code, attributes, server["IPAddress"], server["ports"][code], server["secret"], server["timeoutMillis"], server["tries"], function(err, response){
             if(err){
                 server["nErrors"]=(server["nErrors"]||0)+1;
                 if(server["nErrors"]>server["errorThreshold"]){
                     // Setup quarantine time
+                    dLogger.warning(serverName+" in now in quarantine");
                     server["quarantineDate"]=new Date(new Date()+server["quarantineTimeMillis"]);
                     server["nErrors"]=0;
                 }
@@ -490,8 +493,6 @@ var createPolicyServer=function(){
                 if(callback) callback(null, response);
             }
         });
-
-        return true;
     };
 
     /**
@@ -506,7 +507,6 @@ var createPolicyServer=function(){
     radiusServer.sendServerGroupRequest=function(code, attributes, serverGroupName, callback){
         var requestSent=false;
         var serverGroups=config.node.radius.radiusServerGroupMap;
-        var servers=config.node.radius.radiusServerMap;
         if(!serverGroups[serverGroupName]) throw serverGroupName+" radius server group is unknown";
 
         var serverGroup=serverGroups[serverGroupName];
@@ -515,13 +515,18 @@ var createPolicyServer=function(){
         if(serverGroup["policy"]=="fixed") r=0; else r=Math.floor(Math.random()*nServers);
         var i=0;
 
-        for(i=0; i<serverGroup["servers"].length; i++){
-            requestSent=radiusServer.sendServerRequest(code, attributes, servers[serverGroup["servers"][(i+r)/nServers]]["name"], callback);
-            if(requestSent) continue;
-        }
+        var makeRequest=function(serverName){
+            radiusServer.sendServerRequest(code, attributes, serverName, function(err, response){
+                if(!err) callback(null, response);
+                else{
+                    i++;
+                    if(i<nServers) makeRequest(serverGroup["servers"][i]);
+                    else callback(new Error("Tried all servers"));
+                }
+            });
+        };
 
-        if(!requestSent) callback(new Error("All servers unavailable"));
-
+        makeRequest(serverGroup["servers"][i]);
     };
 
     radiusServer.onResponseReceived=function(buffer, rinfo){
