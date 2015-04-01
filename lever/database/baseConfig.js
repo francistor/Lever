@@ -23,16 +23,9 @@ var samsung=
             {"name": "lever-toshiba", "IPAddress": "192.168.1.102", "secret": "secret", "class": "none"}
         ],
 
-        "servers": [
-            {"name": "8950AAA", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none"},
-            {"name": "lever-toshiba", "IPAddress": "192.168.1.102", "secret": "secret", "class": "none"},
-            {"name": "ec2", "IPAddress": "54.154.7.88", "secret": "secret", "class": "none"}
-        ],
+        "servers": [],
 
-        "serverGroups": [
-            {"name": "local", "servers": ["8950AAA"]},
-            {"name": "remote", "servers": ["lever-toshiba", "ec2"]}
-        ],
+        "serverGroups": [],
 
         "baseClientPort": 40000,
         "numClientPorts": 10
@@ -178,7 +171,8 @@ var ec2=
         "acctPort": 1813,
 
         "clients": [
-            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none"},
+            {"name": "lever-toshiba", "IPAddress": "88.12.22.122", "secret": "secret", "class": "erx"}
         ],
 
         "baseClientPort": 40000,
