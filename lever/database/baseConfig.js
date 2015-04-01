@@ -19,7 +19,19 @@ var samsung=
         "acctPort": 1813,
 
         "clients": [
-            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none"},
+            {"name": "lever-toshiba", "IPAddress": "192.168.1.102", "secret": "secret", "class": "none"}
+        ],
+
+        "servers": [
+            {"name": "8950AAA", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none"},
+            {"name": "lever-toshiba", "IPAddress": "192.168.1.102", "secret": "secret", "class": "none"},
+            {"name": "ec2", "IPAddress": "54.154.7.88", "secret": "secret", "class": "none"}
+        ],
+
+        "serverGroups": [
+            {"name": "local", "servers": ["8950AAA"]},
+            {"name": "remote", "servers": ["lever-toshiba", "ec2"]}
         ],
 
         "baseClientPort": 40000,
@@ -91,7 +103,19 @@ var toshiba=
         "acctPort": 1813,
 
         "clients": [
-            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "erx"}
+            {"name": "radiusTool", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none"},
+            {"name": "lever-samsung", "IPAddress": "192.168.1.101", "secret": "secret", "class": "none"}
+        ],
+
+        "servers": [
+            {"name": "8950AAA", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none", "ports": {"Access-Request": 11812, "Accounting-Request": 11813, "CoA-Request": 13799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 2, "quarantineTimeMillis": 3000},
+            {"name": "lever-samsung", "IPAddress": "192.168.1.101", "secret": "secret", "class": "none", "ports": {"Access-Request": 1812, "Accounting-Request": 1813, "CoA-Request": 3799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 10, "quarantineTimeMillis": 3000},
+            {"name": "ec2", "IPAddress": "54.154.7.88", "secret": "secret", "class": "none", "ports": {"Access-Request": 1812, "Accounting-Request": 1813, "CoA-Request": 3799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 10, "quarantineTimeMillis": 3000}
+        ],
+
+        "serverGroups": [
+            {"name": "local", "servers": ["8950AAA"], "policy": "random"},
+            {"name": "remote", "servers": ["lever-samsung", "ec2"], "policy": "fixed"}
         ],
 
         "baseClientPort": 40000,
@@ -131,7 +155,7 @@ var toshiba=
         ],
 
         "routes": [
-            {"realm": "forward", "applicationId": "Credit-Control", "peers": ["lever-samsung", "8950AAA"], "policy": "random"}
+            {"realm": "forward", "applicationId": "Credit-Control", "peers": ["lever-samsung", "8950AAA-toshiba"], "policy": "random"}
         ]
     },
 
@@ -232,7 +256,20 @@ var dispatcher=
 				"module":"./gyHandler",
 				"functionName": "ccrHandler"
 			}
-		}
+		},
+        "Radius":
+        {
+            "Access-Request":
+            {
+                "module":"./policyScripts/radiusHandler",
+                "functionName": "accessRequestHandler"
+            },
+            "Accounting-Request":
+            {
+                "module":"./policyScripts/radiusHandler",
+                "functionName": "accountingRequestHandler"
+            }
+        }
 	}
 };
 
@@ -595,6 +632,7 @@ var diameterDictionary=
 						"Origin-Host": {"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"Origin-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"Destination-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                        "Destination-Host":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"Auth-Application-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"CC-Request-Type":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"CC-Request-Number":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
@@ -618,6 +656,34 @@ var diameterDictionary=
 };
 
 db.diameterDictionary.insert(diameterDictionary);
+print("done");
+print("");
+
+print("----------------------------------");
+print("Creating CDR Channels configuration");
+print("----------------------------------");
+db.cdrChannels.drop();
+
+var localFileChannel={
+    "type": "file",
+    "location": "/var/lever/policyServer/cdr/cdr_",
+    "extension": ".txt",
+    "rolling": "minute",
+    "format": "livingstone",
+    "enabled": true
+};
+
+var dbChannel={
+    "type": "database",
+    "location": "mongodb://cdrdb.lever/cdr",
+    "collection": "cdr",
+    "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"],
+    "enabled": true
+};
+
+db.cdrChannels.insert(localFileChannel);
+db.cdrChannels.insert(dbChannel);
+
 print("done");
 print("");
 

@@ -5,7 +5,7 @@
 // Holds the policySever configuration
 // which consists of a set of JSON objects, read from file or from the backend database
 // config.<configItem>.<json-object>
-// <configItem> may be one of "node", "dispatcher", "dictionary" or "policy"
+// <configItem> may be one of "node", "dispatcher", "dictionary", "cdrChannels" or "policy"
 
 // configService tries to get the configItem from file, reading the conf/<configItem>.json
 // file, or the conf/policy/<setName>.json files, and then tries to get the configuration
@@ -30,7 +30,8 @@ var createConfig=function(){
         node: null,
         dispatcher: null,
         diameterDictionary: null,
-        policyParams: {}
+        policyParams: {},
+        cdrChannels: []
     };
 
     var DB;
@@ -59,7 +60,7 @@ var createConfig=function(){
             // Hook route map
             var appConfig;
             var routeMap={};
-            var routes=node.diameter.routes;
+            var routes=node.diameter.routes||[];
             if(routes) for(var i=0; i<routes.length; i++){
                 appConfig={peers:routes[i]["peers"], policy:routes[i].policy};
                 if(!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]]={};
@@ -69,11 +70,27 @@ var createConfig=function(){
 
             // Hook radius client map
             var radiusClientMap={};
-            var clients=node.radius.clients;
+            var clients=node.radius.clients||[];
             for(i=0; i<clients.length; i++){
                 radiusClientMap[clients[i].IPAddress]={secret:clients[i].secret, class: clients[i].class, name:clients[i].name};
             }
             node.radius.radiusClientMap=radiusClientMap;
+
+            // Hook radius server map
+            var radiusServerMap={};
+            var servers=node.radius.servers||[];
+            for(i=0; i<servers.length; i++){
+                radiusServerMap[servers[i].name]=servers[i];
+            }
+            node.radius.radiusServerMap=radiusServerMap;
+
+            // Hook radius server groups
+            var radiusServerGroupMap={};
+            var serverGroups=node.radius.serverGroups||[];
+            for(i=0; i<serverGroups.length; i++){
+                radiusServerGroupMap[serverGroups[i].name]=serverGroups[i];
+            }
+            node.radius.radiusServerGroupMap=radiusServerGroupMap;
 
             // Everything OK. Update configuration
             config.node=node;
@@ -85,14 +102,20 @@ var createConfig=function(){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
                 DB.collection("nodes").findOne({"hostName": hostName}, function(err, dbDoc){
-                    // TODO: if cookNode throws exception shoud reject promise
-                    // TODO: cookNode does not return a value
-                    if(err) deferred.reject(err); else deferred.resolve(cookNode(dbDoc));
-                })
+                    if(err) deferred.reject(err);
+                    else{
+                        try{ cookNode(dbDoc);} catch(e){ deferred.reject(e); }
+                        deferred.resolve();
+                    }
+                });
             }
             else{
                 // File found. Resolve
-                if(err) deferred.reject(err); else deferred.resolve(cookNode(JSON.parse(doc)));
+                if(err) deferred.reject(err);
+                else{
+                    try{ cookNode(JSON.parse(doc));} catch(e){ deferred.reject(e); }
+                    deferred.resolve();
+                }
             }
         });
 
@@ -134,13 +157,21 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/dispatcher.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                DB.collection("dispatcher").findOne({}, function(err, doc){
-                    if(err) deferred.reject(err); else deferred.resolve(cookDispatcher(doc));
+                DB.collection("dispatcher").findOne({}, function(err, dbDoc){
+                    if(err) deferred.reject(err);
+                    else{
+                        try{ cookDispatcher(dbDoc);} catch(e){ deferred.reject(e); }
+                        deferred.resolve();
+                    }
                 })
             }
             else{
                 // File found. Resolve
-                if(err) deferred.reject(err); else deferred.resolve(cookDispatcher(JSON.parse(doc)));
+                if(err) deferred.reject(err);
+                else{
+                    try{ cookDispatcher(JSON.parse(doc));} catch(e){ deferred.reject(e); }
+                    deferred.resolve();
+                }
             }
         });
 
@@ -266,13 +297,67 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/diameterDictionary.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                DB.collection("diameterDictionary").findOne({}, function(err, doc){
-                    if(err) deferred.reject(err); else deferred.resolve(cookDiameterDictionary(doc));
+                DB.collection("diameterDictionary").findOne({}, function(err, dbDoc){
+                    if(err) deferred.reject(err);
+                    else{
+                        try{ cookDiameterDictionary(dbDoc);} catch(e){ deferred.reject(e); }
+                        deferred.resolve();
+                    }
                 })
             }
             else{
                 // File found. Resolve
-                if(err) deferred.reject(err); else deferred.resolve(cookDiameterDictionary(JSON.parse(doc)));
+                if(err) deferred.reject(err);
+                else{
+                    try{ cookDiameterDictionary(JSON.parse(doc));} catch(e){ deferred.reject(e); }
+                    deferred.resolve();
+                }
+            }
+        });
+
+        return deferred.promise;
+    };
+
+    /**
+     * Reads the cdrChannels configuration object
+     * @returns {*}
+     */
+    config.updateCdrChannels=function(){
+
+        var cookCdrChannels=function(data){
+
+            var cdrChannels=[];
+
+            for(var i=0; i<data.length; i++){
+                if(data[i].enabled){
+                    cdrChannels.push(data[i]);
+                }
+            }
+
+            // Everything OK. Update configuration
+            config.cdrChannels=cdrChannels;
+        };
+
+        var deferred= Q.defer();
+
+        fs.readFile(__dirname+"/conf/cdrChannels.json", {encoding: "utf8"}, function(err, doc){
+            if(err && err.code==='ENOENT'){
+                // File not found. Read from database
+                DB.collection("cdrChannels").find({}).toArray(function(err, dbDocs){
+                    if(err) deferred.reject(err);
+                    else{
+                        try{ cookCdrChannels(dbDocs);} catch(e){ deferred.reject(e); }
+                        deferred.resolve();
+                    }
+                })
+            }
+            else{
+                // File found. Resolve
+                if(err) deferred.reject(err);
+                else{
+                    try{ cookCdrChannels(doc);} catch(e){ deferred.reject(e); }
+                    deferred.resolve();
+                }
             }
         });
 
@@ -297,13 +382,21 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/policyParams.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                DB.collection("policyParams").find({}).toArray(function(err, docs){
-                    if(err) deferred.reject(err); else deferred.resolve(cookPolicyParams(docs));
+                DB.collection("policyParams").find({}).toArray(function(err, dbDocs){
+                    if(err) deferred.reject(err);
+                    else{
+                        try{ cookPolicyParams(dbDocs);} catch(e){ deferred.reject(e); }
+                        deferred.resolve();
+                    }
                 })
             }
             else{
                 // File found. Resolve
-                if(err) deferred.reject(err); else deferred.resolve(cookPolicyParams(JSON.parse(doc)));
+                if(err) deferred.reject(err);
+                else{
+                    try{ cookPolicyParams(doc);} catch(e){ deferred.reject(e); }
+                    deferred.resolve();
+                }
             }
         });
 
@@ -314,7 +407,7 @@ var createConfig=function(){
      * Updates all the config object, calling <callback(err)> when the full process has finished
      */
     config.updateAll=function(callback){
-        Q.all([config.updateNode(), config.updateDispatcher(), config.updateDiameterDictionary(), config.updatePolicyParams()]).then(function(){callback(null)}, callback);
+        Q.all([config.updateNode(), config.updateDispatcher(), config.updateDiameterDictionary(), config.updatePolicyParams()], config.updateCdrChannels()).then(function(){callback(null)}, callback);
     };
 
     return config;

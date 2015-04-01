@@ -3,23 +3,29 @@
 
 var fs=require("fs");
 var endOfLine=require('os').EOL;
-var fieldSeparator=",";
+var config=require("./configService").config;
 
+// Configurable
+var fieldSeparator=",";
 var checkIntervalMillis=100;
 
 var createCDRService=function(){
 
     var cdrService={};
 
-    var cdrConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/cdr.json", {encoding: "utf8"}));
-    if(!cdrConfig) throw Error("Bad cdr.json syntax");
+    //var cdrConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/cdr.json", {encoding: "utf8"}));
+    //if(!cdrConfig) throw Error("Bad cdr.json syntax");
 
     var lastCheckDate=new Date().getTime();
 
     // Helper functions
     var rollChannelFile=function(channel){
 
+        // Skip if checked "recently"
         if((new Date().getTime()-lastCheckDate) < checkIntervalMillis) return;
+
+        // Flush
+        if(channel.ws && channel.ws.fileDescriptor) fs.fsync(channel.ws.fileDescriptor);
 
         var dateSpec=null;
         var now;
@@ -50,41 +56,31 @@ var createCDRService=function(){
 
         // Create the file stream
         var ws=fs.createWriteStream(fileName, {flags: "a+", encoding: "utf8", mode: "0666"});
-        channel.dateSpec=dateSpec;
         if(channel.ws) channel.ws.end();
         channel.ws=ws;
 
         ws.on("error", function(err){
             throw err;
         });
+
+        // Store file descriptor to do fsync (flush)
+        ws.on("open", function(fd){
+            ws.fileDescriptor=fd;
+        });
     };
 
-    // Add pointers to real stores in the configuration
-    var channel;
-    for(var i=0; i<cdrConfig.length; i++){
-        channel=cdrConfig[i];
-        if(channel.type=="file"){
-            channel.fd=null;
-            channel.dateSpec=null;
-
-            rollChannelFile(channel);
-        } else {
-            console.log("channel type not supported");
-        }
-    }
-
     cdrService.writeCDR=function(message){
-
+        var j;
         var chunk;
         var channel;
         var avpName;
         var avps=message.avps||message.attributes; // Diameter or radius
         var cdrDoc={};
 
-        // Iterate through filters
-        for(var i=0; i<cdrConfig.length; i++){
+        // Iterate through channels
+        if(config.cdrChannels) for(var i=0; i<config.cdrChannels.length; i++){
             // Write on each one of the channels
-            channel=cdrConfig[i];
+            channel=config.cdrChannels[i];
 
             // Write
             if(channel.type==="file"){
@@ -96,7 +92,7 @@ var createCDRService=function(){
                     chunk+=new Date().toISOString()+endOfLine;
 
                     // Write attributes
-                    if(channel.filter) for(var j=0; j<channel.filter.length; j++){
+                    if(channel.filter) for(j=0; j<channel.filter.length; j++){
                         chunk+="\t"+channel.filter[j]+"="+avps[channel.filter[j]]+endOfLine;
                     } else for(avpName in avps) if(avps.hasOwnProperty(avpName)){
                         chunk+="\t"+avpName+"="+avps[avpName]+endOfLine;
@@ -105,7 +101,7 @@ var createCDRService=function(){
                 } else if(channel.format==="fixed"){
 
                     // Write attributes
-                    if(channel.filter) for(var j=0; j<channel.filter.length; j++){
+                    if(channel.filter) for(j=0; j<channel.filter.length; j++){
                         chunk+=avps[channel.filter[j]]+endOfLine;
                     } else for(avpName in avps) if(avps.hasOwnProperty(avpName)){
                         chunk+=avps[avpName]+endOfLine;
@@ -116,13 +112,13 @@ var createCDRService=function(){
 
             } else if(channel.type==="database"){
                 if(channel.filter) {
-                    for (var j = 0; j < channel.filter.length; j++) {
+                    for (j = 0; j < channel.filter.length; j++) {
                         cdrDoc[channel.filter[j]] = message[channel.filter[j]];
                     }
                 } else cdrDoc=avps;
 
                 // Write doc here
-                console.log("Not implemented")
+                console.log("Not implemented");
             }
         }
     };

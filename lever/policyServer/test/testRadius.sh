@@ -1,8 +1,7 @@
 #!/bin/bash
 #  --------------------------------------------------------------
-#  TECO RADIUS TEST
-#
-#  Usage: testRadius.sh auth|acct|all <number-of-packets>
+#  LEVER RADIUS TEST
+#  Usage testRadius.sh <auth|acct|all> <count>
 #  --------------------------------------------------------------
 
 AAABASEDIR=/home/francisco/AAA
@@ -21,7 +20,6 @@ COMMAND="${BINDIR}/aaa-cmd -login admin -password admin"
 AWK=awk
 
 #  Test parameters
-
 Secret=secret
 REQUESTFILE=${_THIS_FILE_PATH}/request.txt
 

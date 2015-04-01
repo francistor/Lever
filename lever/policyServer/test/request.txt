@@ -1,5 +1,4 @@
-User-Name=miusuario@midominio
-Acct-Session-Id=1-1
-NAS-IP-Address=3.3.3.3
-NAS-Port="1"
-Acct-Status-Type=Start
+User-Name=miusuario@midominio 
+Acct-Session-Id=1-1 
+NAS-IP-Address=3.3.3.3 
+NAS-Port="1" 

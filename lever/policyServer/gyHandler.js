@@ -20,6 +20,7 @@ var ccrHandler=function(connection, message){
     request["Session-Id"]="thesessionid";
     request["Origin-Realm"]=diameterConfig["diameterRealm"];
     request["Destination-Realm"]="forward";
+    request["Destination-Host"]="8950AAA";
     request["Auth-Application-Id"]="Credit-Control";
     request["CC-Request-Type"]="Initial";
     request["CC-Request-Number"]=1;

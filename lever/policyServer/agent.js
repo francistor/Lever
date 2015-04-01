@@ -2,6 +2,7 @@
 var mLogger=require("./log").mLogger;
 var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
+var config=require("./configService").config;
 var express=require("express");
 var bodyParser=require('body-parser');
 
@@ -16,6 +17,12 @@ var createAgent=function(config, diameterServer, radiusServer){
     // Start server
     httpServer.listen(config.node["management"]["httpPort"]);
     mLogger.info("HTTP manager listening on port "+config.node["management"]["httpPort"]);
+
+    httpServer.get("/agent/updateAll", function(req, res){
+        mLogger.debug("Reloading configuration");
+        config.updateAll();
+        res.json({});
+    });
 
     httpServer.get("/agent/updateNodeConfig", function(req, res){
         mLogger.debug("Reloading basic configuration");
@@ -35,6 +42,12 @@ var createAgent=function(config, diameterServer, radiusServer){
         res.json({});
     });
 
+    httpServer.get("/agent/updateCdrChannels", function(req, res){
+        mLogger.debug("Reloading cdr channels");
+        config.updateCdrChannels();
+        res.json({});
+    });
+
     httpServer.get("/agent/getDiameterStats", function(req, res){
         mLogger.debug("Getting diameter stats");
         res.json(diameterStats);
@@ -48,6 +61,11 @@ var createAgent=function(config, diameterServer, radiusServer){
     httpServer.get("/agent/getPeerStatus", function(req, res){
         mLogger.debug("Getting connection status");
        res.json(diameterServer?diameterServer.getPeerStatus():{});
+    });
+
+    httpServer.get("/agent/getRadiusServerStatus", function(req, res){
+        mLogger.debug("Getting radius server status");
+        res.json(config.node.radius.radiusServerMap);
     });
 };
 

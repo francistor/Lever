@@ -7,7 +7,6 @@ var Q=require("q");
 var net=require("net");
 var dgram=require("dgram");
 var radius=require("radius");
-var radiusHandler=require("./radiusHandler").radiusHandler;
 var dLogger=require("./log").dLogger;
 var createConnection=require("./diameterConnection").createConnection;
 var createRadiusClientConnections=require("./radiusConnection").createRadiusClientConnections;
@@ -18,7 +17,6 @@ var createAgent=require("./agent").createAgent;
 var config=require("./configService").config;
 
 process.title="lever-policyserver";
-
 
 // Singleton
 var createPolicyServer=function(){
@@ -357,20 +355,21 @@ var createPolicyServer=function(){
             return;
         }
 
-        try {
-            // Handle message
-            if (radiusMessage.code=="Access-Request") {
-                radiusHandler.handleAccessRequest(radiusServer, radiusMessage);
+        var dispatcher=config.dispatcher;
+
+        // if(there is a handler)
+        if(((dispatcher["Radius"]||{})[radiusMessage.code]||{})["handler"]){
+            if(dLogger["inDebug"]) dLogger.debug("Message is Request. Dispatching message to: "+dispatcher["Radius"][radiusMessage.code].functionName);
+            try {
+                dispatcher["Radius"][radiusMessage.code]["handler"](radiusServer, radiusMessage);
+            }catch(e){
+                radiusStats.incrementServerError(client.name);
+                dLogger.error("Handler error in "+dispatcher["Radius"][radiusMessage.code].functionName);
+                dLogger.error(e.message);
+                dLogger.error(e.stack);
             }
-            else if (radiusMessage.code=="Accounting-Request") {
-                radiusHandler.handleAccountingRequest(radiusServer, radiusMessage);
-            }
-            else dLogger.error("Unknown code: "+radiusMessage.code);
         }
-        catch(e){
-            radiusStats.incrementServerError(client.name);
-            dLogger.error("Radius Handler error: "+e.message);
-        }
+        else dLogger.error("Unknown code: "+radiusMessage.code);
     };
 
     /**
@@ -405,9 +404,7 @@ var createPolicyServer=function(){
      */
     radiusServer.sendRequest=function(code, attributes, ipAddress, port, secret, timeout, nTries, callback){
         // Checks
-        if(nTries<=0) throw new Error("nTries should be >0");
-        // TODO: Remove this check
-        if(!callback) throw new Error("Callback parameter is required");
+        if(!nTries || nTries<=0) throw new Error("nTries should be >0");
 
         // Number of packets already sent
         var tried=0;
@@ -457,7 +454,74 @@ var createPolicyServer=function(){
         catch(err){
             dLogger.error("Could not send radius request: "+err.message);
             radiusStats.incrementClientError(ipAddress);
+            if(callback) callback(err);
         }
+    };
+
+    /**
+     * Sends the radius request to the specified server, using the configured parameters
+     * Throws exception if the serverName is not known
+     * @param code
+     * @param attributes
+     * @param serverName
+     * @param callback
+     * @returns {boolean} true if the request was sent or false if the server was unavailable
+     */
+    radiusServer.sendServerRequest=function(code, attributes, serverName, callback){
+        var servers=config.node.radius.radiusServerMap;
+        if(!servers[serverName]) throw serverName+" radius server is unknown";
+
+        var server=servers[serverName];
+        if(server["quarantineDate"] && server["quarantineDate"].getTime()>new Date().getTime()) return false;
+
+        radiusServer.sendRequest(code, attributes, server["IPAddress"], server["ports"][code], server["secret"], server["timeoutMillis"], server["tries"], function(err, response){
+            if(err){
+                server["nErrors"]=(server["nErrors"]||0)+1;
+                if(server["nErrors"]>server["errorThreshold"]){
+                    // Setup quarantine time
+                    server["quarantineDate"]=new Date(new Date()+server["quarantineTimeMillis"]);
+                    server["nErrors"]=0;
+                }
+                if(callback) callback(err);
+            }
+            else{
+                // Success, and nError is thus reset
+                server["nErrors"]=0;
+                if(callback) callback(null, response);
+            }
+        });
+
+        return true;
+    };
+
+    /**
+     * Iterates through the server group to send the specified radius packet. It ries to
+     * send it to a single server
+     * @param code
+     * @param attributes
+     * @param serverGroupName
+     * @param callback
+     * @returns
+     */
+    radiusServer.sendServerGroupRequest=function(code, attributes, serverGroupName, callback){
+        var requestSent=false;
+        var serverGroups=config.node.radius.radiusServerGroupMap;
+        var servers=config.node.radius.radiusServerMap;
+        if(!serverGroups[serverGroupName]) throw serverGroupName+" radius server group is unknown";
+
+        var serverGroup=serverGroups[serverGroupName];
+        var nServers=serverGroup["servers"].length;
+        var r;
+        if(serverGroup["policy"]=="fixed") r=0; else r=Math.floor(Math.random()*nServers);
+        var i=0;
+
+        for(i=0; i<serverGroup["servers"].length; i++){
+            requestSent=radiusServer.sendServerRequest(code, attributes, servers[serverGroup["servers"][(i+r)/nServers]]["name"], callback);
+            if(requestSent) continue;
+        }
+
+        if(!requestSent) callback(new Error("All servers unavailable"));
+
     };
 
     radiusServer.onResponseReceived=function(buffer, rinfo){
