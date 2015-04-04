@@ -430,7 +430,7 @@ var createPolicyServer=function(){
                 tried++;
                 if(tried==nTries){
                     // Timeout and retries expired
-                    delete radiusRequestPointers[ipAddress+":"+rParams.id];
+                    delete radiusRequestPointers[rParams.socket.address().port+":"+rParams.id];
                     radiusStats.incrementClientError(ipAddress);
                     if(callback) callback(new Error("timeout"));
                 }
@@ -440,12 +440,10 @@ var createPolicyServer=function(){
                     rParams.socket.send(buffer, 0, buffer.length, port, ipAddress);
 
                     // Re-set response hook
-                    radiusRequestPointers[ipAddress+":"+rParams.id]["timer"]=setTimeout(timeoutFnc, timeout);
+                    radiusRequestPointers[rParams.socket.address().port+":"+rParams.id]["timer"]=setTimeout(timeoutFnc, timeout);
                 }
             };
-
-            // TODO: response hook should contain also origin port
-            radiusRequestPointers[ipAddress+":"+rParams.id]={
+            radiusRequestPointers[rParams.socket.address().port+":"+rParams.id]={
                 "timer": setTimeout(timeoutFnc, timeout),
                 "callback": callback,
                 "secret": secret
@@ -472,8 +470,9 @@ var createPolicyServer=function(){
         if(!servers[serverName]) throw serverName+" radius server is unknown";
 
         var server=servers[serverName];
-        if(server["quarantineDate"] && server["quarantineDate"].getTime()>new Date().getTime()){
+        if(server["quarantineDate"] && server["quarantineDate"].getTime()>Date.now()){
             callback(new Error(serverName+" in quarantine"));
+            return;
         }
 
         radiusServer.sendRequest(code, attributes, server["IPAddress"], server["ports"][code], server["secret"], server["timeoutMillis"], server["tries"], function(err, response){
@@ -481,8 +480,8 @@ var createPolicyServer=function(){
                 server["nErrors"]=(server["nErrors"]||0)+1;
                 if(server["nErrors"]>server["errorThreshold"]){
                     // Setup quarantine time
-                    dLogger.warning(serverName+" in now in quarantine");
-                    server["quarantineDate"]=new Date(new Date()+server["quarantineTimeMillis"]);
+                    dLogger.warn(serverName+" in now in quarantine");
+                    server["quarantineDate"]=new Date(Date.now()+server["quarantineTimeMillis"]);
                     server["nErrors"]=0;
                 }
                 if(callback) callback(err);
@@ -514,31 +513,36 @@ var createPolicyServer=function(){
         var r;
         if(serverGroup["policy"]=="fixed") r=0; else r=Math.floor(Math.random()*nServers);
         var i=0;
-
         var makeRequest=function(serverName){
             radiusServer.sendServerRequest(code, attributes, serverName, function(err, response){
                 if(!err) callback(null, response);
                 else{
                     i++;
-                    if(i<nServers) makeRequest(serverGroup["servers"][i]);
+                    if(i<nServers) makeRequest(serverGroup["servers"][(i+r)%nServers]);
                     else callback(new Error("Tried all servers"));
                 }
             });
         };
 
-        makeRequest(serverGroup["servers"][i]);
+        makeRequest(serverGroup["servers"][(i+r)%nServers]);
     };
 
-    radiusServer.onResponseReceived=function(buffer, rinfo){
-        if(dLogger["inDebug"]) dLogger.debug("Radius response received from "+rinfo.address+" with "+buffer.length+" bytes of data");
+    /**
+     * Called when a response is received on a client socket
+     * @param buffer message received
+     * @param rInfo remote info
+     * @param lInfo local info (socket.address()
+     */
+    radiusServer.onResponseReceived=function(buffer, rInfo, lInfo){
+        if(dLogger["inDebug"]) dLogger.debug("Radius response received from "+rInfo.address+" with "+buffer.length+" bytes of data");
 
         // Pre-decode message
         var response=radius.decode_without_secret({packet: buffer});
 
         // Lookup in response hooks
-        var requestPointer=radiusRequestPointers[rinfo.address+":"+response.identifier];
+        var requestPointer=radiusRequestPointers[lInfo.port+":"+response.identifier];
         if(!requestPointer){
-            dLogger.warn("Unsolicited or stale response from "+rinfo.address);
+            dLogger.warn("Unsolicited or stale response from "+rInfo.address);
             return;
         }
 
@@ -546,12 +550,12 @@ var createPolicyServer=function(){
         response=radius.decode({packet: buffer, secret: requestPointer.secret});
 
         // Log and increment counter
-        dLogger.logRadiusClientResponse(rinfo.address, response.code);
-        radiusStats.incrementClientResponse(rinfo.address, response.code);
+        dLogger.logRadiusClientResponse(rInfo.address, response.code);
+        radiusStats.incrementClientResponse(rInfo.address, response.code);
 
         // Process message
         clearTimeout(requestPointer.timer);
-        delete radiusRequestPointers[rinfo.address+"."+response.identifier];
+        delete radiusRequestPointers[lInfo.port+":"+response.identifier];
         dLogger.debug("Executing callback");
         try{
             requestPointer.callback(null, response);

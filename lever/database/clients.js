@@ -4,7 +4,7 @@ printjson("----------------------------------");
 printjson("Creating Clients");
 printjson("----------------------------------");
 
-var db=connect(leverConfigDatabase.substring(10));
+var db=connect(leverClientDatabase.substring(10));
 db.clients.drop();
 
 var client1=
@@ -181,7 +181,7 @@ db.phones.insert(phone2);
 db.clients.insert(client3);
 db.userNames.insert(login3);
 db.userNames.insert(login33);
-db.phones.insert(line3);
+db.lines.insert(line3);
 db.phones.insert(phone3);
 
 // Unique index: legacyClientId, deletedDate
@@ -193,10 +193,18 @@ db.lines.ensureIndex({nasPort: 1, nasIPAddress: 1}, {unique: true});
 // Unique index: phones
 db.phones.ensureIndex({phone: 1}, {unique: true});
 
-printjson("Created Clients");
+print("done");
+print("");
+
+printjson("----------------------------------");
+printjson("Creating Capture sets");
+printjson("----------------------------------");
 
 // Add captureset1 to client lcid1003
 serviceDb=connect(leverConfigDatabase.substring(10));
 var capture1Id=serviceDb.captureSets.findOne({name: "notificacion morosidad"})._id;
 db.clients.update({legacyClientId: "lcid1003"}, {$addToSet: {captureSets: capture1Id}});
+
+print("done");
+print("");
 

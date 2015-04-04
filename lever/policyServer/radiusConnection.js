@@ -32,7 +32,7 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
 
     // Message handler. MUST be a response
     function onMessage(buffer, rinfo){
-        radiusServer.onResponseReceived(buffer, rinfo);
+        radiusServer.onResponseReceived(buffer, rinfo, this.address());
     }
 
     function onError(err){

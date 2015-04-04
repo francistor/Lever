@@ -24,3 +24,6 @@ var captureEvent=
 };
 
 db.captureEvents.insert(captureEvent);
+
+print("done");
+print("");

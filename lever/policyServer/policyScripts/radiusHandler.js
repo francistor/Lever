@@ -21,7 +21,7 @@ var accessRequestHandler=function(radiusServer, message){
     });
     */
 
-    radiusServer.sendServerGroupRequest("Access-Request", [], "local", function(err, response){
+    radiusServer.sendServerGroupRequest("Access-Request", [], "remote", function(err, response){
         if(err){
             hLogger.error("Error in request to proxy server: "+err.message);
         }

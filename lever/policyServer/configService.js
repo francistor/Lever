@@ -57,40 +57,44 @@ var createConfig=function(){
 
             var node=data;
 
-            // Hook route map
-            var appConfig;
-            var routeMap={};
-            var routes=node.diameter.routes||[];
-            if(routes) for(var i=0; i<routes.length; i++){
-                appConfig={peers:routes[i]["peers"], policy:routes[i].policy};
-                if(!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]]={};
-                routeMap[routes[i]["realm"]][routes[i]["applicationId"]]=appConfig;
+            if(node.diameter) {
+                // Hook route map
+                var appConfig;
+                var routeMap = {};
+                var routes = node.diameter.routes || [];
+                if (routes) for (var i = 0; i < routes.length; i++) {
+                    appConfig = {peers: routes[i]["peers"], policy: routes[i].policy};
+                    if (!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]] = {};
+                    routeMap[routes[i]["realm"]][routes[i]["applicationId"]] = appConfig;
+                }
+                node.diameter.routeMap = routeMap;
             }
-            node.diameter.routeMap=routeMap;
 
             // Hook radius client map
-            var radiusClientMap={};
-            var clients=node.radius.clients||[];
-            for(i=0; i<clients.length; i++){
-                radiusClientMap[clients[i].IPAddress]={secret:clients[i].secret, class: clients[i].class, name:clients[i].name};
-            }
-            node.radius.radiusClientMap=radiusClientMap;
+            if(node.radius) {
+                var radiusClientMap = {};
+                var clients = node.radius.clients || [];
+                for (i = 0; i < clients.length; i++) {
+                    radiusClientMap[clients[i].IPAddress] = {secret: clients[i].secret, class: clients[i].class, name: clients[i].name};
+                }
+                node.radius.radiusClientMap = radiusClientMap;
 
-            // Hook radius server map
-            var radiusServerMap={};
-            var servers=node.radius.servers||[];
-            for(i=0; i<servers.length; i++){
-                radiusServerMap[servers[i].name]=servers[i];
-            }
-            node.radius.radiusServerMap=radiusServerMap;
+                // Hook radius server map
+                var radiusServerMap = {};
+                var servers = node.radius.servers || [];
+                for (i = 0; i < servers.length; i++) {
+                    radiusServerMap[servers[i].name] = servers[i];
+                }
+                node.radius.radiusServerMap = radiusServerMap;
 
-            // Hook radius server groups
-            var radiusServerGroupMap={};
-            var serverGroups=node.radius.serverGroups||[];
-            for(i=0; i<serverGroups.length; i++){
-                radiusServerGroupMap[serverGroups[i].name]=serverGroups[i];
+                // Hook radius server groups
+                var radiusServerGroupMap = {};
+                var serverGroups = node.radius.serverGroups || [];
+                for (i = 0; i < serverGroups.length; i++) {
+                    radiusServerGroupMap[serverGroups[i].name] = serverGroups[i];
+                }
+                node.radius.radiusServerGroupMap = radiusServerGroupMap;
             }
-            node.radius.radiusServerGroupMap=radiusServerGroupMap;
 
             // Everything OK. Update configuration
             config.node=node;

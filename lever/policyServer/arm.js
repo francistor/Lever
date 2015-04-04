@@ -2,10 +2,98 @@
  * Created by frodriguezg on 27/12/2014.
  */
 
+var Q=require("q");
+var fs=require("fs");
+var MongoClient=require("mongodb").MongoClient;
 
-var createServiceMgr=function(){
+var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
+dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
+dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
+if(!dbParams["configDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
+if(!dbParams["clientDatabaseURL"]) throw Error("LEVER_CLIENTDATABASE_URL environment variable not set");
 
-    var serviceMgr={};
+var createArm=function(){
+
+    var arm={};
+
+    var configDB;
+    var clientDB;
+
+    /**
+     * Returns promise resolved when both connections to databases are established.
+     *
+     * @returns {*}
+     */
+    arm.initialize=function(){
+        return  Q.all([Q.ninvoke(MongoClient, "connect", dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
+                Q.ninvoke(MongoClient, "connect", dbParams["clientDatabaseURL"], dbParams["databaseOptions"])]).
+                spread(function(coDb, clDb){
+                    configDB=coDb;
+                    clientDB=clDb;
+                })
+    };
+
+    /**
+     * Returns a promise to be fulfilled with the client object, or null if not found
+     * clientPoU may have one of the following properties set: "phone", "userName", "nasPort/nasIPAddress"
+     * @param clientPoU
+     */
+    arm.getClient=function(clientPoU){
+        var collectionName;
+        if(clientPoU.phone) collectionName="phones"; else if(clientPoU.userName) collectionName="userNames"; else collectionName="lines";
+
+        var deferred= Q.defer();
+
+        clientDB.collection(collectionName).findOne(clientPoU, {}, dbParams["databaseOptions"], function(err, pou){
+            if(err) deferred.reject(err);
+            else if(!pou) deferred.resolve(null);
+            else{
+                clientDB.collection("clients").findOne({_id: pou.clientId}, {}, dbParams["databaseOptions"], function(err, client){
+                    if(err) deferred.reject(err);
+                    else if(!client) deferred.resolve(null);
+                    else deferred.resolve(client);
+                });
+            }
+        });
+
+        return deferred.promise;
+    };
+
+    /**
+     * Returns a promise to be resolved with the plan object
+     * @param planName
+     */
+    arm.getPlan=function(planName){
+        var deferred= Q.defer();
+
+        configDB.collection("plans").findOne({name: planName}, {}, dbParams["databaseOptions"], function(err, plan){
+            if(err) deferred.reject(err);
+            else if(!plan) deferred.resolve(null);
+            else deferred.resolve(plan);
+        });
+
+        return deferred.promise;
+    };
+
+
+    arm.getClientContext=function(clientPoU){
+        var clientContext={};
+
+        return arm.getClient(clientPoU).
+            then(function(client){
+            if(!client) return null;
+            else{
+                clientContext["client"]=client;
+                return arm.getPlan(client.planName);
+            }
+        }).then(function(plan){
+            if(!plan) return clientContext;
+            else{
+                clientContext["plan"]=plan;
+                return clientContext;
+            }
+        })
+    };
 
     // If date within time range, returns the end date of the time range
     // Otherwise returns null
@@ -54,7 +142,7 @@ var createServiceMgr=function(){
         }
     }
 
-    serviceMgr.breakEvent=function(event, calendar){
+    arm.breakEvent=function(event, calendar){
         var i;
         var fragmentSeconds;
         var remainingSeconds=event.seconds;
@@ -89,7 +177,7 @@ var createServiceMgr=function(){
         return brokenEvents;
     };
 
-    return serviceMgr;
+    return arm;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -138,7 +226,7 @@ var event={
     bytesDown: 1000
 };
 
-var serviceMgr=createServiceMgr();
+var arm=createArm();
 
 /*
 console.log(serviceMgr.isInCalendarItem(
@@ -151,7 +239,29 @@ console.log(serviceMgr.isInCalendarItem(
 ));
 */
 
-var brokenEvents=serviceMgr.breakEvent(event, speedyNightCalendar);
-console.log(JSON.stringify(brokenEvents, undefined, 2));
+// var brokenEvents=arm.breakEvent(event, speedyNightCalendar);
+// console.log(JSON.stringify(brokenEvents, null, 2));
+
+arm.initialize().then(function(){
+    test();
+}, function(reason){
+    console.log("Initialization error due to "+reason);
+}).done();
+
+function test(){
+    console.log("testing...");
+
+    arm.getClientContext({
+        nasPort: 2002,
+        nasIPAddress: "127.0.0.1"
+    }).then(function(clientContext){
+        console.log("Got clientContext: "+JSON.stringify(clientContext, null, 2));
+    }, function(err){
+        console.log("Error: "+err);
+    }).then(function(){
+        process.exit(1);
+    })
+
+}
 
 

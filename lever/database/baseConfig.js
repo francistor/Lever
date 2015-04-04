@@ -101,21 +101,22 @@ var toshiba=
         ],
 
         "servers": [
-            {"name": "8950AAA", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none", "ports": {"Access-Request": 11812, "Accounting-Request": 11813, "CoA-Request": 13799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 2, "quarantineTimeMillis": 3000},
+            {"name": "8950AAA-toshiba", "IPAddress": "127.0.0.1", "secret": "secret", "class": "none", "ports": {"Access-Request": 11812, "Accounting-Request": 11813, "CoA-Request": 13799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 2, "quarantineTimeMillis": 3000},
+            {"name": "8950AAA-samsung", "IPAddress": "192.168.1.101", "secret": "secret", "class": "none", "ports": {"Access-Request": 11812, "Accounting-Request": 11813, "CoA-Request": 13799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 2, "quarantineTimeMillis": 3000},
             {"name": "lever-samsung", "IPAddress": "192.168.1.101", "secret": "secret", "class": "none", "ports": {"Access-Request": 1812, "Accounting-Request": 1813, "CoA-Request": 3799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 10, "quarantineTimeMillis": 3000},
             {"name": "ec2", "IPAddress": "54.154.7.88", "secret": "secret", "class": "none", "ports": {"Access-Request": 1812, "Accounting-Request": 1813, "CoA-Request": 3799}, "timeoutMillis": 1000, "tries": 1, "errorThreshold": 10, "quarantineTimeMillis": 3000}
         ],
 
         "serverGroups": [
-            {"name": "local", "servers": ["8950AAA"], "policy": "random"},
-            {"name": "remote", "servers": ["lever-samsung", "ec2"], "policy": "fixed"}
+            {"name": "local", "servers": ["8950AAA-toshiba"], "policy": "random"},
+            {"name": "remote", "servers": ["8950AAA-toshiba", "8950AAA-samsung"], "policy": "random"}
         ],
 
         "baseClientPort": 40000,
         "numClientPorts": 10
     },
 
-    "diameter": {
+    "diameter-no": {
         "IPAddress-not-used": "127.0.0.1",
         "port": 3868,
         "diameterHost": "lever-toshiba",

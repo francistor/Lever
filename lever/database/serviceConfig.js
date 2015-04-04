@@ -44,7 +44,8 @@ var speedyNightCalendar=
 
 db.calendars.insert(speedyNightCalendar);
 
-printjson("Created speedyNightCalendar");
+print("done");
+print("");
 
 printjson("----------------------------------");
 printjson("Creating Service Configuration");
@@ -198,7 +199,8 @@ db.plans.insert(plan1001);
 db.plans.insert(plan1002);
 db.plans.insert(plan1003);
 
-printjson("Created plans");
+print("done");
+print("");
 
 printjson("----------------------------------");
 printjson("Creating Capturesets");
@@ -217,4 +219,7 @@ var captureSet1=
 };
 
 db.captureSets.insert(captureSet1);
+
+print("done");
+print("");
 
