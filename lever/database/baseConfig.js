@@ -1,5 +1,6 @@
 load("urlConfig.js");
 
+print("");
 print("----------------------------------");
 print("Creating nodes configuration");
 print("----------------------------------");

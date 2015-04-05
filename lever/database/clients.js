@@ -1,8 +1,9 @@
 load("urlConfig.js");
 
-printjson("----------------------------------");
-printjson("Creating Clients");
-printjson("----------------------------------");
+print("");
+print("----------------------------------");
+print("Creating Clients");
+print("----------------------------------");
 
 var db=connect(leverClientDatabase.substring(10));
 db.clients.drop();
@@ -10,30 +11,32 @@ db.clients.drop();
 var client1=
 {
     _id: 1,
-    legacyClientId: "lci1001",
-    legacyClientIdSec: null,
-    legalId: "50825186Q",
-    name: "Francisco Rodríguez",
-    planName: "1001",
-    status: 0,
-    billingDay: 1,
-    timeZone: "America/Sao_Paulo",
+    static: {
+        legacyClientId: "lci1001",
+        legacyClientIdSec: null,
+        legalId: "50825186Q",
+        name: "Francisco Rodríguez",
+        planName: "1001",
+        status: 0,
+        billingDay: 1,
+        timeZone: "America/Sao_Paulo"
+    },
     creditPools:
         [
             {
                 poolName: "bytesrecurring",
-                prepaidType: 2, 		// Prepaid
+                mayUnderflow: false,
                 bytes: 1024,
                 seconds: 1000000000000,
-                expirationDate: 1288329185000,
+                expirationDate: ISODate("2015-07-06T03:00:00Z"),
                 exhausted: false
             },
             {
                 poolName: "bytespurchased",
-                prepaidType: 2, 		// Prepaid
+                mayUnderflow: false,
                 bytes: 2048,
                 seconds: 1000000000000,
-                expirationDate: 1488329185000,
+                expirationDate: ISODate("2015-07-08T03:00:00Z"),
                 exhausted: false
             }
         ]
@@ -66,22 +69,24 @@ var phone11={
 var client2=
 {
     _id: 2,
-    legacyClientId: "lci1002",
-    legacyClientIdSec: null,
-    legalId: "50825187Q",
-    name: "Celia Rodríguez",
-    planName: "1002",
-    status: 0,
-    billingDay: 1,
-    timeZone: "America/Sao Paulo",
+    static: {
+        legacyClientId: "lci1002",
+        legacyClientIdSec: null,
+        legalId: "50825187Q",
+        name: "Celia Rodríguez",
+        planName: "1002",
+        status: 0,
+        billingDay: 1,
+        timeZone: "America/Sao Paulo"
+    },
     creditPools:
         [
             {
                 poolName: "ppu",
-                prepaidType: 2, 		// Prepaid
+                mayUnderflow: false,
                 bytes: 2048,
                 seconds: 1000000000000,
-                expirationDate: 1288329185000,
+                expirationDate: ISODate("2015-07-07T03:00:00Z"),
                 exhausted: false
             }
         ]
@@ -117,23 +122,25 @@ var phone2={
 var client3=
 {
     _id: 3,
-    legacyClientId: "lci1003",
-    legacyClientIdSec: null,
-    legalId: "1234567Q",
-    name: "Elena Fernández",
-    planName: "1003",
-    status: 0,
-    billingDay: 1,
-    timeZone: "America/Sao Paulo",
+    static: {
+        legacyClientId: "lci1003",
+        legacyClientIdSec: null,
+        legalId: "1234567Q",
+        name: "Elena Fernández",
+        planName: "1003",
+        status: 0,
+        billingDay: 1,
+        timeZone: "America/Sao Paulo"
+    },
     creditPools:
         [
             {
                 poolName: "speedyNightPeakPool",
-                prepaidType: 1, 					// Postpaid
+                mayUnderflow: true,
                 calendarTags: ["default"],
                 bytes: 0,
                 seconds: 0,
-                expirationDate: 0,
+                expirationDate: null,
                 exhausted: false
             }
         ],
@@ -185,7 +192,7 @@ db.lines.insert(line3);
 db.phones.insert(phone3);
 
 // Unique index: legacyClientId, deletedDate
-db.clients.ensureIndex({legacyClientId: 1, deletedDate: 1}, {unique: true});
+db.clients.ensureIndex({"static.legacyClientId": 1}, {unique: true});
 // Unique index: userName
 db.userNames.ensureIndex({userName: 1}, {unique: true});
 // Unique index: userName
@@ -196,9 +203,9 @@ db.phones.ensureIndex({phone: 1}, {unique: true});
 print("done");
 print("");
 
-printjson("----------------------------------");
-printjson("Creating Capture sets");
-printjson("----------------------------------");
+print("----------------------------------");
+print("Creating Capture sets");
+print("----------------------------------");
 
 // Add captureset1 to client lcid1003
 serviceDb=connect(leverConfigDatabase.substring(10));

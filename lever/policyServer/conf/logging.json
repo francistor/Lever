@@ -1,9 +1,13 @@
 {
 	"__COMMENT": "Define entries 'console' and/or 'file' with the winston transport properties",
 
-    "diameter":{
+    "policyServer":{
         "console": {"timestamp": true, "level": "verbose"},
         "file": {"timestamp": true, "level": "debug", "filename": "diameter.log", "json": false}
+    },
+    "arm":{
+        "console": {"timestamp": true, "level": "verbose"},
+        "file": {"timestamp": true, "level": "debug", "filename": "arm.log", "json": false}
     },
     "handlers":{
         "console": {"timestamp": true, "level": "debug"},

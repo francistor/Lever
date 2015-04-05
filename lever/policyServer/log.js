@@ -7,11 +7,11 @@ var fs=require("fs");
 var logConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/logging.json", {encoding: "utf8"}));
 
 // Diameter server
-var diameterTransports=[];
-if("console" in logConfig["diameter"]) diameterTransports.push(new (winston.transports.Console)(logConfig["diameter"].console));
-if("file" in logConfig["diameter"]) diameterTransports.push(new (winston.transports.File)(logConfig["diameter"].file));
+var policyServerTransports=[];
+if("console" in logConfig["policyServer"]) policyServerTransports.push(new (winston.transports.Console)(logConfig["policyServer"].console));
+if("file" in logConfig["policyServer"]) policyServerTransports.push(new (winston.transports.File)(logConfig["policyServer"].file));
 var dLogger=new (winston.Logger)({
-	"transports": diameterTransports
+	"transports": policyServerTransports
 });
 
 dLogger.logDiameterMessage=function(originHost, destinationHost, message){
@@ -35,7 +35,7 @@ dLogger.logRadiusClientResponse=function(ipAddress, code){
     dLogger.verbose(ipAddress+"-->ME:"+code);
 };
 
-// handler functions handlers
+// handler functions
 var handlerTransports=[];
 if("console" in logConfig["handlers"]) handlerTransports.push(new (winston.transports.Console)(logConfig["handlers"].console));
 if("file" in logConfig["handlers"]) handlerTransports.push(new (winston.transports.File)(logConfig["handlers"].file));
@@ -51,16 +51,27 @@ var mLogger=new (winston.Logger)({
     "transports": managementTransports
 });
 
-// TODO: Change name from "diameter" to "engine" and add ==="verbose" to debug
-dLogger["inDebug"]=logConfig.diameter.console.level==="debug" || logConfig.diameter.console.level=="silly" ||logConfig.diameter.file.level==="debug" || logConfig.diameter.file.level=="silly";
-hLogger["inDdebug"]=logConfig.handlers.console.level==="debug" || logConfig.handlers.console.level=="silly" ||logConfig.handlers.file.level==="debug" || logConfig.handlers.file.level=="silly";
-mLogger["inDdebug"]=logConfig.management.console.level==="debug" || logConfig.management.console.level=="silly" ||logConfig.management.file.level==="debug" || logConfig.management.file.level=="silly";
+// Credit control api
+var armTransports=[];
+if("console" in logConfig["arm"]) armTransports.push(new (winston.transports.Console)(logConfig["arm"].console));
+if("file" in logConfig["arm"]) managementTransports.push(new (winston.transports.File)(logConfig["arm"].file));
+var aLogger=new (winston.Logger)({
+    "transports": armTransports
+});
 
-dLogger["inVerbose"]=logConfig.diameter.console.level==="verbose" || logConfig.diameter.console.level=="debug" ||logConfig.diameter.file.level==="verbose" || logConfig.diameter.file.level=="debug";
-hLogger["inVerbose"]=logConfig.handlers.console.level==="verbose" || logConfig.handlers.console.level=="debug" ||logConfig.handlers.file.level==="verbose" || logConfig.handlers.file.level=="debug";
-mLogger["inVerbose"]=logConfig.management.console.level==="verbose" || logConfig.management.console.level=="debug" ||logConfig.management.file.level==="verbose" || logConfig.management.file.level=="debug";
+// TODO: Change name from "diameter" to "policyServer" and add ==="verbose" to debug
+dLogger["inDebug"]=logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="debug";
+aLogger["inDebug"]=logConfig.arm.console.level==="debug" || logConfig.arm.file.level==="debug";
+hLogger["inDebug"]=logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="debug";
+mLogger["inDebug"]=logConfig.management.console.level==="debug" ||logConfig.management.file.level==="debug";
+
+dLogger["inVerbose"]=logConfig.policyServer.console.level==="verbose" || logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="verbose" || logConfig.policyServer.file.level==="debug";
+dLogger["inVerbose"]=logConfig.arm.console.level==="verbose" || logConfig.arm.console.level==="debug" ||logConfig.arm.file.level==="verbose" || logConfig.arm.file.level==="debug";
+hLogger["inVerbose"]=logConfig.handlers.console.level==="verbose" || logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="verbose" || logConfig.handlers.file.level==="debug";
+mLogger["inVerbose"]=logConfig.management.console.level==="verbose" || logConfig.management.console.level==="debug" ||logConfig.management.file.level==="verbose" || logConfig.management.file.level==="debug";
 
 exports.dLogger=dLogger;
+exports.aLogger=aLogger;
 exports.hLogger=hLogger;
 exports.mLogger=mLogger;
 

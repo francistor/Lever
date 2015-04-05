@@ -4,6 +4,7 @@
 
 var Q=require("q");
 var fs=require("fs");
+var aLogger=require("./log").aLogger;
 var MongoClient=require("mongodb").MongoClient;
 
 var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
@@ -19,12 +20,15 @@ var createArm=function(){
     var configDB;
     var clientDB;
 
+    var configProperties;
+
     /**
      * Returns promise resolved when both connections to databases are established.
      *
      * @returns {*}
      */
-    arm.initialize=function(){
+    arm.initialize=function(cp){
+        configProperties=cp;
         return  Q.all([Q.ninvoke(MongoClient, "connect", dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
                 Q.ninvoke(MongoClient, "connect", dbParams["clientDatabaseURL"], dbParams["databaseOptions"])]).
                 spread(function(coDb, clDb){
@@ -75,7 +79,12 @@ var createArm=function(){
         return deferred.promise;
     };
 
-
+    /**
+     * Returns a promise to be resolved with the ClientContext object, which contains a "client" attribute and a
+     * "plan" attribute
+     * @param clientPoU
+     * @returns {*}
+     */
     arm.getClientContext=function(clientPoU){
         var clientContext={};
 
@@ -84,7 +93,7 @@ var createArm=function(){
             if(!client) return null;
             else{
                 clientContext["client"]=client;
-                return arm.getPlan(client.planName);
+                return arm.getPlan(client.static.planName);
             }
         }).then(function(plan){
             if(!plan) return clientContext;
@@ -93,6 +102,92 @@ var createArm=function(){
                 return clientContext;
             }
         })
+    };
+
+    /**
+     * Returns and object with the credit for the specified service.
+     * @param clientContext
+     * @param ratingGroup
+     * @param serviceId
+     * @returns {*}
+     */
+    arm.getCredit=function(clientContext, ratingGroup, serviceId){
+        var i;
+
+        // null values mean no limit
+        var totalCredit={
+            bytes: 0,
+            seconds: 0,
+            expirationDate: null
+        };
+
+        // Find the target service
+        var service=null;
+        var services;
+        services=clientContext.plan.services;
+        for(i=0; i<services.length; i++){
+            if(services[i].ratingGroup==ratingGroup && (services[i].serviceId==0 || services[i].serviceId==serviceId)){
+                service=services[i];
+                break;
+            }
+        }
+        if(service==null){
+            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: No serviceMatch");
+            return null;
+        }
+
+        // Return if no credit control is to be performed
+        if(!service.preAuthorized){
+            totalCredit.bytes=configProperties.maxBytesCredit;
+            totalCredit.seconds=configProperties.maxSecondsCredit;
+            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: Service without credit control");
+            return totalCredit;
+        }
+
+        // Get the relevant creditPools for the targeted service
+        var targetCreditPools=[];
+        var clientCreditPools=clientContext.client.creditPools;
+        service.creditPoolNames.forEach(function(poolName){
+            clientCreditPools.forEach(function(pool){
+                if(pool.poolName==poolName) targetCreditPools.push(pool);
+            })
+        });
+
+        // Sort them by date if required
+        if(service.sortCreditsByExpirationDate){
+            targetCreditPools.sort(function(a, b){
+                if(!a.expirationDate) return 1;
+                if(!b.expirationDate) return -1;
+                return a.expirationDate.getTime()- b.expirationDate.getTime();
+            });
+        }
+
+        // Add credit
+        targetCreditPools.forEach(function(credit){
+            // null values will remain (unlimited credit)
+            if(typeof(credit.bytes)=='undefined') totalCredit.bytes=null; else if(credit.bytes!=null && totalCredit.bytes!=null) totalCredit.bytes+=credit.bytes;
+            if(typeof(credit.seconds)=='undefined') totalCredit.seconds=null; else if(credit.seconds!=null && totalCredit.seconds!=null) totalCredit.seconds+=credit.seconds;
+            // Set expiration date to minimum value among all credits
+            if(!totalCredit.expirationDate) totalCredit.expirationDate=credit.expirationDate;
+            else if(credit.expirationDate && credit.expirationDate.getTime()<totalCredit.expirationDate) totalCredit.expirationDate=credit.expirationDate;
+        });
+
+        // Enforce maximum value
+        if(configProperties.maxBytesCredit) if(!totalCredit.bytes || totalCredit.bytes>configProperties.maxBytesCredit) totalCredit.bytes=configProperties.maxBytesCredit;
+        if(configProperties.maxSecondsCredit) if(!totalCredit.seconds || totalCredit.seconds>configProperties.maxSecondsCredit) totalCredit.seconds=configProperties.maxSecondsCredit;
+        if(configProperties.maxSecondsCredit) if(!totalCredit.expirationDate || totalCredit.expirationDate.getTime()-Date.now()>configProperties.maxSecondsCredit*1000) totalCredit.expirationDate=new Date(Date.now()+configProperties.maxSecondsCredit*1000);
+
+        // Enforce minimum value
+        if(configProperties.maxBytesCredit) if(totalCredit.bytes && totalCredit.bytes<configProperties.minBytesCredit) totalCredit.bytes=configProperties.minBytesCredit;
+        if(configProperties.maxSecondsCredit)if(totalCredit.seconds && totalCredit.seconds<configProperties.minSecondsCredit) totalCredit.seconds=configProperties.minSecondsCredit;
+        if(configProperties.maxSecondsCredit) if(totalCredit.expirationDate && totalCredit.expirationDate.getTime()-Date.now()<configProperties.minSecondsCredit*1000) totalCredit.expirationDate=new Date(Date.now()+configProperties.minSecondsCredit*1000);
+
+        // Randomize validity date
+        if(configProperties.expirationRandomSeconds) if(totalCredit.expirationDate && totalCredit.expirationDate.getMinutes()==0 && totalCredit.expirationDate.getSeconds()==0){
+            totalCredit.expirationDate=new Date(totalCredit.expirationDate.getTime()+Math.floor(Math.random()*1000*configProperties.expirationRandomSeconds));
+        }
+
+        return totalCredit;
     };
 
     // If date within time range, returns the end date of the time range
@@ -242,7 +337,12 @@ console.log(serviceMgr.isInCalendarItem(
 // var brokenEvents=arm.breakEvent(event, speedyNightCalendar);
 // console.log(JSON.stringify(brokenEvents, null, 2));
 
-arm.initialize().then(function(){
+arm.initialize({
+    maxBytesCredit:null,
+    maxSecondsCredit:null,
+    minBytesCredit:0,
+    minSecondsCredit:0,
+    expirationRandomSeconds: null}).then(function(){
     test();
 }, function(reason){
     console.log("Initialization error due to "+reason);
@@ -252,16 +352,18 @@ function test(){
     console.log("testing...");
 
     arm.getClientContext({
-        nasPort: 2002,
+        nasPort: 1001,
         nasIPAddress: "127.0.0.1"
     }).then(function(clientContext){
         console.log("Got clientContext: "+JSON.stringify(clientContext, null, 2));
+        var credit=arm.getCredit(clientContext, 101, 0);
+        console.log(" ");
+        console.log("Credit: "+JSON.stringify(credit));
     }, function(err){
         console.log("Error: "+err);
     }).then(function(){
         process.exit(1);
-    })
-
+    }).done();
 }
 
 
