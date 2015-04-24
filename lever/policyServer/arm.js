@@ -20,11 +20,10 @@ if(!dbParams["eventDatabaseURL"]) throw Error("LEVER_EVENTDATABASE_URL environme
 
 var createArm=function(){
 
-    var INITIAL_REQUEST=1;
-    var UPDATE_REQUEST=2;
-    var TERMINATE_REQUEST=3;
-
     var arm={};
+    arm.INITIAL_REQUEST=1;
+    arm.UPDATE_REQUEST=2;
+    arm.TERMINATE_REQUEST=3;
 
     var configDB;
     var clientDB;
@@ -147,12 +146,10 @@ var createArm=function(){
      * @param serviceId
      * @returns {*}
      */
-    arm.getCredit=function(clientContext, serviceId, ratingGroup){
-
-        // Find the target service
-        var service=guideService(clientContext, serviceId, ratingGroup);
+    arm.getCredit=function(clientContext, service){
 
         // Return null if no service match
+        // TODO: Remove from this method
         if(service==null){
             if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: No serviceMatch");
             return null;
@@ -219,42 +216,42 @@ var createArm=function(){
     /**
      * Updates the clientContext object passed with the credits updated and the dirtyCreditPools mark if applicable
      * @param clientContext
-     * @param usages array of usage of the form {ratingGroup:<number>, serviceId:<number>, bytesUsed:<number>, secondsUsed:<number>}
+     * @param serviceName
+     * @param bytes
+     * @param seconds
      */
-    arm.discountCredit=function(clientContext, usages){
+    arm.discountCredit=function(clientContext, service, bytes, seconds){
         var toDiscount;
 
-        usages.forEach(function(usage){
-            var service=guideService(clientContext, usage.serviceId, usage.ratingGroup);
-            if(service==null) return;
+        getTargetCreditPools(clientContext, service).forEach(function(credit){
+            // All credits are here valid (i.e. before expiration date)
 
-            getTargetCreditPools(clientContext, service).forEach(function(credit){
-                // All credits are here valid (i.e. before expiration date)
-                if(!(typeof(credit.bytes)=='undefined') && usage.bytes){
-                    clientContext.client.creditsDirty=true;
-                    if(credit.mayUnderflow) {
-                        credit.bytes-=usage.bytes;
-                        usage.bytes=0;
-                    }
-                    else{
-                       toDiscount=Math.min(credit.bytes, usage.bytes);
-                        credit.bytes-=toDiscount;
-                        usage.bytes-=toDiscount;
-                    }
+            // Discount the bytes
+            if(!(typeof(credit.bytes)=='undefined') && bytes){
+                clientContext.client.creditsDirty=true;
+                if(credit.mayUnderflow) {
+                    credit.bytes-=bytes;
+                    bytes=0;
                 }
-                if(!(typeof(credit.seconds)=='undefined') && usage.seconds){
-                    clientContext.client.creditsDirty=true;
-                    if(credit.mayUnderflow) {
-                        credit.seconds-=usage.seconds;
-                        usage.seconds=0;
-                    }
-                    else{
-                        toDiscount=Math.min(credit.seconds, usage.seconds);
-                        credit.seconds-=toDiscount;
-                        usage.seconds-=toDiscount;
-                    }
+                else{
+                    toDiscount=Math.min(credit.bytes, bytes);
+                    credit.bytes-=toDiscount;
+                    bytes-=toDiscount;
                 }
-            });
+            }
+            // Discount the seconds
+            if(!(typeof(credit.seconds)=='undefined') && seconds){
+                clientContext.client.creditsDirty=true;
+                if(credit.mayUnderflow) {
+                    credit.seconds-=seconds;
+                    seconds=0;
+                }
+                else{
+                    toDiscount=Math.min(credit.seconds, seconds);
+                    credit.seconds-=toDiscount;
+                    usage.seconds-=toDiscount;
+                }
+            }
         });
     };
 
@@ -326,52 +323,57 @@ var createArm=function(){
     /**
      *
      * @param clientContext
-     * @param usages. Will be decorated with the guided service names
-     * @returns {Array} Each element {serviceId: <value>, ratingGroup: <value>, bytes: <value>, seconds: <value>}. Only
-     * if ccRequestType is INITIAL_REQUEST or UPDATE_REQUEST.
+     * @param ccRequestType
+     * @param ccElements array of {
+     *      serviceId:<>,
+     *      ratingGroup: <>,
+     *      used: {
+     *          bytes: <>,
+     *          seconds: <>
+     *      },
+     *      granted: {
+     *          bytes: <>,
+     *          seconds: <>,
+     *          expirationDate: <>,
+     *          fui: <>,        // Final Unit Indication
+     *          fua: <>
+     *     }
      *
-     * Credit will be discounted in clientContext if ccRequestType is UPDATE_REQUEST or TERMINATE_REQUEST
+     * ccElements are decorated with serivceNames
      */
-    arm.executeCCRequest=function(clientContext, usages, ccRequestType){
-
-        var grants=[];
+    arm.executeCCRequest=function(clientContext, ccRequestType, ccElements){
 
         // First discount credit without updating
-        arm.discountCredit(clientContext, usages);
+        if(ccRequestType==arm.UPDATE_REQUEST || ccRequestType==arm.TERMINATE_REQUEST) ccElements.forEach(function(ccElement){
+            // Decorate with service
+            if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
+            // Do discount
+            if(ccElement.service) arm.discountCredit(clientContext, ccElement.service, (ccElement["used"]||{}).bytes, (ccElement["used"]||{}).seconds);
+        });
 
         // Update recurrent credits and do cleanup
         arm.updateRecurringCredits(clientContext);
         arm.cleanupCredits(clientContext);
 
-        // Get credit
-        if(usages) usages.forEach(function(usage){
-            grants.push(arm.getCredit(clientContext, usage.serviceId, usage.ratingGroup));
+        // Decorate with credits
+        if(ccRequestType==arm.INITIAL_REQUEST || ccRequestType==arm.UPDATE_REQUEST) ccElements.forEach(function(ccElement){
+            // Decorate with service if not done yet
+            if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
+            if(ccElement.service) ccElement.granted=arm.getCredit(clientContext, ccElement.service);
         });
-
-        return grants;
     };
 
     /**
      *
      * @param usageEvents
      *
-     * UsageEvent format {clientId: <>, eventDate: <>, eventType: <>, serviceName: <>, sessionId: <>
-     *      usage:{
-     *          serviceId: <>,
-     *          ratingGroup: <>,
-     *          bytes: <>,
-     *          seconds: <>
-     *      },
-     *      granted:{
-     *          bytes: <>,
-     *          seconds: <>
-     *      }
+     * UsageEvent format {clientId: <>, eventDate: <>, eventType: <>, serviceName: <>, sessionId: <>, used: <>, granted: <>
      */
     arm.writeUsageEventArray=function(clientContext, usages, ccRequestType, date, callback){
         var event={
             clientId: clientContext.client._id,
             eventDate: date ? date : new Date(),
-            eventType: ccRequestType,
+            eventType: ccRequestType
         }
     };
 
@@ -611,38 +613,33 @@ function test(){
     console.log("testing...");
 
     arm.getClientContext({
-        nasPort: 2001,
+        nasPort: 1001,
         nasIPAddress: "127.0.0.1"
     }).then(function(clientContext){
-        /*
-        console.log("Got clientContext: "+JSON.stringify(clientContext, null, 2));
-        console.log("---------------------------");
-        console.log("Credits before cleaning up: "+JSON.stringify(clientContext.client.creditPools, null, 2));
-        console.log("---------------------------");
-        arm.cleanupCredits(clientContext);
-        console.log("Credits after cleaning up: "+JSON.stringify(clientContext.client.creditPools, null, 2));
-        */
         console.log("Credits before event");
         console.log("---------------------------");
         console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
-        var creditsGranted=arm.discountAndGetCredit(clientContext, [
-            {ratingGroup: 102, serviceId: 3, bytes:2000, seconds: 3600},
-            {ratingGroup: 102, serviceId: 4, bytes:500, seconds: 3600}
-        ]);
+
+        var ccElements=[
+            {ratingGroup: 101, serviceId: 3, used: {bytes:500, seconds: 3600}},
+            {ratingGroup: 101, serviceId: 4, used: {bytes:600, seconds: 3600}}
+        ];
+        arm.executeCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements);
+        ccElements.forEach(function(ccElement){
+            if(ccElement.service){
+                ccElement.serviceName=ccElement.service.name;
+                delete ccElement.service;
+            }
+        });
+
         console.log("Credit granted");
         console.log("---------------------------");
-        console.log(JSON.stringify(creditsGranted, null, 2));
+        console.log(JSON.stringify(ccElements, null, 2));
+
         console.log("---------------------------");
         console.log("Credits after event");
         console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
-        /*
-        arm.discountCredit(clientContext, [{ratingGroup: 101, serviceId: 3, bytes:1000, seconds: 3600}]);
-        console.log("---------------------------");
-        console.log("Updated clientContext: "+JSON.stringify(clientContext, null, 2));
-        var credit=arm.getCredit(clientContext, 0, 101);
-        console.log(" ");
-        console.log("Credit: "+JSON.stringify(credit));
-        */
+
     }, function(err){
         console.log("Error: "+err);
     }).then(function(){
