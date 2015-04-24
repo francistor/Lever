@@ -6,7 +6,7 @@
         "file": {"timestamp": true, "level": "debug", "filename": "diameter.log", "json": false}
     },
     "arm":{
-        "console": {"timestamp": true, "level": "verbose"},
+        "console": {"timestamp": true, "level": "debug"},
         "file": {"timestamp": true, "level": "debug", "filename": "arm.log", "json": false}
     },
     "handlers":{

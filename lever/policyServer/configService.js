@@ -21,7 +21,6 @@ var MongoClient=require("mongodb").MongoClient;
 
 var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
 dbParams["databaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
-if(!dbParams["databaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
 var hostName=os.hostname();
 
 var createConfig=function(){
@@ -38,7 +37,7 @@ var createConfig=function(){
 
     // Must be called before using the config object
     config.initialize=function(callback){
-        MongoClient.connect(dbParams["databaseURL"], dbParams["databaseOptions"], function(err, db){
+        if(dbParams["databaseURL"]) MongoClient.connect(dbParams["databaseURL"], dbParams["databaseOptions"], function(err, db){
             if(err) callback(err);
             else{
                 DB=db;
@@ -105,6 +104,7 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/node.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
+                if(!DB) throw Error("No configuration found for node. Database url is "+dbParams["databaseURL"]);
                 DB.collection("nodes").findOne({"hostName": hostName}, function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
@@ -161,6 +161,7 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/dispatcher.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
+                if(!DB) throw Error("No configuration found for dispatcher. Database url is "+dbParams["databaseURL"]);
                 DB.collection("dispatcher").findOne({}, function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
@@ -301,6 +302,7 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/diameterDictionary.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
+                if(!DB) throw Error("No configuration found for diameter dictionary. Database url is "+dbParams["databaseURL"]);
                 DB.collection("diameterDictionary").findOne({}, function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
@@ -347,6 +349,7 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/cdrChannels.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
+                if(!DB) throw Error("No configuration found for cdr channels. Database url is "+dbParams["databaseURL"]);
                 DB.collection("cdrChannels").find({}).toArray(function(err, dbDocs){
                     if(err) deferred.reject(err);
                     else{
@@ -386,6 +389,7 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/policyParams.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
+                if(!DB) throw Error("No configuration found for policy parameters. Database url is "+dbParams["databaseURL"]);
                 DB.collection("policyParams").find({}).toArray(function(err, dbDocs){
                     if(err) deferred.reject(err);
                     else{

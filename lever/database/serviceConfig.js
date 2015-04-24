@@ -69,28 +69,26 @@ var plan1001=
 			autoActivated: true,
 			roamingAreas: null,
             preAuthorized: true,
-			creditPoolNames: ["bytesrecurring", "bytespurchased"],
-            sortCreditsByExpirationDate: true,     // If false, credits will be used in the order declared in "creditPoolNames"
-			oocAction: 1,                   // 0: Allow. 1: Deny. 2: Redirect
+			creditPoolNames: ["bytesRecurring", "bytesPurchased"],
+            sortCreditsByExpirationDate: true,      // If false, credits will be used in the order declared in "creditPoolNames"
+			oocAction: 0,                           // 0: Terminate. 1: Redirect. 2: Restrict_access
 			recharges: 
 			[
 				{
 					name: "1001 recurring",
 					bytes: 1024,
-					seconds: 1000000000000,
 					validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
 					creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
 					mayUnderflow: false,
-					creditPool: "bytesrecurring"
+					creditPool: "bytesRecurring"
 				},
 				{
 					name: "1001 purchase",
 					bytes: 1024,
-					seconds: 1000000000000,
 					validity: "2M",
 					creationType: 4,		// Portal
 					mayUnderflow: false,
-					creditPool: "bytespurchased",
+					creditPool: "bytesPurchased",
 					price:
 					[
 						{startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
@@ -127,16 +125,14 @@ var plan1002=
 			roamingAreas: null,
             preAuthorized: true,
             creditPoolNames: ["ppu", "ppupurchased"],
-            sortCreditsByExpirationDate: true,    // If false, credits will be used in the order declared in "creditPoolNames"
-            oocAction: 1,           // 0: Allow. 1: Deny. 2: Redirect
+            sortCreditsByExpirationDate: true,      // If false, credits will be used in the order declared in "creditPoolNames"
+            oocAction: 1,                           // 0: Terminate. 1: Redirect. 2: Restrict_access
 			recharges: 
 			[
 				{
 					name: "1002 ppu",
-					bytes: 2048,
-					seconds: 1000000000000,
 					validity: "1h", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
-					creationType: 1,		// Pay Per Use
+					creationType: 2,		// Pay Per Use
 					mayUnderflow: false,
 					creditPool: "ppu",
 					price:
@@ -146,8 +142,6 @@ var plan1002=
 				},
 				{
 					name: "1002 purchase",
-					bytes: 1000000000000,
-					seconds: 1000000000000,
 					validity: "2h",
 					creationType: 4,		// Portal	
                     mayUnderflow: false,
@@ -179,8 +173,8 @@ var plan1003=
 			roamingAreas: null,
             calendarName: "speedynight",
 			creditPoolNames: ["speedyNightPeakPool"],
-            oocAction: 0,                   // 0: Allow. 1: Deny. 2: Redirect
-            sortCreditsByExpirationDate: false,    // If false, credits will be used in the order declared in "creditPoolNames"
+            oocAction: 0,                           // 0: Terminate. 1: Redirect. 2: Restrict_access
+            sortCreditsByExpirationDate: false,     // If false, credits will be used in the order declared in "creditPoolNames"
 			recharges: 
 			[
 				{

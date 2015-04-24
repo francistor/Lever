@@ -66,7 +66,7 @@ hLogger["inDebug"]=logConfig.handlers.console.level==="debug" ||logConfig.handle
 mLogger["inDebug"]=logConfig.management.console.level==="debug" ||logConfig.management.file.level==="debug";
 
 dLogger["inVerbose"]=logConfig.policyServer.console.level==="verbose" || logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="verbose" || logConfig.policyServer.file.level==="debug";
-dLogger["inVerbose"]=logConfig.arm.console.level==="verbose" || logConfig.arm.console.level==="debug" ||logConfig.arm.file.level==="verbose" || logConfig.arm.file.level==="debug";
+aLogger["inVerbose"]=logConfig.arm.console.level==="verbose" || logConfig.arm.console.level==="debug" ||logConfig.arm.file.level==="verbose" || logConfig.arm.file.level==="debug";
 hLogger["inVerbose"]=logConfig.handlers.console.level==="verbose" || logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="verbose" || logConfig.handlers.file.level==="debug";
 mLogger["inVerbose"]=logConfig.management.console.level==="verbose" || logConfig.management.console.level==="debug" ||logConfig.management.file.level==="verbose" || logConfig.management.file.level==="debug";
 

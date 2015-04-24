@@ -1,5 +1,8 @@
 /**
  * Created by frodriguezg on 27/12/2014.
+ *
+ * Client and Service API for policyManager
+ * Requires three mongoDB database connections, for Service Database, Client Database and Event database
  */
 
 var Q=require("q");
@@ -10,31 +13,60 @@ var MongoClient=require("mongodb").MongoClient;
 var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
 dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
 dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
+dbParams["eventDatabaseURL"]=process.env["LEVER_EVENTDATABASE_URL"];
 if(!dbParams["configDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
 if(!dbParams["clientDatabaseURL"]) throw Error("LEVER_CLIENTDATABASE_URL environment variable not set");
+if(!dbParams["eventDatabaseURL"]) throw Error("LEVER_EVENTDATABASE_URL environment variable not set");
 
 var createArm=function(){
+
+    var INITIAL_REQUEST=1;
+    var UPDATE_REQUEST=2;
+    var TERMINATE_REQUEST=3;
 
     var arm={};
 
     var configDB;
     var clientDB;
+    var eventDB;
 
     var configProperties;
 
     /**
      * Returns promise resolved when both connections to databases are established.
+     * To be used for standalone testing
      *
      * @returns {*}
      */
-    arm.initialize=function(cp){
-        configProperties=cp;
-        return  Q.all([Q.ninvoke(MongoClient, "connect", dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
-                Q.ninvoke(MongoClient, "connect", dbParams["clientDatabaseURL"], dbParams["databaseOptions"])]).
-                spread(function(coDb, clDb){
+    arm.setupDatabaseConnections=function(){
+        return  Q.all([
+                    Q.ninvoke(MongoClient, "connect", dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
+                    Q.ninvoke(MongoClient, "connect", dbParams["clientDatabaseURL"], dbParams["databaseOptions"]),
+                    Q.ninvoke(MongoClient, "connect", dbParams["eventDatabaseURL"], dbParams["databaseOptions"])
+                ]).spread(function(coDb, clDb, evDb){
                     configDB=coDb;
                     clientDB=clDb;
-                })
+                    eventDB=evDb;
+                });
+    };
+
+    /**
+     * Gets database connections already established
+     * @param configDatabase
+     * @param clientDatabase
+     * @param eventDatabase
+     */
+    arm.setDatabaseConnections=function(configDatabase, clientDatabase, eventDatabase){
+        configDB=configDatabase;
+        clientDB=clientDatabase;
+        eventDB=eventDatabase;
+    };
+
+    /**
+     * Setup configuration properties
+     */
+    arm.setConfigProperties=function(cp){
+        configProperties=cp;
     };
 
     /**
@@ -44,14 +76,18 @@ var createArm=function(){
      */
     arm.getClient=function(clientPoU){
         var collectionName;
+
+        // Find collection where to do the looking up
         if(clientPoU.phone) collectionName="phones"; else if(clientPoU.userName) collectionName="userNames"; else collectionName="lines";
 
         var deferred= Q.defer();
 
+        // Find client._id in the appropriate collection
         clientDB.collection(collectionName).findOne(clientPoU, {}, dbParams["databaseOptions"], function(err, pou){
             if(err) deferred.reject(err);
             else if(!pou) deferred.resolve(null);
             else{
+                // Find the client object given the _id
                 clientDB.collection("clients").findOne({_id: pou.clientId}, {}, dbParams["databaseOptions"], function(err, client){
                     if(err) deferred.reject(err);
                     else if(!client) deferred.resolve(null);
@@ -90,18 +126,18 @@ var createArm=function(){
 
         return arm.getClient(clientPoU).
             then(function(client){
-            if(!client) return null;
-            else{
-                clientContext["client"]=client;
-                return arm.getPlan(client.static.planName);
-            }
-        }).then(function(plan){
-            if(!plan) return clientContext;
-            else{
-                clientContext["plan"]=plan;
-                return clientContext;
-            }
-        })
+                if(!client) return null;
+                else{
+                    clientContext["client"]=client;
+                    return arm.getPlan(client.provision.planName);
+                }}).
+            then(function(plan){
+                if(!plan) return clientContext;
+                else{
+                    clientContext["plan"]=plan;
+                    return clientContext;
+                }
+            });
     };
 
     /**
@@ -111,17 +147,298 @@ var createArm=function(){
      * @param serviceId
      * @returns {*}
      */
-    arm.getCredit=function(clientContext, ratingGroup, serviceId){
-        var i;
-
-        // null values mean no limit
-        var totalCredit={
-            bytes: 0,
-            seconds: 0,
-            expirationDate: null
-        };
+    arm.getCredit=function(clientContext, serviceId, ratingGroup){
 
         // Find the target service
+        var service=guideService(clientContext, serviceId, ratingGroup);
+
+        // Return null if no service match
+        if(service==null){
+            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: No serviceMatch");
+            return null;
+        }
+
+        // null values mean no limit
+        var creditGranted={
+            bytes: 0,
+            seconds: 0,
+            expirationDate: null,
+            fui: false,                             // Final Unit Indication
+            fua: service.oocAction                  // Final Unit Action
+        };
+
+        // Return if no credit control is to be performed
+        if(!service.preAuthorized){
+            creditGranted.bytes=configProperties.maxBytesCredit;
+            creditGranted.seconds=configProperties.maxSecondsCredit;
+            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: Service without credit control");
+            return creditGranted;
+        }
+
+        // Add credit by iterating through the credit pools
+        getTargetCreditPools(clientContext, service).forEach(function(credit){
+            // null values will remain unmodified (they mean unlimited credit)
+            if(typeof(credit.bytes)=='undefined') creditGranted.bytes=null; else if(credit.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=credit.bytes;
+            if(typeof(credit.seconds)=='undefined') creditGranted.seconds=null; else if(credit.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=credit.seconds;
+            // IMPORTANT: Set expiration date to minimum value among all credits
+            if(!creditGranted.expirationDate) creditGranted.expirationDate=credit.expirationDate;
+            else if(credit.expirationDate && credit.expirationDate.getTime()<creditGranted.expirationDate) creditGranted.expirationDate=credit.expirationDate;
+        });
+
+        // If any resource is zero, should be returned as zero
+        // isFinal flag is only set if maxSeconds or maxBytes is defined
+        if(creditGranted.bytes!==0 && creditGranted.seconds!==0) {
+            // Enforce maximum value
+            if (configProperties.maxBytesCredit){
+                if (!creditGranted.bytes || creditGranted.bytes > configProperties.maxBytesCredit) creditGranted.bytes = configProperties.maxBytesCredit;
+                else creditGranted.fui=true;
+            }
+            if (configProperties.maxSecondsCredit){
+                if (!creditGranted.seconds || creditGranted.seconds > configProperties.maxSecondsCredit) creditGranted.seconds = configProperties.maxSecondsCredit;
+                else creditGranted.fui=true;
+            }
+            if (configProperties.maxSecondsCredit){
+                if (!creditGranted.expirationDate || creditGranted.expirationDate.getTime() - Date.now() > configProperties.maxSecondsCredit * 1000) creditGranted.expirationDate = new Date(Date.now() + configProperties.maxSecondsCredit * 1000);
+                else creditGranted.fui=true;
+            }
+
+            // Enforce minimum value
+            if (configProperties.maxBytesCredit) if (creditGranted.bytes && creditGranted.bytes < configProperties.minBytesCredit) creditGranted.bytes = configProperties.minBytesCredit;
+            if (configProperties.maxSecondsCredit)if (creditGranted.seconds && creditGranted.seconds < configProperties.minSecondsCredit) creditGranted.seconds = configProperties.minSecondsCredit;
+            if (configProperties.maxSecondsCredit) if (creditGranted.expirationDate && creditGranted.expirationDate.getTime() - Date.now() < configProperties.minSecondsCredit * 1000) creditGranted.expirationDate = new Date(Date.now() + configProperties.minSecondsCredit * 1000);
+        }
+
+        // Randomize validity date, but only if expiration date looks like a day or month edge
+        if(configProperties.expirationRandomSeconds) if(creditGranted.expirationDate && creditGranted.expirationDate.getMinutes()==0 && creditGranted.expirationDate.getSeconds()==0){
+            creditGranted.expirationDate=new Date(creditGranted.expirationDate.getTime()+Math.floor(Math.random()*1000*configProperties.expirationRandomSeconds));
+        }
+
+        return creditGranted;
+    };
+
+    /**
+     * Updates the clientContext object passed with the credits updated and the dirtyCreditPools mark if applicable
+     * @param clientContext
+     * @param usages array of usage of the form {ratingGroup:<number>, serviceId:<number>, bytesUsed:<number>, secondsUsed:<number>}
+     */
+    arm.discountCredit=function(clientContext, usages){
+        var toDiscount;
+
+        usages.forEach(function(usage){
+            var service=guideService(clientContext, usage.serviceId, usage.ratingGroup);
+            if(service==null) return;
+
+            getTargetCreditPools(clientContext, service).forEach(function(credit){
+                // All credits are here valid (i.e. before expiration date)
+                if(!(typeof(credit.bytes)=='undefined') && usage.bytes){
+                    clientContext.client.creditsDirty=true;
+                    if(credit.mayUnderflow) {
+                        credit.bytes-=usage.bytes;
+                        usage.bytes=0;
+                    }
+                    else{
+                       toDiscount=Math.min(credit.bytes, usage.bytes);
+                        credit.bytes-=toDiscount;
+                        usage.bytes-=toDiscount;
+                    }
+                }
+                if(!(typeof(credit.seconds)=='undefined') && usage.seconds){
+                    clientContext.client.creditsDirty=true;
+                    if(credit.mayUnderflow) {
+                        credit.seconds-=usage.seconds;
+                        usage.seconds=0;
+                    }
+                    else{
+                        toDiscount=Math.min(credit.seconds, usage.seconds);
+                        credit.seconds-=toDiscount;
+                        usage.seconds-=toDiscount;
+                    }
+                }
+            });
+        });
+    };
+
+    /**
+     * Creates or updates the client recurring credits
+     * @param clientContext
+     */
+    arm.updateRecurringCredits=function(clientContext){
+        var i;
+        var creditPools;
+        var creditPool=null;
+        var isCreditValid=false;
+        var currentTime=Date.now();
+
+        clientContext.plan.services.forEach(function(service){
+            if(service.recharges) service.recharges.forEach(function(recharge){
+                if(recharge.creationType===3){
+                    // Found recurring recharge
+                    creditPools=clientContext.client.creditPools;
+                    for(i=0; i<creditPools.length; i++){
+                        if(creditPools[i].poolName==recharge.creditPool){
+                            // Found credit pool for the recurring recharge
+                            creditPool=creditPools[i];
+                            if(creditPool.expirationDate && creditPool.expirationDate.getTime()<currentTime){
+                                // Credit expired. Do refill
+                                creditPool.bytes=recharge.bytes;
+                                creditPool.seconds=recharge.seconds;
+                                creditPool.expirationDate=getNextExpirationDate(new Date(), recharge.validity);
+                                clientContext.client.creditsDirty=true;
+                            }
+                            break;
+                        }
+                    }
+                    if(creditPool==null){
+                        // No credit pool. Create one
+                        creditPool={
+                            poolName: recharge.creditPool,
+                            mayUnderflow: recharge.mayUnderflow,
+                            bytes: recharge.bytes,
+                            seconds: recharge.seconds,
+                            expirationDate: getNextExpirationDate(new Date(), recharge.validity)
+                        };
+                        creditPools.push(creditPool);
+                        clientContext.client.creditsDirty=true;
+                    }
+                }
+            });
+        });
+
+    };
+
+    /**
+     * Deletes expired
+     * @param clientContext
+     */
+    arm.cleanupCredits=function(clientContext){
+        var currentTime=Date.now();
+
+        // Loop backwards, because we are modifying the array while iterating through it, and array
+        // is re-indexed when removing an element
+        var creditPools=clientContext.client.creditPools;
+        for(var i=0; i<creditPools.length; i++){
+            if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<currentTime){
+                creditPools.splice(i--, 1);
+            }
+        }
+    };
+
+    /**
+     *
+     * @param clientContext
+     * @param usages. Will be decorated with the guided service names
+     * @returns {Array} Each element {serviceId: <value>, ratingGroup: <value>, bytes: <value>, seconds: <value>}. Only
+     * if ccRequestType is INITIAL_REQUEST or UPDATE_REQUEST.
+     *
+     * Credit will be discounted in clientContext if ccRequestType is UPDATE_REQUEST or TERMINATE_REQUEST
+     */
+    arm.executeCCRequest=function(clientContext, usages, ccRequestType){
+
+        var grants=[];
+
+        // First discount credit without updating
+        arm.discountCredit(clientContext, usages);
+
+        // Update recurrent credits and do cleanup
+        arm.updateRecurringCredits(clientContext);
+        arm.cleanupCredits(clientContext);
+
+        // Get credit
+        if(usages) usages.forEach(function(usage){
+            grants.push(arm.getCredit(clientContext, usage.serviceId, usage.ratingGroup));
+        });
+
+        return grants;
+    };
+
+    /**
+     *
+     * @param usageEvents
+     *
+     * UsageEvent format {clientId: <>, eventDate: <>, eventType: <>, serviceName: <>, sessionId: <>
+     *      usage:{
+     *          serviceId: <>,
+     *          ratingGroup: <>,
+     *          bytes: <>,
+     *          seconds: <>
+     *      },
+     *      granted:{
+     *          bytes: <>,
+     *          seconds: <>
+     *      }
+     */
+    arm.writeUsageEventArray=function(clientContext, usages, ccRequestType, date, callback){
+        var event={
+            clientId: clientContext.client._id,
+            eventDate: date ? date : new Date(),
+            eventType: ccRequestType,
+        }
+    };
+
+    arm.breakEvent=function(event, calendar){
+        var i;
+        var fragmentSeconds;
+        var remainingSeconds=event.seconds;
+        var nextTimeFrame;
+        var nextDate=new Date(event.startDate);
+        var brokenEvents=[];
+
+        while(remainingSeconds>0){
+            // Iterate through all calendar items
+            for(i=0; i<calendar.calendarItems.length; i++){
+                console.log("Testing "+JSON.stringify(calendar.calendarItems[i]));
+                nextTimeFrame=isInCalendarItem(nextDate, calendar.calendarItems[i]);
+                if(nextTimeFrame!=null){
+                    console.log("Matched with nextTimeFrame "+nextTimeFrame);
+                    fragmentSeconds=(nextTimeFrame.getTime()-nextDate.getTime())/1000;
+                    if(fragmentSeconds>remainingSeconds) fragmentSeconds=remainingSeconds;
+                    brokenEvents.push({
+                        startDate: nextDate,
+                        seconds: fragmentSeconds,
+                        bytesUp: Math.round(event.bytesUp*fragmentSeconds/event.seconds),
+                        bytesDown: Math.round(event.bytesDown*fragmentSeconds/event.seconds),
+                        tag: calendar.calendarItems.tag
+                    });
+                    nextDate=nextTimeFrame;
+                    remainingSeconds-=fragmentSeconds;
+                    break;
+                }
+            }
+            if(nextTimeFrame==null) throw new Error("Bad calendar "+calendar.name);
+        }
+
+        return brokenEvents;
+    };
+
+    // Supporting functions
+
+    function getNextExpirationDate(now, validity){
+        var elements=/([0-9]+)([MDH])/.exec(validity);
+        if(elements.length!=3) return null;
+
+        var expDate=now;
+        if(elements[2]=="M"){
+            expDate.setMonth(expDate.getMonth()+1, 1);
+            expDate.setHours(0, 0, 0, 0);
+        }
+        else if(elements[2]=="D"){
+            expDate.setDate(expDate.getDate()+1, 1);
+            expDate.setHours(0, 0, 0, 0);
+        }
+        else if(elements[2]=="H"){
+            expDate.setHours(expDate.getHours()+1, 0, 0, 0);
+        }
+        return expDate;
+    }
+
+    /**
+     * Gets the service corresponding to the specified serviceId and rating group for the given clientContext
+     * @param clientContext
+     * @param serviceId
+     * @param ratingGroup
+     */
+    function guideService(clientContext, serviceId, ratingGroup){
+        var i;
         var service=null;
         var services;
         services=clientContext.plan.services;
@@ -131,21 +448,19 @@ var createArm=function(){
                 break;
             }
         }
-        if(service==null){
-            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: No serviceMatch");
-            return null;
-        }
 
-        // Return if no credit control is to be performed
-        if(!service.preAuthorized){
-            totalCredit.bytes=configProperties.maxBytesCredit;
-            totalCredit.seconds=configProperties.maxSecondsCredit;
-            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: Service without credit control");
-            return totalCredit;
-        }
+        return service;
+    }
 
-        // Get the relevant creditPools for the targeted service
+    /**
+     * Returns an array of ordered credit pools for the target service, as pointers to the clientContext
+     * @param clientContext
+     * @param service
+     */
+    function getTargetCreditPools(clientContext, service){
+
         var targetCreditPools=[];
+
         var clientCreditPools=clientContext.client.creditPools;
         service.creditPoolNames.forEach(function(poolName){
             clientCreditPools.forEach(function(pool){
@@ -162,33 +477,8 @@ var createArm=function(){
             });
         }
 
-        // Add credit
-        targetCreditPools.forEach(function(credit){
-            // null values will remain (unlimited credit)
-            if(typeof(credit.bytes)=='undefined') totalCredit.bytes=null; else if(credit.bytes!=null && totalCredit.bytes!=null) totalCredit.bytes+=credit.bytes;
-            if(typeof(credit.seconds)=='undefined') totalCredit.seconds=null; else if(credit.seconds!=null && totalCredit.seconds!=null) totalCredit.seconds+=credit.seconds;
-            // Set expiration date to minimum value among all credits
-            if(!totalCredit.expirationDate) totalCredit.expirationDate=credit.expirationDate;
-            else if(credit.expirationDate && credit.expirationDate.getTime()<totalCredit.expirationDate) totalCredit.expirationDate=credit.expirationDate;
-        });
-
-        // Enforce maximum value
-        if(configProperties.maxBytesCredit) if(!totalCredit.bytes || totalCredit.bytes>configProperties.maxBytesCredit) totalCredit.bytes=configProperties.maxBytesCredit;
-        if(configProperties.maxSecondsCredit) if(!totalCredit.seconds || totalCredit.seconds>configProperties.maxSecondsCredit) totalCredit.seconds=configProperties.maxSecondsCredit;
-        if(configProperties.maxSecondsCredit) if(!totalCredit.expirationDate || totalCredit.expirationDate.getTime()-Date.now()>configProperties.maxSecondsCredit*1000) totalCredit.expirationDate=new Date(Date.now()+configProperties.maxSecondsCredit*1000);
-
-        // Enforce minimum value
-        if(configProperties.maxBytesCredit) if(totalCredit.bytes && totalCredit.bytes<configProperties.minBytesCredit) totalCredit.bytes=configProperties.minBytesCredit;
-        if(configProperties.maxSecondsCredit)if(totalCredit.seconds && totalCredit.seconds<configProperties.minSecondsCredit) totalCredit.seconds=configProperties.minSecondsCredit;
-        if(configProperties.maxSecondsCredit) if(totalCredit.expirationDate && totalCredit.expirationDate.getTime()-Date.now()<configProperties.minSecondsCredit*1000) totalCredit.expirationDate=new Date(Date.now()+configProperties.minSecondsCredit*1000);
-
-        // Randomize validity date
-        if(configProperties.expirationRandomSeconds) if(totalCredit.expirationDate && totalCredit.expirationDate.getMinutes()==0 && totalCredit.expirationDate.getSeconds()==0){
-            totalCredit.expirationDate=new Date(totalCredit.expirationDate.getTime()+Math.floor(Math.random()*1000*configProperties.expirationRandomSeconds));
-        }
-
-        return totalCredit;
-    };
+        return targetCreditPools;
+    }
 
     // If date within time range, returns the end date of the time range
     // Otherwise returns null
@@ -237,40 +527,6 @@ var createArm=function(){
         }
     }
 
-    arm.breakEvent=function(event, calendar){
-        var i;
-        var fragmentSeconds;
-        var remainingSeconds=event.seconds;
-        var nextTimeFrame;
-        var nextDate=new Date(event.startDate);
-        var brokenEvents=[];
-
-        while(remainingSeconds>0){
-            // Iterate through all calendar items
-            for(i=0; i<calendar.calendarItems.length; i++){
-                console.log("Testing "+JSON.stringify(calendar.calendarItems[i]));
-                nextTimeFrame=isInCalendarItem(nextDate, calendar.calendarItems[i]);
-                if(nextTimeFrame!=null){
-                    console.log("Matched with nextTimeFrame "+nextTimeFrame);
-                    fragmentSeconds=(nextTimeFrame.getTime()-nextDate.getTime())/1000;
-                    if(fragmentSeconds>remainingSeconds) fragmentSeconds=remainingSeconds;
-                    brokenEvents.push({
-                        startDate: nextDate,
-                        seconds: fragmentSeconds,
-                        bytesUp: Math.round(event.bytesUp*fragmentSeconds/event.seconds),
-                        bytesDown: Math.round(event.bytesDown*fragmentSeconds/event.seconds),
-                        tag: calendar.calendarItems.tag
-                    });
-                    nextDate=nextTimeFrame;
-                    remainingSeconds-=fragmentSeconds;
-                    break;
-                }
-            }
-            if(nextTimeFrame==null) throw new Error("Bad calendar "+calendar.name);
-        }
-
-        return brokenEvents;
-    };
 
     return arm;
 };
@@ -337,28 +593,56 @@ console.log(serviceMgr.isInCalendarItem(
 // var brokenEvents=arm.breakEvent(event, speedyNightCalendar);
 // console.log(JSON.stringify(brokenEvents, null, 2));
 
-arm.initialize({
+arm.setConfigProperties({
     maxBytesCredit:null,
     maxSecondsCredit:null,
     minBytesCredit:0,
     minSecondsCredit:0,
-    expirationRandomSeconds: null}).then(function(){
+    expirationRandomSeconds: null});
+
+arm.setupDatabaseConnections().then(function(){
     test();
-}, function(reason){
-    console.log("Initialization error due to "+reason);
+}, function(err){
+    console.log("Initialization error due to "+err);
 }).done();
+
 
 function test(){
     console.log("testing...");
 
     arm.getClientContext({
-        nasPort: 1001,
+        nasPort: 2001,
         nasIPAddress: "127.0.0.1"
     }).then(function(clientContext){
+        /*
         console.log("Got clientContext: "+JSON.stringify(clientContext, null, 2));
-        var credit=arm.getCredit(clientContext, 101, 0);
+        console.log("---------------------------");
+        console.log("Credits before cleaning up: "+JSON.stringify(clientContext.client.creditPools, null, 2));
+        console.log("---------------------------");
+        arm.cleanupCredits(clientContext);
+        console.log("Credits after cleaning up: "+JSON.stringify(clientContext.client.creditPools, null, 2));
+        */
+        console.log("Credits before event");
+        console.log("---------------------------");
+        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+        var creditsGranted=arm.discountAndGetCredit(clientContext, [
+            {ratingGroup: 102, serviceId: 3, bytes:2000, seconds: 3600},
+            {ratingGroup: 102, serviceId: 4, bytes:500, seconds: 3600}
+        ]);
+        console.log("Credit granted");
+        console.log("---------------------------");
+        console.log(JSON.stringify(creditsGranted, null, 2));
+        console.log("---------------------------");
+        console.log("Credits after event");
+        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+        /*
+        arm.discountCredit(clientContext, [{ratingGroup: 101, serviceId: 3, bytes:1000, seconds: 3600}]);
+        console.log("---------------------------");
+        console.log("Updated clientContext: "+JSON.stringify(clientContext, null, 2));
+        var credit=arm.getCredit(clientContext, 0, 101);
         console.log(" ");
         console.log("Credit: "+JSON.stringify(credit));
+        */
     }, function(err){
         console.log("Error: "+err);
     }).then(function(){

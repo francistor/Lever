@@ -11,7 +11,7 @@ db.clients.drop();
 var client1=
 {
     _id: 1,
-    static: {
+    provision: {
         legacyClientId: "lci1001",
         legacyClientIdSec: null,
         legalId: "50825186Q",
@@ -24,20 +24,16 @@ var client1=
     creditPools:
         [
             {
-                poolName: "bytesrecurring",
+                poolName: "bytesRecurring",
                 mayUnderflow: false,
-                bytes: 1024,
-                seconds: 1000000000000,
-                expirationDate: ISODate("2015-07-06T03:00:00Z"),
-                exhausted: false
+                bytes: 1000,
+                expirationDate: ISODate("2015-04-30T01:00:00Z")
             },
             {
-                poolName: "bytespurchased",
+                poolName: "bytesPurchased",
                 mayUnderflow: false,
-                bytes: 2048,
-                seconds: 1000000000000,
-                expirationDate: ISODate("2015-07-08T03:00:00Z"),
-                exhausted: false
+                bytes: 2000,
+                expirationDate: ISODate("2015-04-28T01:00:00Z")
             }
         ]
 };
@@ -69,7 +65,7 @@ var phone11={
 var client2=
 {
     _id: 2,
-    static: {
+    provision: {
         legacyClientId: "lci1002",
         legacyClientIdSec: null,
         legalId: "50825187Q",
@@ -84,10 +80,7 @@ var client2=
             {
                 poolName: "ppu",
                 mayUnderflow: false,
-                bytes: 2048,
-                seconds: 1000000000000,
-                expirationDate: ISODate("2015-07-07T03:00:00Z"),
-                exhausted: false
+                expirationDate: ISODate("2015-07-07T03:00:00Z")
             }
         ]
 };
@@ -122,7 +115,7 @@ var phone2={
 var client3=
 {
     _id: 3,
-    static: {
+    provision: {
         legacyClientId: "lci1003",
         legacyClientIdSec: null,
         legalId: "1234567Q",
@@ -140,8 +133,7 @@ var client3=
                 calendarTags: ["default"],
                 bytes: 0,
                 seconds: 0,
-                expirationDate: null,
-                exhausted: false
+                expirationDate: null
             }
         ],
     captureSets:
@@ -192,7 +184,7 @@ db.lines.insert(line3);
 db.phones.insert(phone3);
 
 // Unique index: legacyClientId, deletedDate
-db.clients.ensureIndex({"static.legacyClientId": 1}, {unique: true});
+db.clients.ensureIndex({"provision.legacyClientId": 1}, {unique: true});
 // Unique index: userName
 db.userNames.ensureIndex({userName: 1}, {unique: true});
 // Unique index: userName
