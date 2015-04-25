@@ -5,9 +5,9 @@
 var dgram=require("dgram");
 var dLogger=require("./log").dLogger;
 
-var createRadiusClientConnections=function(radiusServer, basePort, numPorts, listenAddress){
+var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAddress, cb){
 
-    var radiusClientConnections={};
+    var radiusClientPorts={};
 
     var basePort=basePort;
     var numPorts=numPorts;
@@ -15,14 +15,26 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
 
     var currentIndex=0;
 
+    // Pointer to function to be called when bind process finishes
+    var boundCallback=cb;
+    // Socket status is true if bound
+    var socketStatus=[];
+
     // Create the client sockets
     var sockets=[];
+
     var socket;
     for(var i=0; i<numPorts; i++) {
 
         // Create and bind socket
         socket=dgram.createSocket("udp4");
-        socket.bind(basePort + i, listenAddress);
+        socket.bind(basePort + i, listenAddress, function(err){
+            if(err){
+                if(boundCallback) boundCallback(err);
+                else throw err;
+            }
+            else checkBoundFinished();
+        });
 
         // Setup event listeners
         socket.on("message", onMessage);
@@ -42,7 +54,7 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
     // Chooses a port and Id and returns it
     // PolicySever does not attempt to make sure that each socket+identifier has only
     // one live (not timed-out) request
-    radiusClientConnections.getClientSocket=function(){
+    radiusClientPorts.getClientSocket=function(){
 
         // Get the socket and Id to use
         var socketIndex=Math.floor(currentIndex/256);
@@ -55,7 +67,20 @@ var createRadiusClientConnections=function(radiusServer, basePort, numPorts, lis
         return({id: radiusIdentifier, socket:sockets[socketIndex]});
     };
 
-    return radiusClientConnections;
+    /**
+     * Check the status of the sockets (whether they are bound). If all the bound processes have been resolved,
+     * call callback
+     */
+    function checkBoundFinished(){
+        for(var i=0; i<numPorts; i++) {
+            if(typeof(socketStatus[i])=="undefined") return;
+        }
+
+        // No error
+        if(boundCallback) boundCallback(null);
+    }
+
+    return radiusClientPorts;
 };
 
-exports.createRadiusClientConnections=createRadiusClientConnections;
+exports.createRadiusClientPorts=createRadiusClientPorts;

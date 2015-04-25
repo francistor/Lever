@@ -117,7 +117,7 @@ var toshiba=
         "numClientPorts": 10
     },
 
-    "diameter-no": {
+    "diameter": {
         "IPAddress-not-used": "127.0.0.1",
         "port": 3868,
         "diameterHost": "lever-toshiba",

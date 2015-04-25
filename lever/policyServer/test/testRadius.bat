@@ -79,7 +79,7 @@ if %command% == auth goto:EOF
     echo Acct-Status-Type="Start">>%REQUESTFILE%
 
     REM   Send the packet
-    %RADIUSACCT% -count %count% -overlap %overlap% -debug debug -secret %Secret% -code Accounting-Request -request @%REQUESTFILE% -outputAttributesFile %TESTFILES%\out\account-start.txt
+    %RADIUSACCT% -count %count% -overlap %overlap% -debug verbose -secret %Secret% -code Accounting-Request -request @%REQUESTFILE% -outputAttributesFile %TESTFILES%\out\account-start.txt
 
 
 
