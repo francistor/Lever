@@ -5,7 +5,7 @@
 var dgram=require("dgram");
 var dLogger=require("./log").dLogger;
 
-var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAddress, cb){
+var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAddress, boundCallback){
 
     var radiusClientPorts={};
 
@@ -15,30 +15,29 @@ var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAdd
 
     var currentIndex=0;
 
-    // Pointer to function to be called when bind process finishes
-    var boundCallback=cb;
     // Socket status is true if bound
     var socketStatus=[];
 
     // Create the client sockets
     var sockets=[];
 
-    var socket;
     for(var i=0; i<numPorts; i++) {
 
         // Create and bind socket
-        socket=dgram.createSocket("udp4");
-        socket.bind(basePort + i, listenAddress, function(err){
-            if(err){
-                if(boundCallback) boundCallback(err);
-                else throw err;
+        sockets[i]=dgram.createSocket("udp4");
+        // God forgive me for using this closure!
+        sockets[i].bind(basePort + i, listenAddress, function(sIndex){
+            return function(err){
+                if(err){
+                    if(boundCallback) boundCallback(err);
+                    else throw err;
+                }
+                else socketBound(sIndex);
             }
-            else checkBoundFinished();
-        });
+        }(i)); // Invoke a function that returns a function for the bind callback. Pass index i as a parameter
 
         // Setup event listeners
-        socket.on("message", onMessage);
-        sockets.push(socket);
+        sockets[i].on("message", onMessage);
     }
     dLogger.info(numPorts+" radius client sockets created over IP Address "+listenAddress+" and base port "+basePort);
 
@@ -71,7 +70,8 @@ var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAdd
      * Check the status of the sockets (whether they are bound). If all the bound processes have been resolved,
      * call callback
      */
-    function checkBoundFinished(){
+    function socketBound(sIndex){
+        socketStatus[sIndex]=true;
         for(var i=0; i<numPorts; i++) {
             if(typeof(socketStatus[i])=="undefined") return;
         }

@@ -249,10 +249,18 @@ var dispatcher=
 		{
 			"Credit-Control":
 			{
-				"module":"./gyHandler",
+				"module":"./policyScripts/gyHandler",
 				"functionName": "ccrHandler"
 			}
 		},
+        "Gx":
+        {
+            "Credit-Control":
+            {
+                "module":"./policyScripts/gxHandler",
+                "functionName": "ccrHandler"
+            }
+        },
         "Radius":
         {
             "Access-Request":
@@ -285,7 +293,8 @@ var diameterDictionary=
 	"vendor":
 	{
 			"1001": "francisco.cardosogil@gmail.com",
-			"9": "Cisco"
+			"9": "Cisco",
+            "10415": "3GPP"
 	},
 
 	"avp":
@@ -297,6 +306,21 @@ var diameterDictionary=
 				"name": "User-Name",
 				"type": "UTF8String"
 			},
+            {
+                "code": 8,
+                "name": "Framed-IP-Address",
+                "type": "IPv4Address"
+            },
+            {
+                "code": 97,
+                "name": "Framed-IPv6-Prefix",
+                "type": "IPv6Prefix"
+            },
+            {
+                "code": 168,
+                "name": "Framed-IPv6-Address",
+                "type": "IPv6Address"
+            },
 			{
 				"code": 257,
 				"name": "Host-IP-Address",
@@ -312,7 +336,8 @@ var diameterDictionary=
 					"NASREQ": 1,
 					"Mobile-IPv4": 2,
 					"Accounting": 3,
-					"Credit-Control": 4
+					"Credit-Control": 4,
+                    "Gx": 16777238
 				}
 			},
 			{
@@ -325,7 +350,8 @@ var diameterDictionary=
 					"NASREQ": 1,
 					"Mobile-IPv4": 2,
 					"Accounting": 3,
-					"Credit-Control": 4
+					"Credit-Control": 4,
+                    "Gx": 16777238
 				}
 			},
 			{
@@ -404,54 +430,214 @@ var diameterDictionary=
 					"TLS": 1
 				}				
 			},
-			{
-				"code": 415,
-				"name": "CC-Request-Number",
-				"type": "Unsigned32"
-			},
-			{
-				"code": 416,
-				"name": "CC-Request-Type",
-				"type": "Enumerated",
-				"enumValues":
-				{
-					"Initial": 1,
-					"Update": 2,
-					"Termination": 3,
-					"Event": 4
-				}
-			},			
-			{
-				"code": 443,
-				"name": "Subsription-Id",
-				"type": "Grouped",
-				"group":
-				{
-					"Subscription-Id-Type": {"minOccurs": 1, "maxOccurs": 1},
-					"Subscription-Id-Data": {"minOccurs": 1, "maxOccurs": 1}
-				}
-			},
-			{
-				"code": 444,
-				"name": "Subsription-Id-Data",
-				"type": "UTF8String"
-			},
-			{
-				"code": 450,
-				"name": "Subscription-Id-Type",
-				"type": "Enumerated",
-				"enumValues":
-				{
-					"EndUserE164": 0,
-					"EndUserIMSI": 1,
-					"EndUserSIPURI": 2,
-					"EndUserNAI": 3,
-					"EndUserPrivate": 4
-				}
-			}
-
+            {
+                "code": 415,
+                "name": "CC-Request-Number",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 416,
+                "name": "CC-Request-Type",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "Initial": 1,
+                    "Update": 2,
+                    "Termination": 3,
+                    "Event": 4
+                }
+            },
+            {
+                "code": 443,
+                "name": "Subscription-Id",
+                "type": "Grouped",
+                "group":
+                {
+                    "Subscription-Id-Type": {"minOccurs": 1, "maxOccurs": 1},
+                    "Subscription-Id-Data": {"minOccurs": 1, "maxOccurs": 1}
+                }
+            },
+            {
+                "code": 444,
+                "name": "Subsription-Id-Data",
+                "type": "UTF8String"
+            },
+            {
+                "code": 450,
+                "name": "Subscription-Id-Type",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "EndUserE164": 0,
+                    "EndUserIMSI": 1,
+                    "EndUserSIPURI": 2,
+                    "EndUserNAI": 3,
+                    "EndUserPrivate": 4
+                }
+            }
 		],
 
+        "10415":
+        [
+            {
+                "code": 515,
+                "name": "Max-Requested-Bandwidth-UL",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 516,
+                "name": "Max-Requested-Bandwidth-DL",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 1016,
+                "name": "QoS-Information",
+                "type": "Grouped",
+                "group":
+                {
+                    "QoS-Class-Identifier":{"minOccurs": 1, "maxOccurs": 1},
+                    "Max-Requested-Bandwidth-UL":{"minOccurs": 1, "maxOccurs": 1},
+                    "Requested-Bandwidth-DL":{"minOccurs": 1, "maxOccurs": 1},
+                    "Guaranteed-Bitrate-UL":{"minOccurs": 1, "maxOccurs": 1},
+                    "Guaranteed-Bitrate-DL":{"minOccurs": 1, "maxOccurs": 1},
+                    "Bearer-Identifier":{"minOccurs": 1, "maxOccurs": 1},
+                    "Allocation-Retention-Priority":{"minOccurs": 1, "maxOccurs": 1},
+                    "APN-Aggregate-Max-Bitrate-UL":{"minOccurs": 1, "maxOccurs": 1},
+                    "APN-Aggregate-Max-Bitrate-DL":{"minOccurs": 1, "maxOccurs": 1}
+                }
+            },
+            {
+                "code": 1020,
+                "name": "Bearer-Identifier",
+                "type": "OctetString"
+            },
+            {
+                "code": 1025,
+                "name": "Guaranteed-Bitrate-DL",
+                "type": "Unsigned-32"
+            },
+            {
+                "code": 1026,
+                "name": "Guaranteed-Bitrate-UL",
+                "type": "Unsigned-32"
+            },
+            {
+                "code": 1027,
+                "name": "IP-CAN-Type",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "3GPP-GPRS": 0,
+                    "DOCSIS": 1,
+                    "xDSL": 2,
+                    "WiMAX": 3,
+                    "3GPP2": 4,
+                    "3GPP-EPS": 5,
+                    "Non-3GPP-EPS": 6
+                }
+            },
+            {
+                "code": 1028,
+                "name": "QoS-Class-Identifier",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "CLASS0": 0,
+                    "CLASS1": 1,
+                    "CLASS2": 2,
+                    "CLASS3": 3,
+                    "CLASS4": 4,
+                    "CLASS5": 5,
+                    "CLASS6": 6,
+                    "CLASS7": 7,
+                    "CLASS8": 8,
+                    "CLASS9": 9
+                }
+            },
+            {
+                "code": 1027,
+                "name": "3G-RAT-Type",
+                "type": "Enumerated",
+                "enumValues": {
+                    "WLAN": 0,
+                    "VIRTUAL": 1,
+                    "UTRAN": 1000,
+                    "GERAN": 1001,
+                    "GAN": 1002,
+                    "HSPA_EVOLUTION": 1003,
+                    "EUTRAN": 1004,
+                    "CDMA2000_1X": 2000,
+                    "HRPD": 2001,
+                    "UMB": 2002,
+                    "EHRPD": 2003
+                }
+            },
+            {
+                "code": 1032,
+                "name": "RAT-Type",
+                "type": "Enumerated",
+                "enumValues": {
+                    "UTRAN": 1,
+                    "GERAN": 2,
+                    "WLAN": 3,
+                    "GAN": 4,
+                    "HSPA-Evolution": 5,
+                    "EUTRAN": 6,
+                    "Virtual": 7,
+                    "IEEE-802-16e": 101,
+                    "3GPP2-eHRPD": 102,
+                    "3GPP2-HRPD": 103,
+                    "3GPP2-1xRTT": 104,
+                    "3GPP2-UMB": 105
+                }
+            },
+            {
+                "code": 1034,
+                "name": "Allocation-Retention-Priority",
+                "type": "Grouped",
+                "group":
+                {
+                    "Priority-Level":{"minOccurs": 1, "maxOccurs": 1},
+                    "Pre-emption-Capability":{"maxOccurs": 1},
+                    "Pre-emption-Vulnerability":{"maxOccurs": 1}
+                }
+            },
+            {
+                "code": 1040,
+                "name": "APN-Aggregate-Max-Bitrate-DL",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 1041,
+                "name": "APN-Aggregate-Max-Bitrate-UL",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 1046,
+                "name": "Priority-Level",
+                "type": "Unsigned32"
+            },
+            {
+                "code": 1047,
+                "name": "Pre-emption-Capability",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "enabled": 0,
+                    "disabled": 1
+                }
+            },
+            {
+                "code": 1048,
+                "name": "Pre-emption-Vulnerability",
+                "type": "Enumerated",
+                "enumValues":
+                {
+                    "enabled": 0,
+                    "disabled": 1
+                }
+            }
+        ],
 		"1001":
 		[
 			{
@@ -632,6 +818,11 @@ var diameterDictionary=
 						"Auth-Application-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"CC-Request-Type":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
 						"CC-Request-Number":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                        "Origin-State-Id":{},
+                        "Subscription-Id":{},
+                        "IP-CAN-Type":{},
+                        "3G-RAT-Type":{},
+                        "RAT-Type":{},
 						"AVP":{}
 					},
                     "response":
@@ -647,7 +838,47 @@ var diameterDictionary=
                         }
 				}
 			]
-		}
+		},
+        {
+            "name":"Gx",
+            "code": 16777238,
+            "type": "auth",
+            "commands":
+                [
+                    {
+                        "code": 272,
+                        "name": "Credit-Control",
+                        "request":
+                        {
+                            "Session-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Origin-Host": {"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Origin-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Destination-Realm":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Destination-Host":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Auth-Application-Id":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "CC-Request-Type":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "CC-Request-Number":{"mandatory": true, "minOccurs": 1, "maxOccurs": 1},
+                            "Origin-State-Id":{},
+                            "Subscription-Id":{},
+                            "Bearer-Identifier":{},
+                            "Framed-IP-Address":{},
+                            "Framed-IPv6-Prefix":{},
+                            "AVP":{}
+                        },
+                        "response":
+                        {
+                            "Session-Id":{"minOccurs": 1, "maxOccurs": 1},
+                            "Result-Code":{"minOccurs": 1, "maxOccurs": 1},
+                            "Origin-Host":{"minOccurs": 1, "maxOccurs": 1},
+                            "Origin-Realm":{"minOccurs": 1, "maxOccurs": 1},
+                            "Auth-Application-Id":{"minOccurs": 1, "maxOccurs": 1},
+                            "CC-Request-Type":{"minOccurs": 1, "maxOccurs": 1},
+                            "CC-Request-Number":{"minOccurs": 1, "maxOccurs": 1},
+                            "AVP":{}
+                        }
+                    }
+                ]
+        }
 	]
 };
 

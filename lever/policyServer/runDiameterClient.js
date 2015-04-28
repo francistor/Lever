@@ -1,0 +1,48 @@
+/**
+ * Created by frodriguezg on 24/04/2015.
+ */
+
+var config=require("./configService").config;
+var createMessage=require("./message").createMessage;
+
+var policyServer=require("./policyServer").createPolicyServer();
+
+policyServer.initialize(function(err){
+    if(err){
+        console.log("Error starting server: "+err.message);
+        process.exit(-1);
+    }
+    else{
+        var diameterConfig=config.node.diameter;
+        var dictionary=config.diameterDictionary;
+
+        var theMessage=createMessage();
+        var request=theMessage.avps;
+
+        // Mandatory attributes
+        request["Origin-Host"]=diameterConfig["diameterHost"];
+        request["Session-Id"]="thesessionid";
+        request["Origin-Realm"]=diameterConfig["diameterRealm"];
+        request["Destination-Realm"]="forward";
+        request["Destination-Host"]="8950AAA";          // Forced to this host!
+        request["Auth-Application-Id"]="Credit-Control";
+        request["CC-Request-Type"]="Initial";
+        request["CC-Request-Number"]=1;
+
+        var nThreads=parseInt(process.argv[2]||1);
+
+        function sendRequest(nThread){
+            policyServer.diameter.sendRequest(null, theMessage, 3000, function(err, response){
+                if(err) console.log(err.message);
+                else{
+                    console.log(JSON.stringify(response, null, 2));
+                }
+                sendRequest(nThread);
+            });
+        }
+
+        for(var i=0; i<nThreads; i++) sendRequest(i);
+    }
+});
+
+

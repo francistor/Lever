@@ -222,6 +222,7 @@ var createPolicyServer=function(){
             if(message.applicationId!=="Base" && connection.getState()!=="Open"){
                 diameterStats.incrementClientError(connection.diameterHost, message.commandCode);
                 dLogger.warn("SendRequest - Connection is not in 'Open' state. Discarding message");
+                if(callback) callback(new Error("Connection is not in 'Open' state"));
             }
             else try {
                 if(dLogger["inVerbose"]) dLogger.logDiameterMessage(config.node.diameter["diameterHost"], connection.diameterHost, message);
@@ -242,11 +243,12 @@ var createPolicyServer=function(){
                 dLogger.error("Closing connection");
                 dLogger.error(e.stack);
                 connection.end();
+                if(callback) callback(e);
             }
         }
         else {
             dLogger.warn("Could not send request. No route to destination");
-            callback(new Error("No route to destination"), null);
+            if(callback) callback(new Error("No route to destination"), null);
         }
     };
 
@@ -668,8 +670,6 @@ var createPolicyServer=function(){
                             // Startup done
                             if(initCallback) initCallback(null);
                         }
-
-
                     }
                 });
             }

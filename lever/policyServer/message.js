@@ -154,6 +154,7 @@ function createMessage(request){
 						break;
 
 					case "OctetString":
+                        avp.value=buff.toString("hex", ptr, ptr+dataSize);
 						break;
 
 					case "DiamIdent":
@@ -171,12 +172,31 @@ function createMessage(request){
 							avp.value=new ipaddr.IPv4(ipv4Parts).toString();
 						}
 						else if(addrFamily===2){
-							for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+2+i);
+							for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+2+2*i);
 							avp.value=new ipaddr.IPv6(ipv6Parts).toString();
 						}
 						else dLogger.error("Unknown address family: "+addrFamily);
 						break;
-						
+
+                    // Not strictly Diameter type
+                    case "IPv4Address":
+                        for(i=0; i<4; i++) ipv4Parts[i]=buff.readUInt8(ptr+i);
+                        avp.value=new ipaddr.IPv4(ipv4Parts).toString();
+                        break;
+
+                    // Not strictly Diameter type
+                    case "IPv6Address":
+                        for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+i);
+                        avp.value=new ipaddr.IPv6(ipv6Parts).toString();
+                        break;
+
+                    // Not strictly Diameter type
+                    case "IPv6Prefix":
+                        // It seems only 4 longs are sent, instead of the full bytes
+                        for(i=0; i<4; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+2+2*i);
+                        avp.value=new ipaddr.IPv6(ipv6Parts).toString()+"/"+buff.readUInt8(ptr+1);
+                        break;
+
 					case "Grouped":
 						// groupedPtr: internal pointer for the grouped avp
 						groupedPtr=ptr;
@@ -262,25 +282,25 @@ function createMessage(request){
         // Notice that messages decoded always have arrays as values, but messages build by handlers may be simple objects
 		// avps: { name: [value], name: [ {name: value}, {name: value}] }
 		function encodeAVPs(ptr, root){
-            var isMandatory;
-			var i;
-			var avpName;
-			var initialPtr=ptr;
-			for(avpName in root) if(root.hasOwnProperty(avpName)) {
-                isMandatory = !!(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true);
-                if (Array.isArray(root[avpName])) for (i = 0; i < root[avpName].length; i++) {
-                    ptr += encodeAVP(ptr, avpName, root[avpName][i], isMandatory);
-                } else {
-                    ptr += encodeAVP(ptr, avpName, root[avpName], isMandatory);
+                var isMandatory;
+                var i;
+                var avpName;
+                var initialPtr=ptr;
+                for(avpName in root) if(root.hasOwnProperty(avpName)) {
+                    isMandatory = !!(messageSpec[avpName] && messageSpec[avpName]["mandatory"] === true);
+                    if (Array.isArray(root[avpName])) for (i = 0; i < root[avpName].length; i++) {
+                        ptr += encodeAVP(ptr, avpName, root[avpName][i], isMandatory);
+                    } else {
+                        ptr += encodeAVP(ptr, avpName, root[avpName], isMandatory);
+                    }
                 }
-			}
-			
-			return ptr-initialPtr;
+
+                return ptr-initialPtr;
 		}
 
 		// Encode a single AVP
 		function encodeAVP(ptr, name, value, isMandatory){
-
+            var addressParts;
             var j;
 			var ipAddr;
 			var initialPtr=ptr;
@@ -329,6 +349,7 @@ function createMessage(request){
 						break;
 
 					case "OctetString":
+                        ptr+=buff.write(value, ptr, Buffer.byteLength(value, "hex"), "hex");
 						break;
 
 					case "DiamIdent":
@@ -347,11 +368,34 @@ function createMessage(request){
 							ptr+=2+4;
 						}
 						else if(ipAddr.kind()==="ipv6"){
-							buff.writeUInt16BE(2, ptr);
-							for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.parts[j], ptr+2+j);
-							ptr+=2+8;
+                                buff.writeUInt16BE(2, ptr);
+                                for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.parts[j], ptr+2+2*j);
+                                ptr+=2+16;
 						}
 						break;
+
+                    // Not a diameter type
+                    case "IPv4Address":
+                        ipAddr=ipaddr.parse(value);
+                        for(j=0; j<4; j++) buff.writeUInt8(ipAddr.octets[j], ptr+j);
+                        ptr+=4;
+                        break;
+
+                    // Not a diameter type
+                    case "IPv6Address":
+                        ipAddr=ipaddr.parse(value);
+                        for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.octets[j], ptr+2*j);
+                        ptr+=16;
+                        break;
+
+                    // Not a diameter type
+                    case "IPv6Prefix":
+                        addressParts=value.split("/");
+                        buff.writeUInt8(parseInt(addressParts[1]), ptr+1);
+                        ipAddr=ipaddr.parse(addressParts[0]);
+                        for(j=0; j<8; j++) buff.writeUInt16BE(ipAddr.octets[j], ptr+2+2*j);
+                        ptr+=18;
+                        break;
 						
 					case "Grouped":
 						ptr+=encodeAVPs(ptr, value);
