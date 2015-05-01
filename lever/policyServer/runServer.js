@@ -10,14 +10,7 @@ policyServer.initialize(function(err){
         process.exit(-1);
     }
     else{
-        /*
-        policyServer.radius.sendServerRequest("Access-Request", [], "8950AAA-toshiba", function(err, response){
-            if(err) console.log(err.message);
-            else{
-                console.log(JSON.stringify(response, null, 2));
-            }
-        });
-        */
+       console.log("Server started");
     }
 });
 

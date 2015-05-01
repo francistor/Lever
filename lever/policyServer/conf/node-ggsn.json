@@ -27,7 +27,7 @@
           }
       ],
       "routes": [
-          {"realm": "nvfdemo", "applicationId": "Gx", "peers": ["pcrf-1", "pcrf-2"], "policy": "fixed"}
+          {"realm": "nfvdemo", "applicationId": "Gx", "peers": ["pcrf-1", "pcrf-2"], "policy": "random"}
       ]
   },
   "management": {

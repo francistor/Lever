@@ -22,6 +22,9 @@ var ccrHandler=function(connection, message){
     // Result code
     reply["Result-Code"] = resultCodes.DIAMETER_SUCCESS;
 
+    // Waste some cpu
+    for(var j=0; j<100; j++) Math.pow(Math.random(), Math.random());
+
     // Send reply
     connection.diameterServer.sendReply(connection, replyMessage);
 };

@@ -47,7 +47,7 @@ policyServer.initialize(function(err){
             policyServer.diameter.sendRequest(null, theMessage, 3000, function(err, response){
                 if(err) console.log(err.message);
                 else{
-                    console.log(JSON.stringify(response, null, 2));
+                    // console.log(JSON.stringify(response, null, 2));
                 }
                 if(requestInterval) setTimeout(sendRequest, requestInterval); else sendRequest();
             });
