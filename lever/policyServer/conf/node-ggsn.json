@@ -1,0 +1,37 @@
+{
+  "_id": {
+    "$oid": "55428ba847e06f6e78bc7180"
+  },
+  "_version": 1001,
+  "hostName": "ggsn-simulator",
+  "diameter": {
+      "port": 3868,
+      "diameterHost": "ggsnsimulator",
+      "diameterRealm": "nfvdemo",
+      "vendorId": 1101,
+      "productName": "tds",
+      "firmwareRevision": 1,
+      "connectionInterval": 10000,
+      "peers": [
+          {
+              "name": "pcrf-1",
+              "diameterHost": "pcrf-1",
+              "IPAddress": "192.168.1.102:3868",
+              "connectionPolicy": "active"
+          },
+          {
+              "name": "pcrf-2",
+              "diameterHost": "pcrf-2",
+              "IPAddress": "192.168.1.103:3868",
+              "connectionPolicy": "active"
+          }
+      ],
+      "routes": [
+          {"realm": "nvfdemo", "applicationId": "Gx", "peers": ["pcrf-1", "pcrf-2"], "policy": "fixed"}
+      ]
+  },
+  "management": {
+    "IPAddress": "localhost",
+    "httpPort": 9000
+  }
+}

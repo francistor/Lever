@@ -127,12 +127,11 @@ var createConfig=function(){
                 // File found. Resolve
                 if(err) deferred.reject(err);
                 else{
-                    try{ cookNode(JSON.parse(doc));} catch(e){ deferred.reject(e); }
+                    try{ cookNode(JSON.parse(doc));} catch(e){deferred.reject(e); }
                     deferred.resolve();
                 }
             }
         });
-        console.log("updateNode");
         return deferred.promise;
     };
 
@@ -190,7 +189,6 @@ var createConfig=function(){
             }
         });
 
-        console.log("updateDispatcher");
         return deferred.promise;
 
     };
@@ -332,7 +330,6 @@ var createConfig=function(){
             }
         });
 
-        console.log("updateDiameterDictionary");
         return deferred.promise;
     };
 
@@ -380,7 +377,6 @@ var createConfig=function(){
             }
         });
 
-        console.log("cdrchannels");
         return deferred.promise;
     };
 
@@ -420,8 +416,6 @@ var createConfig=function(){
                 }
             }
         });
-
-        console.log("policyParams");
         return deferred.promise;
     };
 

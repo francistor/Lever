@@ -23,20 +23,22 @@ policyServer.initialize(function(err){
 
         // Init arguments
         var nThreads=parseInt(process.argv[2]||1);
-        var requestInterval=parseInt(process.argv[3]);
+        var requestInterval=parseInt(process.argv[3]||500);
 
         var diameterConfig=config.node.diameter;
         var dictionary=config.diameterDictionary;
 
         var theMessage=createMessage();
+        theMessage.applicationId="Gx";
+        theMessage.commandCode="Credit-Control";
         var request=theMessage.avps;
 
         // Mandatory attributes
         request["Origin-Host"]=diameterConfig["diameterHost"];
-        request["Session-Id"]="thesessionid";
+        request["Session-Id"]="session-id-1";
         request["Origin-Realm"]=diameterConfig["diameterRealm"];
-        request["Destination-Realm"]="forward";
-        request["Destination-Host"]="8950AAA";          // Forced to this host!
+        request["Destination-Realm"]="nfvdemo";
+        // request["Destination-Host"]="pcrf-1";          // Forced to this host!
         request["Auth-Application-Id"]="Credit-Control";
         request["CC-Request-Type"]="Initial";
         request["CC-Request-Number"]=1;
