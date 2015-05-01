@@ -13,6 +13,18 @@ policyServer.initialize(function(err){
         process.exit(-1);
     }
     else{
+        // Check help
+        process.argv.forEach(function(argValue){
+            if(argValue.indexOf("help")!=-1){
+                console.log("Usage: node runDiameterClient <number-of-threads> <interval-between-requests-in-millis>");
+                process.exit(0);
+            }
+        });
+
+        // Init arguments
+        var nThreads=parseInt(process.argv[2]||1);
+        var requestInterval=parseInt(process.argv[3]);
+
         var diameterConfig=config.node.diameter;
         var dictionary=config.diameterDictionary;
 
@@ -29,19 +41,17 @@ policyServer.initialize(function(err){
         request["CC-Request-Type"]="Initial";
         request["CC-Request-Number"]=1;
 
-        var nThreads=parseInt(process.argv[2]||1);
-
-        function sendRequest(nThread){
+        function sendRequest(){
             policyServer.diameter.sendRequest(null, theMessage, 3000, function(err, response){
                 if(err) console.log(err.message);
                 else{
                     console.log(JSON.stringify(response, null, 2));
                 }
-                sendRequest(nThread);
+                if(requestInterval) setTimeout(sendRequest, requestInterval); else sendRequest();
             });
         }
 
-        for(var i=0; i<nThreads; i++) sendRequest(i);
+        for(var i=0; i<nThreads; i++) sendRequest();
     }
 });
 

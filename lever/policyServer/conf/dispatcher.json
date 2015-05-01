@@ -1,0 +1,34 @@
+{
+  "_id": {
+    "$oid": "55428ba847e06f6e78bc7182"
+  },
+  "_version": 1001,
+  "dispatcher": {
+    "Base": {
+      "Capabilities-Exchange": {
+        "module": "./baseHandler",
+        "functionName": "cerHandler"
+      },
+      "Device-Watchdog": {
+        "module": "./baseHandler",
+        "functionName": "watchdogHandler"
+      },
+      "Disconnect-Peer": {
+        "module": "./baseHandler",
+        "functionName": "disconnectPeerHandler"
+      }
+    },
+    "Credit-Control": {
+      "Credit-Control": {
+        "module": "./policyScripts/gyHandler",
+        "functionName": "ccrHandler"
+      }
+    },
+    "Gx": {
+      "Credit-Control": {
+        "module": "./policyScripts/gxHandler",
+        "functionName": "ccrHandler"
+      }
+    }
+  }
+}

@@ -19,9 +19,17 @@ var os=require("os");
 var fs=require("fs");
 var MongoClient=require("mongodb").MongoClient;
 
-var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
-dbParams["databaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
 var hostName=os.hostname();
+
+// If database.json not found, continue without database
+var dbParams={};
+try {
+    dbParams=JSON.parse(fs.readFileSync(__dirname + "/conf/database.json", {encoding: "utf8"}));
+    dbParams["databaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"]||dbParams["databaseURL"];
+}
+catch(err){
+    if(err.code!=='ENOENT') throw err;
+}
 
 var createConfig=function(){
 
@@ -43,7 +51,9 @@ var createConfig=function(){
                 DB=db;
                 callback(null);
             }
-        })
+        });
+
+        else callback(null);
     };
 
     /**
@@ -122,7 +132,7 @@ var createConfig=function(){
                 }
             }
         });
-
+        console.log("updateNode");
         return deferred.promise;
     };
 
@@ -180,6 +190,7 @@ var createConfig=function(){
             }
         });
 
+        console.log("updateDispatcher");
         return deferred.promise;
 
     };
@@ -321,6 +332,7 @@ var createConfig=function(){
             }
         });
 
+        console.log("updateDiameterDictionary");
         return deferred.promise;
     };
 
@@ -362,12 +374,13 @@ var createConfig=function(){
                 // File found. Resolve
                 if(err) deferred.reject(err);
                 else{
-                    try{ cookCdrChannels(doc);} catch(e){ deferred.reject(e); }
+                    try{ cookCdrChannels(JSON.parse(doc));} catch(e){ deferred.reject(e); }
                     deferred.resolve();
                 }
             }
         });
 
+        console.log("cdrchannels");
         return deferred.promise;
     };
 
@@ -402,12 +415,13 @@ var createConfig=function(){
                 // File found. Resolve
                 if(err) deferred.reject(err);
                 else{
-                    try{ cookPolicyParams(doc);} catch(e){ deferred.reject(e); }
+                    try{ cookPolicyParams(JSON.parse(doc));} catch(e){ deferred.reject(e); }
                     deferred.resolve();
                 }
             }
         });
 
+        console.log("policyParams");
         return deferred.promise;
     };
 
