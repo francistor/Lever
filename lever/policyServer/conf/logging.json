@@ -3,18 +3,18 @@
 
     "policyServer":{
         "console": {"timestamp": true, "level": "verbose"},
-        "file": {"timestamp": true, "level": "verbose", "filename": "diameter.log", "json": false}
+        "file": {"timestamp": true, "level": "verbose", "filename": "log/policyServer.log", "json": false}
     },
     "arm":{
         "console": {"timestamp": true, "level": "debug"},
-        "file": {"timestamp": true, "level": "debug", "filename": "arm.log", "json": false}
+        "file": {"timestamp": true, "level": "debug", "filename": "log/arm.log", "json": false}
     },
     "handlers":{
         "console": {"timestamp": true, "level": "verbose"},
-        "file": {"timestamp": true, "level": "verbose", "filename": "handlers.log", "json": false}
+        "file": {"timestamp": true, "level": "verbose", "filename": "log/handlers.log", "json": false}
     },
     "management":{
         "console": {"timestamp": true, "level": "verbose"},
-        "file": {"timestamp": true, "level": "verbose", "filename": "management.log", "json": false}
+        "file": {"timestamp": true, "level": "verbose", "filename": "log/management.log", "json": false}
     }
 }

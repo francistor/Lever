@@ -7,6 +7,8 @@ var createMessage=require("./message").createMessage;
 
 var policyServer=require("./policyServer").createPolicyServer();
 
+process.title="policyServer-GGSN-simulator";
+
 policyServer.initialize(function(err){
     if(err){
         console.log("Error starting server: "+err.message);
@@ -22,8 +24,9 @@ policyServer.initialize(function(err){
         });
 
         // Init arguments
-        var nThreads=parseInt(process.argv[2]||1);
-        var requestInterval=parseInt(process.argv[3]||500);
+        var nThreads=parseInt(process.argv[2]||1);          // Use 1 thread by default
+        var requestInterval=parseInt(process.argv[3]||5);   // Send message every 5 ms by default
+        if(requestInterval==0) requestInterval=1;           // Do not allow direct call to sendRequest
 
         var diameterConfig=config.node.diameter;
         var dictionary=config.diameterDictionary;
@@ -49,7 +52,7 @@ policyServer.initialize(function(err){
                 else{
                     // console.log(JSON.stringify(response, null, 2));
                 }
-                if(requestInterval) setTimeout(sendRequest, requestInterval); else sendRequest();
+                setTimeout(sendRequest, requestInterval);
             });
         }
 
