@@ -1,0 +1,14 @@
+{
+    "databaseOptions":{
+        "server":{
+            "auto_reconnect": true,
+            "socketOptions": {
+                "connectTimeoutMS": 2000,
+                "socketTimeoutMS": 2000
+            }
+        }
+    },
+    "queryOptions":{
+        "maxTimeMS": 2000
+    }
+}
