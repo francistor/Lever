@@ -23,9 +23,9 @@ REM   Test parameters
 SET Secret=secret
 SET REQUESTFILE=%_THIS_FILE_PATH%request.txt
 
-SET User_Name=miusuario@midominio
-SET NAS_IP_Address=3.3.3.3
-SET NAS_Port="1"
+SET User_Name=miusuario@speedy
+SET NAS_IP_Address=127.0.0.1
+SET NAS_Port="1001"
 SET Acct_Session_Id=1-1
 SET Framed_IP_Address=10.0.0.1
 

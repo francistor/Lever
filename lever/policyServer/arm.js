@@ -5,11 +5,6 @@
  * Requires three mongoDB database connections, for Service Database, Client Database and Event database
  */
 
-var Q=require("q");
-var fs=require("fs");
-var aLogger=require("./log").aLogger;
-var MongoClient=require("mongodb").MongoClient;
-
 var dbParams=JSON.parse(fs.readFileSync(__dirname+"/conf/database.json", {encoding: "utf8"}));
 dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
 dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
@@ -29,6 +24,13 @@ var createArm=function(){
     var clientDB;
     var eventDB;
 
+    /*
+    maxBytesCredit:null,
+    maxSecondsCredit:null,
+    minBytesCredit:0,
+    minSecondsCredit:0,
+    expirationRandomSeconds: null
+    */
     var configProperties;
 
     /**
@@ -70,7 +72,7 @@ var createArm=function(){
 
     /**
      * Returns a promise to be fulfilled with the client object, or null if not found
-     * clientPoU may have one of the following properties set: "phone", "userName", "nasPort/nasIPAddress"
+     * clientPoU may have one of the following properties set: "phone", "userName", "nasPort, nasIPAddress"
      * @param clientPoU
      */
     arm.getClient=function(clientPoU){
@@ -81,13 +83,13 @@ var createArm=function(){
 
         var deferred= Q.defer();
 
-        // Find client._id in the appropriate collection
-        clientDB.collection(collectionName).findOne(clientPoU, {}, dbParams["databaseOptions"], function(err, pou){
+        // Find clientId in the appropriate collection
+        clientDB.collection(collectionName).findOne(clientPoU, {}, dbParams["queryOptions"], function(err, pou){
             if(err) deferred.reject(err);
             else if(!pou) deferred.resolve(null);
             else{
                 // Find the client object given the _id
-                clientDB.collection("clients").findOne({_id: pou.clientId}, {}, dbParams["databaseOptions"], function(err, client){
+                clientDB.collection("clients").findOne({clientId: pou.clientId}, {}, dbParams["queryOptions"], function(err, client){
                     if(err) deferred.reject(err);
                     else if(!client) deferred.resolve(null);
                     else deferred.resolve(client);
@@ -105,7 +107,7 @@ var createArm=function(){
     arm.getPlan=function(planName){
         var deferred= Q.defer();
 
-        configDB.collection("plans").findOne({name: planName}, {}, dbParams["databaseOptions"], function(err, plan){
+        configDB.collection("plans").findOne({name: planName}, {}, dbParams["queryOptions"], function(err, plan){
             if(err) deferred.reject(err);
             else if(!plan) deferred.resolve(null);
             else deferred.resolve(plan);
@@ -118,32 +120,32 @@ var createArm=function(){
      * Returns a promise to be resolved with the ClientContext object, which contains a "client" attribute and a
      * "plan" attribute
      * @param clientPoU
-     * @returns {*}
+     * @returns {*} null if client not found
      */
     arm.getClientContext=function(clientPoU){
-        var clientContext={};
+        var clientContext;
 
         return arm.getClient(clientPoU).
             then(function(client){
                 if(!client) return null;
                 else{
-                    clientContext["client"]=client;
-                    return arm.getPlan(client.provision.planName);
-                }}).
-            then(function(plan){
-                if(!plan) return clientContext;
-                else{
-                    clientContext["plan"]=plan;
-                    return clientContext;
-                }
-            });
+                    clientContext={client:client};
+                    return arm.getPlan(client.provision.planName).
+                        then(function(plan){
+                            if(!plan) return clientContext;
+                            else{
+                                clientContext["plan"]=plan;
+                                return clientContext;
+                            }
+                        });
+                }});
     };
 
     /**
      * Returns and object with the credit for the specified service.
      * @param clientContext
-     * @param ratingGroup
-     * @param serviceId
+     * @param clientContext
+     * @param service
      * @returns {*}
      */
     arm.getCredit=function(clientContext, service){
@@ -300,7 +302,6 @@ var createArm=function(){
                 }
             });
         });
-
     };
 
     /**
@@ -321,16 +322,19 @@ var createArm=function(){
     };
 
     /**
+     * Returns promise to be solved after writing event and updated credit. Event writting does not cause
+     * faliure in promise
      *
      * @param clientContext
      * @param ccRequestType
      * @param ccElements array of {
-     *      serviceId:<>,
-     *      ratingGroup: <>,
-     *      used: {
+     *      serviceId:<>,       --> input
+     *      ratingGroup: <>,    --> input
+     *      service: <>         --> output
+     *      used: {             --> input
      *          bytes: <>,
      *          seconds: <>
-     *      },
+     *      },                  --> outupt
      *      granted: {
      *          bytes: <>,
      *          seconds: <>,
@@ -341,9 +345,9 @@ var createArm=function(){
      *
      * ccElements are decorated with serivceNames
      */
-    arm.executeCCRequest=function(clientContext, ccRequestType, ccElements){
+    arm.executeCCRequest=function(clientContext, ccRequestType, ccElements, eventTimestamp, sessionId){
 
-        // First discount credit without updating
+        // First discount credit without updating reurrent credits or deleting expired items
         if(ccRequestType==arm.UPDATE_REQUEST || ccRequestType==arm.TERMINATE_REQUEST) ccElements.forEach(function(ccElement){
             // Decorate with service
             if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
@@ -361,20 +365,62 @@ var createArm=function(){
             if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
             if(ccElement.service) ccElement.granted=arm.getCredit(clientContext, ccElement.service);
         });
+
+        // WriteEvent
+        return arm.writeCCEvent(clientContext, ccRequestType, ccElements, eventTimestamp, sessionId).
+            catch(function(err){
+                aLogger.error("Could not write ccEvent due to: "+err.message);
+            }).
+            then(function(){
+                // Update client credits
+                if(clientContext.client.creditsDirty) {
+                    console.log("UPDATING "+clientContext.client.clientId);
+                    return Q.ninvoke(clientDB.collection("clients"), "updateOne",
+                        {clientId: clientContext.client.clientId},
+                        {$set: {"creditPools": clientContext.client.creditPools}},
+                        dbParams["writeOptions"]);
+                }
+                else return null;
+            });
     };
 
     /**
+     * Returns promise to be resolved when event is written to database or error.
+     * ccEvents parameter is cleaned up
      *
-     * @param usageEvents
+     * @param clientContext
+     * @param ccRequestType
+     * @param ccElements (cleaned up!)
+     * @param eventTimestamp
+     * @param sessionId
      *
-     * UsageEvent format {clientId: <>, eventDate: <>, eventType: <>, serviceName: <>, sessionId: <>, used: <>, granted: <>
+     * CCEvent={
+     *  clientId,
+     *  eventTimestap,
+     *  sessionId,
+     *  ccRequestType,
+     *  ccElements: [<array of ccElements>]
+     *  }
      */
-    arm.writeUsageEventArray=function(clientContext, usages, ccRequestType, date, callback){
+    arm.writeCCEvent=function(clientContext, ccRequestType, ccElements, eventTimestamp, sessionId){
+
+        // Cleanup
+        ccElements.forEach(function (ccElement) {
+            if (ccElement.service) {
+                ccElement.serviceName = ccElement.service.name;
+                delete ccElement.service;
+            }
+        });
+
         var event={
-            clientId: clientContext.client._id,
-            eventDate: date ? date : new Date(),
-            eventType: ccRequestType
-        }
+            clientId: clientContext.client.clientId,
+            eventTimestamp: eventTimestamp ? eventTimestamp : Date.now()/1000,
+            sessionId: sessionId,
+            ccRequestType: ccRequestType,
+            ccElements: ccElements
+        };
+
+        return Q.ninvoke(eventDB.collection("ccEvents"), "insertOne", event, dbParams["writeOptions"]);
     };
 
     arm.breakEvent=function(event, calendar){
@@ -533,6 +579,8 @@ var createArm=function(){
     return arm;
 };
 
+exports.arm=createArm();
+
 ///////////////////////////////////////////////////////////////////////////////
 // Testing
 ///////////////////////////////////////////////////////////////////////////////
@@ -579,8 +627,6 @@ var event={
     bytesDown: 1000
 };
 
-var arm=createArm();
-
 /*
 console.log(serviceMgr.isInCalendarItem(
     new Date("2015-01-07T18:30:00"),
@@ -595,56 +641,68 @@ console.log(serviceMgr.isInCalendarItem(
 // var brokenEvents=arm.breakEvent(event, speedyNightCalendar);
 // console.log(JSON.stringify(brokenEvents, null, 2));
 
-arm.setConfigProperties({
-    maxBytesCredit:null,
-    maxSecondsCredit:null,
-    minBytesCredit:0,
-    minSecondsCredit:0,
-    expirationRandomSeconds: null});
+var arm=exports.arm;
+// unitTest();
 
-arm.setupDatabaseConnections().then(function(){
-    test();
-}, function(err){
-    console.log("Initialization error due to "+err);
-}).done();
+function unitTest() {
 
+    arm.setConfigProperties({
+        maxBytesCredit: 1000,
+        maxSecondsCredit: null,
+        minBytesCredit: 0,
+        minSecondsCredit: 0,
+        expirationRandomSeconds: null});
 
-function test(){
-    console.log("testing...");
-
-    arm.getClientContext({
-        nasPort: 1001,
-        nasIPAddress: "127.0.0.1"
-    }).then(function(clientContext){
-        console.log("Credits before event");
-        console.log("---------------------------");
-        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
-
-        var ccElements=[
-            {ratingGroup: 101, serviceId: 3, used: {bytes:500, seconds: 3600}},
-            {ratingGroup: 101, serviceId: 4, used: {bytes:600, seconds: 3600}}
-        ];
-        arm.executeCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements);
-        ccElements.forEach(function(ccElement){
-            if(ccElement.service){
-                ccElement.serviceName=ccElement.service.name;
-                delete ccElement.service;
-            }
-        });
-
-        console.log("Credit granted");
-        console.log("---------------------------");
-        console.log(JSON.stringify(ccElements, null, 2));
-
-        console.log("---------------------------");
-        console.log("Credits after event");
-        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
-
-    }, function(err){
-        console.log("Error: "+err);
-    }).then(function(){
-        process.exit(1);
+    arm.setupDatabaseConnections().then(function () {
+        test();
+    }, function (err) {
+        console.log("Initialization error due to " + err);
     }).done();
-}
 
+
+    function test() {
+        console.log("testing...");
+
+        arm.getClientContext({
+            nasPort: 1001,
+            nasIPAddress: "127.0.0.1"
+        }).then(function (clientContext) {
+            console.log("");
+            console.log("Credits before event");
+            console.log("---------------------------");
+            console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+
+            var ccElements = [
+                {ratingGroup: 101, serviceId: 3, used: {bytes: 500, seconds: 3600}},
+                {ratingGroup: 101, serviceId: 4, used: {bytes: 600, seconds: 3600}}
+            ];
+
+            arm.executeCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements, null, "1-1").
+                then(function(result){
+                        // Clean up all verbose info
+                        ccElements.forEach(function (ccElement) {
+                            if (ccElement.service) {
+                                ccElement.serviceName = ccElement.service.name;
+                                delete ccElement.service;
+                            }
+                        });
+
+                        console.log("Credits granted");
+                        console.log("---------------------------");
+                        console.log(JSON.stringify(ccElements, null, 2));
+
+                        console.log("");
+                        console.log("Credits after event");
+                        console.log("---------------------------");
+                        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+
+                    }, function(err){
+                        console.log("Error updating credit: "+err.message);
+                    });
+
+        }, function (err) {
+            console.log("Error getting client: " + err.message);
+        }).done();
+    }
+}
 

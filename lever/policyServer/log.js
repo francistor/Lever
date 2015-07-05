@@ -59,7 +59,6 @@ var aLogger=new (winston.Logger)({
     "transports": armTransports
 });
 
-// TODO: Change name from "diameter" to "policyServer" and add ==="verbose" to debug
 dLogger["inDebug"]=logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="debug";
 aLogger["inDebug"]=logConfig.arm.console.level==="debug" || logConfig.arm.file.level==="debug";
 hLogger["inDebug"]=logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="debug";

@@ -1,4 +1,4 @@
-var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers', 'angularBootstrapNavTree']);
+var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers', 'angularBootstrapNavTree', 'xeditable']);
 
 managerApp.config(['$routeProvider',
   function($routeProvider) {
@@ -25,6 +25,11 @@ managerApp.config(['$routeProvider',
       });
   }]);
 
+// xeditable initialization
+managerApp.run(function(editableOptions) {
+    editableOptions.theme = 'bs3'; // bootstrap3 theme. Can be also 'bs2', 'default'
+});
+
 
 /**
  * Helper function to show bootbox alerts.
@@ -46,7 +51,7 @@ managerApp.factory("niceAlert", function(){
             title: "Error",
             buttons: {
                 failure: {
-                    label: "OK",
+                    label: "Error",
                     className: "btn-danger"
                 }
             }
@@ -61,6 +66,17 @@ managerApp.factory("niceAlert", function(){
             if(msg) errorOptions.message=msg; else errorOptions.message="Error!";
             bootbox.dialog(errorOptions);
         }
+    }
+});
+
+managerApp.filter('formatResource',function(){
+    return function(value, units){
+        if(!value) return "-";
+        if(units=="GB") return Math.round(value/(1024*1024*1024))+"GB";
+        if(units=="MB") return Math.round(value/(1024*1024))+"GB";
+        if(units=="H") return Math.round(value/(3600))+" Hours";
+        if(units=="H") return Math.round(value/(86400))+" Days";
+        else return value;
     }
 });
 

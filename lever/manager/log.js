@@ -12,4 +12,7 @@ var logger=new (winston.Logger)({
 	"transports": transports
 });
 
+logger["inVerbose"]=logConfig.console.level==="verbose" || logConfig.file.level==="verbose";
+logger["inDebug"]=logConfig.console.level==="debug" || logConfig.file.level==="debug" || logger["inVerbose"];
+
 exports.logger=logger;

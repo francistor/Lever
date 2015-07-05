@@ -1,3 +1,3 @@
 leverConfigDatabase="mongodb://configdb.lever/leverConfig";
-leverClientDatabase="mongodb://clientdb.lever/clients";
-leverEventDatabase="mongodb://eventdb.lever/events";
+leverClientDatabase="mongodb://clientdb.lever/leverClients";
+leverEventDatabase="mongodb://eventdb.lever/leverEvents";

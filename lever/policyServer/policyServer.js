@@ -15,6 +15,7 @@ var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
 var createAgent=require("./agent").createAgent;
 var config=require("./configService").config;
+var arm=require("./arm").arm;
 
 // Singleton
 var createPolicyServer=function(){
@@ -301,7 +302,7 @@ var createPolicyServer=function(){
         // Look for Origin-Host in peer table
         var peer=null;
         var i;
-        for(i=0; i<config.node.diameter["peers"].length; i++) if(config.node.diameter["peers"][i]["IPAddress"].split(":")[0]===socket["remoteAddress"]){
+        for(i=0; i<config.node.diameter["peers"].length; i++) if(config.node.diameter["peers"][i]["IPAddress"].indexOf(socket["remoteAddress"]!==-1)){
             // Peer found
             peer=config.node.diameter["peers"][i];
 
@@ -607,71 +608,71 @@ var createPolicyServer=function(){
     // Startup
     ///////////////////////////////////////////////////////////////////////////
 
-    policyServer.initialize=function(initCallback){
+    policyServer.initialize=function(initCallback) {
         var radiusAuthSocket;
         var radiusAcctSocket;
         var diameterSocket;
 
-        // Read configuration and initialize
-        config.initialize(function(err){
-            if(err){
-                dLogger.error("Configuration initialization error: "+err.message);
+        config.initialize().then(
+            function () {
+
+                // Initialize arm library
+                arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB());
+                arm.setConfigProperties({
+                    maxBytesCredit:null,
+                    maxSecondsCredit:null,
+                    minBytesCredit:0,
+                    minSecondsCredit:0,
+                    expirationRandomSeconds: null});
+
+                // Create management HTTP server
+                createAgent(config, diameterServer, radiusServer);
+
+                // Diameter //
+                if (config.node.diameter) {
+                    // Create Listener on Diameter port
+                    diameterSocket = net.createServer();
+                    diameterSocket.on("connection", onDiameterConnectionReceived);
+                    diameterSocket.listen(config.node.diameter.port || 3868, config.node.diameter.listenAddress);
+                    dLogger.info("Diameter listening in port " + config.node.diameter.port);
+
+                    // Establish outgoing connections
+                    manageConnections();
+
+                    // Set timer for periodically checking connections
+                    setInterval(manageConnections, config.node.diameter["connectionInterval"] || 10000);
+                } else {
+                    dLogger.info("Diameter server not started");
+                }
+
+                // Radius //
+                if (config.node.radius) {
+                    // Server sockets
+                    radiusAuthSocket = dgram.createSocket("udp4");
+                    radiusAcctSocket = dgram.createSocket("udp4");
+                    radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
+                    radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
+                    radiusAuthSocket.on("message", onRadiusAuthRequestReceived);
+                    radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
+                    radiusAuthSocket.on("error", onRadiusSocketError);
+                    radiusAcctSocket.on("error", onRadiusSocketError);
+                    dLogger.info("Radius auth listening in port " + config.node.radius.authPort);
+                    dLogger.info("Radius acct listening in port " + config.node.radius.acctPort);
+
+                    // Client sockets
+                    // TODO TODO TODO TODO: Turn this into a promise
+                    radiusClientPorts = createRadiusClientPorts(radiusServer, config.node.radius.baseClientPort, config.node.radius.numClientPorts, config.node.radius.IPAddress, initCallback);
+                } else {
+                    dLogger.info("Radius server not started");
+                    // Startup done
+                    if (initCallback) initCallback(null);
+                }
+            }, function (err) {
+                dLogger.error("Configuration initialization error: " + err.message);
                 dLogger.error(err.stack);
-                if(initCallback) initCallback(err);
+                if (initCallback) initCallback(err);
             }
-            else{
-                config.updateAll(function(err){
-                    if(err){
-                        dLogger.error("Initialization error");
-                        dLogger.error(err.stack);
-                        if(initCallback) initCallback(err);
-                    }
-                    else{
-                        // Create management HTTP server
-                        createAgent(config, diameterServer, radiusServer);
-
-                        // Diameter //
-                        if(config.node.diameter){
-                            // Create Listener on Diameter port
-                            diameterSocket = net.createServer();
-                            diameterSocket.on("connection", onDiameterConnectionReceived);
-                            diameterSocket.listen(config.node.diameter.port || 3868);
-                            dLogger.info("Diameter listening in port " + config.node.diameter.port);
-
-                            // Establish outgoing connections
-                            manageConnections();
-
-                            // Set timer for periodically checking connections
-                            setInterval(manageConnections, config.node.diameter["connectionInterval"] || 10000);
-                        } else {
-                            dLogger.info("Diameter server not started");
-                        }
-
-                        // Radius //
-                        if(config.node.radius) {
-                            // Server sockets
-                            radiusAuthSocket = dgram.createSocket("udp4");
-                            radiusAcctSocket = dgram.createSocket("udp4");
-                            radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
-                            radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
-                            radiusAuthSocket.on("message", onRadiusAuthRequestReceived);
-                            radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
-                            radiusAuthSocket.on("error", onRadiusSocketError);
-                            radiusAcctSocket.on("error", onRadiusSocketError);
-                            dLogger.info("Radius auth listening in port " + config.node.radius.authPort);
-                            dLogger.info("Radius acct listening in port " + config.node.radius.acctPort);
-
-                            // Client sockets
-                            radiusClientPorts=createRadiusClientPorts(radiusServer, config.node.radius.baseClientPort, config.node.radius.numClientPorts, config.node.radius.IPAddress, initCallback);
-                        } else {
-                            dLogger.info("Radius server not started");
-                            // Startup done
-                            if(initCallback) initCallback(null);
-                        }
-                    }
-                });
-            }
-        });
+        ).done();
     };
 
     return policyServer;

@@ -12,7 +12,7 @@
     "Diameter"
   ],
   "author": "Francisco Rodriguez",
-  "license": "MIT",
+  "license": "NONE",
   "dependencies": {
     "body-parser": "^1.7.0",
     "express": "^4.8.7",

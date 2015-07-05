@@ -16,8 +16,8 @@
 <div class="tab-pane active" id="basic">
     <form name="diameterConfigForm" role="form">
         <div class="row">
-            <div class="col-lg-12">
-                <div class="col-lg-6">
+            <div class="col-md-12">
+                <div class="col-md-6">
                     <div class="form-group" ng-class="{'has-error': diameterConfigForm.diameterHost.$invalid}">
                         <label>Diameter Host Name:</label>
                         <input name="diameterHost" type="text" class="form-control" ng-model="nodeConfig.diameter.diameterHost" ng-pattern="/.{3,}/">
@@ -42,7 +42,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-md-6">
                     <div class="form-group" ng-class="{'has-error': diameterConfigForm.interval.$invalid}">
                         <label>Connection interval:</label>
                         <input name="interval" class="form-control" ng-model="nodeConfig.diameter.connectionInterval" ng-pattern="/[0-9]{1,9}/">
@@ -83,10 +83,10 @@
                 <div class="accordion-body collapse" id="peer_{{$index}}">
                     <div class="row">
                         <form name="peersConfigForm{{$index}}" role="form">
-                            <div class="col-lg-12">
+                            <div class="col-md-12">
                                 <div class="panel-body">
                                     <div class="accordion-inner">
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.name.$invalid}">
                                                 <label>Name:</label>
                                                 <input name="name" class="form-control" ng-model="peer.name" ng-pattern="/.{3,}/">
@@ -104,7 +104,7 @@
                                             </div>
                                             <button type="button" ng-click="deletePeer($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
                                         </div>
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.IPAddress.$invalid}">
                                                 <label>IP Address:</label>
                                                 <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{3,5}){0,1}$/">
@@ -157,10 +157,10 @@
                 <div class="accordion-body collapse" id="route_{{$index}}">
                     <div class="row">
                         <form name="routeForm{{$index}}" role="form">
-                            <div class="col-lg-12">
+                            <div class="col-md-12">
                                 <div class="panel-body">
                                     <div class="accordion-inner">
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group">
                                                 <label>Realm:</label>
                                                 <input name="realm" class="form-control" ng-model="route.realm">
@@ -176,7 +176,7 @@
                                             <button type="button" ng-click="deleteRoute($index)" class="btn btn-danger btn-sm">
                                                 Delete Route <i class="fa fa-times"></i></button>
                                         </div>
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group">
                                                 <label>Application Id:</label>
                                                 <input name="applicationId" class="form-control" ng-model="route.applicationId">
@@ -216,8 +216,8 @@
 <div class="tab-pane" id="radius">
     <form name="radiusConfigForm" role="form">
         <div class="row">
-            <div class="col-lg-12">
-                <div class="col-lg-6">
+            <div class="col-md-12">
+                <div class="col-md-6">
                     <div class="form-group" ng-class="{'has-error': radiusConfigForm.authPort.$invalid}">
                         <label>Auth Port:</label>
                         <input name="authPort" class="form-control" ng-model="nodeConfig.radius.authPort" ng-pattern="/[0-9]{4,5}/">
@@ -239,7 +239,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-md-6">
                     <div class="form-group" ng-class="{'has-error': radiusConfigForm.acctPort.$invalid}">
                         <label>Acct Port:</label>
                         <input name="acctPort" class="form-control" ng-model="nodeConfig.radius.acctPort" ng-pattern="/[0-9]{4,5}/">
@@ -270,10 +270,10 @@
                 <div class="accordion-body collapse" id="client_{{$index}}">
                     <div class="row">
                         <form name="radiusClientsForm{{$index}}" role="form">
-                            <div class="col-lg-12">
+                            <div class="col-md-12">
                                 <div class="panel-body">
                                     <div class="accordion-inner">
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.name.$invalid}">
                                                 <label>Name:</label>
                                                 <input name="name" class="form-control" ng-model="client.name" ng-pattern="/.{3,}/">
@@ -286,7 +286,7 @@
                                             </div>
                                             <button type="button" ng-click="deleteClient($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
                                         </div>
-                                        <div class="col-lg-6">
+                                        <div class="col-md-6">
                                             <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.secret.$invalid}">
                                                 <label>Secret:</label>
                                                 <input name="secret" class="form-control" ng-model="client.secret" ng-pattern="/.{3,}/">

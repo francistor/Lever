@@ -25,15 +25,22 @@ var hostName=os.hostname();
 var dbParams={};
 try {
     dbParams=JSON.parse(fs.readFileSync(__dirname + "/conf/database.json", {encoding: "utf8"}));
-    dbParams["databaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"]||dbParams["databaseURL"];
+    if(!dbParams["configDatabaseURL"]) dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
+    if(!dbParams["clientDatabaseURL"]) dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
+    if(!dbParams["eventDatabaseURL"]) dbParams["eventDatabaseURL"]=process.env["LEVER_EVENTDATABASE_URL"];
+
+    // Comment out this if no operation allowed without database
+    if(!dbParams["configDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
+    if(!dbParams["clientDatabaseURL"]) throw Error("LEVER_CLIENTDATABASE_URL environment variable not set");
+    if(!dbParams["eventDatabaseURL"]) throw Error("LEVER_EVENTDATABASE_URL environment variable not set");
 }
 catch(err){
     if(err.code!=='ENOENT') throw err;
 }
 
-var createConfig=function(){
+var createConfig=function() {
 
-    var config={
+    var config = {
         node: null,
         dispatcher: null,
         diameterDictionary: null,
@@ -41,19 +48,38 @@ var createConfig=function(){
         cdrChannels: []
     };
 
-    var DB;
+    var configDB;
+    var clientDB;
+    var eventDB;
 
-    // Must be called before using the config object
-    config.initialize=function(callback){
-        if(dbParams["databaseURL"]) MongoClient.connect(dbParams["databaseURL"], dbParams["databaseOptions"], function(err, db){
-            if(err) callback(err);
-            else{
-                DB=db;
-                callback(null);
-            }
+    config.getConfigDB=function(){return configDB};
+    config.getClientDB=function(){return clientDB};
+    config.getEventDB=function(){return eventDB};
+
+    /**
+     * Returns a promise to be fulfilled when connected to database and initialized
+     *
+     * @returns {*}
+     */
+    config.initialize = function () {
+        var dbPromise;
+
+        // Connect to database if required
+        if(dbParams["configDatabaseURL"]) dbPromise=Q.all(
+                [
+                    Q.nfcall(MongoClient.connect, dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
+                    Q.nfcall(MongoClient.connect, dbParams["clientDatabaseURL"], dbParams["databaseOptions"]),
+                    Q.nfcall(MongoClient.connect, dbParams["eventDatabaseURL"], dbParams["databaseOptions"])
+                ]).spread(function (a, b, c) {
+                    configDB = a;
+                    clientDB = b;
+                    eventDB = c;
+                }); else dbPromise=Q(null);
+
+        // Initialize
+        return dbPromise.then(function(){
+            return config.updateAll();
         });
-
-        else callback(null);
     };
 
     /**
@@ -114,8 +140,8 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/node.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                if(!DB) throw Error("No configuration found for node. Database url is "+dbParams["databaseURL"]);
-                DB.collection("nodes").findOne({"hostName": hostName}, function(err, dbDoc){
+                if(!configDB) throw Error("No configuration found for node. Database url is "+dbParams["configDatabaseURL"]);
+                configDB.collection("nodes").findOne({"hostName": hostName}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
                         try{ cookNode(dbDoc);} catch(e){ deferred.reject(e); }
@@ -170,8 +196,8 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/dispatcher.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                if(!DB) throw Error("No configuration found for dispatcher. Database url is "+dbParams["databaseURL"]);
-                DB.collection("dispatcher").findOne({}, function(err, dbDoc){
+                if(!configDB) throw Error("No configuration found for dispatcher. Database url is "+dbParams["configDatabaseURL"]);
+                configDB.collection("dispatcher").findOne({}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
                         try{ cookDispatcher(dbDoc);} catch(e){ deferred.reject(e); }
@@ -311,8 +337,8 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/diameterDictionary.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                if(!DB) throw Error("No configuration found for diameter dictionary. Database url is "+dbParams["databaseURL"]);
-                DB.collection("diameterDictionary").findOne({}, function(err, dbDoc){
+                if(!configDB) throw Error("No configuration found for diameter dictionary. Database url is "+dbParams["configDatabaseURL"]);
+                configDB.collection("diameterDictionary").findOne({}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
                     else{
                         try{ cookDiameterDictionary(dbDoc);} catch(e){ deferred.reject(e); }
@@ -358,8 +384,8 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/cdrChannels.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                if(!DB) throw Error("No configuration found for cdr channels. Database url is "+dbParams["databaseURL"]);
-                DB.collection("cdrChannels").find({}).toArray(function(err, dbDocs){
+                if(!configDB) throw Error("No configuration found for cdr channels. Database url is "+dbParams["configDatabaseURL"]);
+                configDB.collection("cdrChannels").find({}).toArray(function(err, dbDocs){
                     if(err) deferred.reject(err);
                     else{
                         try{ cookCdrChannels(dbDocs);} catch(e){ deferred.reject(e); }
@@ -380,6 +406,10 @@ var createConfig=function(){
         return deferred.promise;
     };
 
+    /**
+     * Generates config.policyParams[<setName>][<key>]
+     * @returns {*}
+     */
     config.updatePolicyParams=function(){
 
         var cookPolicyParams=function(docs){
@@ -398,8 +428,8 @@ var createConfig=function(){
         fs.readFile(__dirname+"/conf/policyParams.json", {encoding: "utf8"}, function(err, doc){
             if(err && err.code==='ENOENT'){
                 // File not found. Read from database
-                if(!DB) throw Error("No configuration found for policy parameters. Database url is "+dbParams["databaseURL"]);
-                DB.collection("policyParams").find({}).toArray(function(err, dbDocs){
+                if(!configDB) throw Error("No configuration found for policy parameters. Database url is "+dbParams["configDatabaseURL"]);
+                configDB.collection("policyParams").find({}).toArray(function(err, dbDocs){
                     if(err) deferred.reject(err);
                     else{
                         try{ cookPolicyParams(dbDocs);} catch(e){ deferred.reject(e); }
@@ -420,10 +450,18 @@ var createConfig=function(){
     };
 
     /**
-     * Updates all the config object, calling <callback(err)> when the full process has finished
+     * Returns promise to be fullfilled after reloading all configuration data
+     * @returns {*}
      */
-    config.updateAll=function(callback){
-        Q.all([config.updateNode(), config.updateDispatcher(), config.updateDiameterDictionary(), config.updatePolicyParams()], config.updateCdrChannels()).then(function(){callback(null)}, callback);
+    config.updateAll=function(){
+        return Q.all(
+            [
+                config.updateNode(),
+                config.updateDispatcher(),
+                config.updateDiameterDictionary(),
+                config.updatePolicyParams(),
+                config.updateCdrChannels()
+            ])
     };
 
     return config;

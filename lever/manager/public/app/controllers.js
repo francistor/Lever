@@ -353,4 +353,43 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
 
 managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
+    // Initialize objects
+    $scope.clientData={};
+    $scope.searchData={phone: "629629769"};
+
+    var testClientData={
+        client: {},
+        pointsOfUsage:{
+            phones:[
+                "629629769"
+            ],
+            userNames:[
+                "frg@tid.es"
+            ],
+            lines:[
+                "127.0.0.1:1234567"
+            ]
+        },
+        plan:{}
+    };
+
+    $scope.findClient=function(){
+        $http({
+            method  : 'POST',
+            url     : '/dyn/clients/findClient',
+            data    : $scope.searchData,
+            timeout: requestTimeout
+        }).success(function(data){
+            if(!data.client) niceAlert.info("Client not found");
+            else{
+                $scope.client=data.client;
+                $scope.pointsOfUsage=data.pointsOfUsage;
+                $scope.plan=data.plan;
+            }
+        }).error(function(data, status, headers, config, statusText){
+            // Shows error message
+            niceAlert.error(headers("message"));
+        });
+    }
+
 }]);

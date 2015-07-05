@@ -31,7 +31,7 @@
                                 <div class="accordion-body collapse" id="vendor_{{vendor}}_attribute_{{attribute.name}}">
                                     <div class="accordion-inner">
                                         <div class="row">
-                                            <div class="col-lg-6">
+                                            <div class="col-md-6">
                                                 <div class="form-group">
                                                     <label>Code:</label>
                                                     <input name="code" ng-model="diameterDictionary.avp[vendor][$index].code" class="form-control" type="number"/>
@@ -43,7 +43,7 @@
                                                     <p class="help-block">Required field</p>
                                                 </div>
                                             </div>
-                                            <div class="col-lg-6">
+                                            <div class="col-md-6">
                                                 <div class="form-group">
                                                     <label>Type:</label>
                                                     <select class="form-control" ng-model="diameterDictionary.avp[vendor][$index].type" ng-options="theType.name as theType.type for theType in types">

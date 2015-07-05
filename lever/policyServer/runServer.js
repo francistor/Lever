@@ -2,7 +2,7 @@
  * Created by frodriguezg on 24/04/2015.
  */
 
-process.title="policyServer-PCRF-Server";
+process.title="policyServer";
 
 var policyServer=require("./policyServer").createPolicyServer();
 

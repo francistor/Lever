@@ -23,9 +23,9 @@ AWK=awk
 Secret=secret
 REQUESTFILE=${_THIS_FILE_PATH}/request.txt
 
-User_Name=miusuario@midominio
-NAS_IP_Address=3.3.3.3
-NAS_Port=\"1\"
+User_Name=miusuario@speedy
+NAS_IP_Address=127.0.0.1
+NAS_Port=\"1001\"
 Acct_Session_Id=1-1
 Framed_IP_Address=10.0.0.1
 

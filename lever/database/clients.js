@@ -7,10 +7,23 @@ print("----------------------------------");
 
 var db=connect(leverClientDatabase.substring(10));
 db.clients.drop();
+db.clients.ensureIndex({clientId: 1});
+db.clients.ensureIndex({legacyClientId: 1});
+
+db.lines.drop();
+db.lines.ensureIndex();
+db.lines.ensureIndex({clientId: 1});
+db.lines.ensureIndex({nasIPAddress: 1, nasPort: 1});
+db.userNames.drop();
+db.userNames.ensureIndex({clientId: 1});
+db.userNames.ensureIndex({userName: 1});
+db.phones.drop();
+db.phones.ensureIndex({clientId: 1});
+db.phones.ensureIndex({phone: 1});
 
 var client1=
 {
-    _id: 1,
+    clientId: 1,
     provision: {
         legacyClientId: "lci1001",
         legacyClientIdSec: null,
@@ -27,13 +40,13 @@ var client1=
                 poolName: "bytesRecurring",
                 mayUnderflow: false,
                 bytes: 1000,
-                expirationDate: ISODate("2015-04-30T01:00:00Z")
+                expirationDate: ISODate("2015-05-30T01:00:00Z")
             },
             {
                 poolName: "bytesPurchased",
                 mayUnderflow: false,
                 bytes: 2000,
-                expirationDate: ISODate("2015-04-28T01:00:00Z")
+                expirationDate: ISODate("2015-05-28T01:00:00Z")
             }
         ]
 };
@@ -64,7 +77,7 @@ var phone11={
 
 var client2=
 {
-    _id: 2,
+    clientId: 2,
     provision: {
         legacyClientId: "lci1002",
         legacyClientIdSec: null,
@@ -114,7 +127,7 @@ var phone2={
 
 var client3=
 {
-    _id: 3,
+    clientId: 3,
     provision: {
         legacyClientId: "lci1003",
         legacyClientIdSec: null,
@@ -201,7 +214,7 @@ print("----------------------------------");
 
 // Add captureset1 to client lcid1003
 serviceDb=connect(leverConfigDatabase.substring(10));
-var capture1Id=serviceDb.captureSets.findOne({name: "notificacion morosidad"})._id;
+var capture1Id=serviceDb.captureSets.findOne({name: "notificacion morosidad"}).clientId;
 db.clients.update({legacyClientId: "lcid1003"}, {$addToSet: {captureSets: capture1Id}});
 
 print("done");

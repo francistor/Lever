@@ -119,6 +119,7 @@ var toshiba=
 
     "diameter": {
         "IPAddress-not-used": "127.0.0.1",
+        "listenAddress": "0.0.0.0",
         "port": 3868,
         "diameterHost": "lever-toshiba",
         "diameterRealm": "toshiba",
@@ -265,12 +266,12 @@ var dispatcher=
         {
             "Access-Request":
             {
-                "module":"./policyScripts/radiusHandler",
+                "module":"./policyScripts/radiusHandler-TASA",
                 "functionName": "accessRequestHandler"
             },
             "Accounting-Request":
             {
-                "module":"./policyScripts/radiusHandler",
+                "module":"./policyScripts/radiusHandler-TASA",
                 "functionName": "accountingRequestHandler"
             }
         }
@@ -980,7 +981,8 @@ var domain_speedy={
     setName: "domain",
     key: "speedy",
     values:{
-        doProxyAuth: false,
+        provisionType: "database",
+        doProxyAuth: true,
         doProxyServiceAcct: true,
         radiusProxyGroup: "speedy",
         avps:{
@@ -993,6 +995,7 @@ var domain_arnet={
     setName: "domain",
     key: "arnet",
     values:{
+        provisionType: "none",
         doProxyAuth: true,
         doProxyServiceAcct: true,
         radiusProxyGroup: "arnet",
@@ -1004,3 +1007,37 @@ var domain_arnet={
 
 db.policyParams.insert(domain_speedy);
 db.policyParams.insert(domain_arnet);
+
+// ServiceConfig
+var service_permissive={
+    setName: "service",
+    key: "permissive",
+    values:{
+        avps:{
+            "Reply-Message": "Permissive service"
+        }
+    }
+};
+
+var service_sd3M={
+    setName: "service",
+    key: "sd3M",
+    values:{
+        avps:{
+            "Reply-Message": "sd3M"
+        }
+    }
+};
+
+db.policyParams.insert(service_permissive);
+db.policyParams.insert(service_sd3M);
+
+var global_params={
+    setName: "global",
+    key: "global",
+    values:{
+        serviceOnSubscriptionNotFound: "permissive"
+    }
+};
+
+db.policyParams.insert(global_params);

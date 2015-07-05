@@ -2,41 +2,45 @@
 <legend>Client</legend>
 
 <div class="panel panel-success">
-    <div class="panel-heading">Search client</div>
+    <div class="panel-heading">
+        <h4 class="panel-title">
+        Search client
+        </h4>
+    </div>
     <div class="panel-body">
         <div class="row">
             <div class="col-md-12">
                 <form name="clientSearchForm" role="form" class="form-inline">
                     <div class="form-group">
                         <label for="searchTypeSelect">Search by: </label>
-                        <select id="searchTypeSelect" class="form-control" ng-model="search.field">
+                        <select id="searchTypeSelect" class="form-control" ng-model="searchData.field">
                             <option value="phone">Phone</option>
                             <option value="userName">User Name</option>
                             <option value="line">Line</option>
                             <option value="legacyClientId">IT Identifier</option>
                         </select>
                     </div>
-                    <div class="form-group" ng-if="search.field=='phone'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.phoneText.$invalid}" ng-if="searchData.field=='phone'">
                         <label for="phoneText">Phone: </label>
-                        <input type="text" id="phoneText" class="form-control" ng-model="search.phone">
+                        <input type="text" id="phoneText" name="phoneText" class="form-control" ng-model="searchData.phone" ng-pattern="/^[0-9]{7,11}$/">
                     </div>
-                    <div class="form-group" ng-if="search.field=='userName'">
+                    <div class="form-group"  ng-class="{'has-error': clientSearchForm.userNameText.$invalid}" ng-if="searchData.field=='userName'">
                         <label for="userNameText">User name: </label>
-                        <input type="text" id="userNameText" class="form-control" ng-model="search.userName">
+                        <input type="text" id="userNameText" name="userNameText" class="form-control" ng-model="searchData.userName" ng-pattern="/.+/">
                     </div>
-                    <div class="form-group" ng-if="search.field=='line'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasPortText.$invalid}"ng-if="searchData.field=='line'">
                         <label for="nasPortText">NAS-Port: </label>
-                        <input type="text" id="nasPortText" class="form-control" ng-model="search.nasPort">
+                        <input type="text" id="nasPortText" name="nasPortText" class="form-control" ng-model="searchData.nasPort" ng-pattern="/^[0-9]{1,10}$/">
                     </div>
-                    <div class="form-group" ng-if="search.field=='line'">
-                        <label for="nasPortText">NAS-IP-Address: </label>
-                        <input type="text" id="nasIPAddressText" class="form-control" ng-model="search.nasIPAddress">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasIPAddressText.$invalid}" ng-if="searchData.field=='line'">
+                        <label for="nasIPAddressText">NAS-IP-Address: </label>
+                        <input type="text" id="nasIPAddressText" name="nasIPAddressText" class="form-control" ng-model="searchData.nasIPAddress"  ng-pattern="/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
                     </div>
-                    <div class="form-group" ng-if="search.field=='legacyClientId'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.legacyClientIdText.$invalid}" ng-if="searchData.field=='legacyClientId'">
                         <label for="legacyClientIdText">IT Identifier: </label>
-                        <input type="text" id="legacyClientIdText" class="form-control" ng-model="search.legacyClientId">
+                        <input type="text" id="legacyClientIdText" name="legacyClientIdText" class="form-control" ng-model="searchData.legacyClientId" ng-pattern="/.+/">
                     </div>
-                    <button type="button" ng-if="search.field" class="btn btn-primary" ng-click="clientSearch()">Search
+                    <button type="button" ng-if="searchData.field" class="btn btn-primary" ng-click="findClient()">Search
                         <i class="fa fa-search">
                         </i>
                     </button>
@@ -46,92 +50,285 @@
     </div>
 </div>
 
-<div class="panel panel-info">
-    <div class="panel-heading">Client Data</div>
-    <div class="panel-body">
-        <div class="row">
-            <form name="clientDataForm" role="form">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="legacyClientId">IT Client Id: </label>
-                        <input type="text" id="legacyClientId" class="form-control" ng-model="client.legacyClientId">
-                    </div>
-                    <div class="form-group">
-                        <label for="name">Client name: </label>
-                        <input type="text" id="name" class="form-control" ng-model="client.name">
-                    </div>
-                    <div class="form-group">
-                        <label for="name">State: </label>
-                        <select id="status" class="form-control" ng-model="client.status">
-                            <option value="active">Active</option>
-                            <option value="restricted">Restricted</option>
-                            <option value="blocked">Blocked</option>
-                        </select>
-                    </div>
-                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="clientUpdate()">Update
-                        <i class="fa fa-check">
-                        </i>
-                    </button>
+<div class="accordion" id="clientData">
+    <div class="accordion-group">
+
+        <div class="panel panel-info">
+            <div class="panel-heading" role="tab">
+                <div class="accordion-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#clientData" data-target="#clientDataPanel">
+                            Client Data
+                        </a>
+                    </h4>
                 </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="legacyClientIdSec">IT Client Id (sec): </label>
-                        <input type="text" id="legacyClientIdSec" class="form-control" ng-model="client.legacyClientIdSec">
-                    </div>
-                    <div class="form-group">
-                        <label for="planName">Plan: </label>
-                        <input type="text" id="planName" class="form-control" ng-model="client.planName">
-                    </div>
-                    <div class="form-group">
-                        <label for="timeZone">Time Zone: </label>
-                        <input type="text" id="timeZone" class="form-control" ng-model="client.timeZone">
+            </div>
+            <div id="clientDataPanel" class="accordion-body collapse in">
+                <div class="panel-body">
+                    <div class="accordion-inner">
+                        <div class="row">
+                            <form name="clientDataForm" role="form">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="legacyClientId">IT Client Id: </label>
+                                        <input type="text" id="legacyClientId" class="form-control" ng-model="client.provision.legacyClientId">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="name">Client name: </label>
+                                        <input type="text" id="name" class="form-control" ng-model="client.provision.name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="name">State: </label>
+                                        <select id="status" class="form-control" ng-model="client.provision.status">
+                                            <option value="0">Active</option>
+                                            <option value="1">Restricted</option>
+                                            <option value="2">Blocked</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="clientUpdate()">
+                                        Update
+                                        <i class="fa fa-check">
+                                        </i>
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="legacyClientIdSec">IT Client Id (sec): </label>
+                                        <input type="text" id="legacyClientIdSec" class="form-control" ng-model="client.provision.legacyClientIdSec">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="planName">Plan: </label>
+                                        <input type="text" id="planName" class="form-control" ng-model="client.provision.planName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="timeZone">Time Zone: </label>
+                                        <input type="text" id="timeZone" class="form-control" ng-model="client.provision.timeZone">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="legalId">DNI: </label>
+                                        <input type="text" id="legalId" class="form-control" ng-model="client.provision.legalId">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="billingDay">Billing day: </label>
+                                        <input type="number" id="billingDay" class="form-control" ng-model="client.provision.billingDay">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="legalId">DNI: </label>
-                        <input type="text" id="legalId" class="form-control" ng-model="client.legalId">
-                    </div>
-                    <div class="form-group">
-                        <label for="billingDay">Billing day: </label>
-                        <input type="number" id="billingDay" class="form-control" ng-model="client.billingDay">
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="row">
-            <hr>
+             </div>
         </div>
     </div>
 </div>
 
-<div class="panel panel-info">
-    <div class="panel-heading">Points of usage</div>
-    <div class="panel-body">
-        <div class="row">
-            <div class="col-md-12">
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>Phones</th>
-                        <th>User Names</th>
-                        <th>Lines</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr>
-                        <td>
-                            629629769 <i class="fa fa-times"></i>
-                        </td>
-                        <td>
-                            frg@tid.es <i class="fa fa-times"></i>
-                        </td>
-                        <td>
-                            1:127.0.0.1 <i class="fa fa-times"></i>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+<div class="accordion" id="pouData">
+    <div class="accordion-group">
+
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <div class="accordion-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#pouData" data-target="#pouDataPanel">
+                            Points of usage
+                        </a>
+                    </h4>
+                </div>
+            </div>
+            <div id="pouDataPanel" class="accordion-body collapse">
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Phones</th>
+                                    <th>&nbsp;</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="pou in pointsOfUsage.phones">
+                                    <td>
+                                        <span>{{pou.phone}}</span>
+                                    </td>
+                                    <td>
+                                        <i class="fa fa-times"></i>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="col-md-4">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>User Names</th>
+                                    <th>&nbsp;</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="pou in pointsOfUsage.userNames">
+                                    <td>
+                                        <span>{{pou.userName}}</span>
+                                    </td>
+                                    <td>
+                                        <i class="fa fa-times"></i>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="col-md-4">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Lines</th>
+                                    <th>&nbsp;</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr ng-repeat="pou in pointsOfUsage.lines">
+                                    <td>
+                                        {{pou.nasIPAddress}}:{{pou.nasPort}}
+                                    </td>
+                                    <td>
+                                        <i class="fa fa-times"></i>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <hr>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <form name="addPoUForm" role="form" class="form-inline">
+                                <button type="button" id="showAddPoU" class="btn btn-info" ng-click="addPoU()">
+                                    Add new
+                                    <i class="fa fa-check">
+                                    </i>
+                                </button>
+                                <div class="form-group">
+                                    <label for="PoUTypeSelect">Type: </label>
+                                    <select id="PoUTypeSelect" class="form-control" ng-model="pouType">
+                                        <option value="phone">Phone</option>
+                                        <option value="userName">User Name</option>
+                                        <option value="line">Line</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="PoUValue">Value: </label>
+                                    <input type="text" id="PoUValue" class="form-control" ng-model="pouValue">
+                                </div>
+                                <button type="button" id="addPoU" class="btn btn-success" ng-click="addPoU()">
+                                    Submit
+                                    <i class="fa fa-check">
+                                    </i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="accordion" id="servicesData">
+    <div class="accordion-group">
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <div class="accordion-heading">
+                    <h4 class="panel-title">
+                    <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#servicesData" data-target="#servicesDataPanel">
+                        Plan {{plan.description}}
+                    </a>
+                    </h4>
+                </div>
+            </div>
+            <div id="servicesDataPanel" class="accordion-body collapse">
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <table class="table" ng-repeat="service in plan.services">
+                                <thead>
+                                <tr>
+                                    <th>{{service.description}}</th>
+                                    <th>&nbsp;</th>
+                                    <th>&nbsp;</th>
+                                    <th>&nbsp;</th>
+                                    <th>&nbsp;</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <!-- Total credit -->
+                                <tr>
+                                    <td>
+                                        Total Credit
+                                    </td>
+                                    <td>
+                                        XXX [units]
+                                    </td>
+                                    <td>
+                                        -
+                                    </td>
+                                    <td>
+                                        [day/month/year]
+                                    </td>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                </tr>
+                                <!-- Separator -->
+                                <tr>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                    <td>
+                                        &nbsp;
+                                    </td>
+                                </tr>
+                                <!-- Recharges -->
+                                <tr ng-repeat="recharge in service.recharges">
+                                    <td>
+                                        {{recharge.name}}
+                                    </td>
+                                    <td>
+                                        {{recharge.bytes |formatResource:'GB'}}
+                                    </td>
+                                    <td>
+                                        {{recharge.seconds ? (recharge.seconds)/(3600)+"GB" : "-"}}
+                                    </td>
+                                    <td>
+                                        1 month
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
