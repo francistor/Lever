@@ -180,6 +180,59 @@ var phone3={
     phone: "650651194"
 };
 
+// Automated testing client 4
+// FUP with turbo button
+var client4RecurringExpDate=new Date("2015-07-01T01:00:00Z");
+var client4PurchasedExpDate=new Date("2015-06-28T01:00:00Z");
+var client4=
+{
+    clientId: 4,
+    provision: {
+        legacyClientId: "lci1004",
+        legacyClientIdSec: null,
+        legalId: "50825186Q",
+        name: "Francisco Rodriguez",
+        planName: "1004",
+        status: 0,
+        billingDay: 1
+    },
+    creditPools:
+        [
+            {
+                poolName: "bytesRecurring",
+                mayUnderflow: false,
+                bytes: 5*1024*1024*1024,
+                expirationDate: client4RecurringExpDate
+            },
+            {
+                poolName: "bytesPurchased",
+                mayUnderflow: false,
+                bytes: 1024*1024*1024,
+                expirationDate: client4PurchasedExpDate
+            }
+        ]
+};
+
+var login4={
+    clientId:4,
+    userName: "test-fup@test",
+    password: "test"
+};
+
+var line4={
+    clientId:4,
+    nasPort: 1004,
+    nasIPAddress: "127.0.0.1",
+    ipv4Address: "192.168.1.4",
+    ipv6DelegatedPrefix: "2001:1004::/56"
+};
+
+var phone4={
+    clientId:4,
+    phone: "999999994"
+};
+
+
 db.clients.insert(client1);
 db.userNames.insert(login1);
 db.lines.insert(line1);
@@ -195,6 +248,10 @@ db.userNames.insert(login3);
 db.userNames.insert(login33);
 db.lines.insert(line3);
 db.phones.insert(phone3);
+db.clients.insert(client4);
+db.userNames.insert(login4);
+db.lines.insert(line4);
+db.phones.insert(phone4);
 
 // Unique index: legacyClientId, deletedDate
 db.clients.ensureIndex({"provision.legacyClientId": 1}, {unique: true});

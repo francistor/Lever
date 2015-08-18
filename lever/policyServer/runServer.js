@@ -1,10 +1,24 @@
-/**
- * Created by frodriguezg on 24/04/2015.
- */
 
-process.title="policyServer";
+var hostName;
+var argument;
 
-var policyServer=require("./policyServer").createPolicyServer();
+for(var i=2; i<process.argv.length; i++){
+    argument=process.argv[i];
+    if(argument.indexOf("help")!=-1){
+        console.log("Usage: node runSever [--hostName <hostName>]");
+        process.exit(0);
+    }
+
+    if(argument=="--hostName") if(process.argv.length>=i){
+        hostName=process.argv[i+1];
+        console.log("Host name: "+hostName);
+    }
+}
+
+// Create process title so that it can be stopped using pkill --signal SIGINT <process.title>
+process.title="policyServer-"+hostName;
+
+var policyServer=require("./policyServer").createPolicyServer(hostName);
 
 policyServer.initialize(function(err){
     if(err){

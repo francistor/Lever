@@ -8,6 +8,7 @@ var net=require("net");
 var dgram=require("dgram");
 var radius=require("radius");
 var dLogger=require("./log").dLogger;
+var aLogger=require("./log").aLogger;
 var createConnection=require("./diameterConnection").createConnection;
 var createRadiusClientPorts=require("./radiusClientPorts").createRadiusClientPorts;
 var createMessage=require("./message").createMessage;
@@ -15,10 +16,11 @@ var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
 var createAgent=require("./agent").createAgent;
 var config=require("./configService").config;
-var arm=require("./arm").arm;
+//var arm=require("./../arm/arm").arm;
+var arm=require("arm").arm;
 
 // Singleton
-var createPolicyServer=function(){
+var createPolicyServer=function(hostName){
     
     // Diameter Server
     var diameterServer={};
@@ -61,13 +63,22 @@ var createPolicyServer=function(){
         // Otherwise, route based on Destination-Realm
         else if(message.avps["Destination-Realm"]){
             // Lookup in routing configuration
-            var realms=config.node.diameter.routeMap;
-            var peerConfig=(realms[message.avps["Destination-Realm"]]||realms["*"]||{})[message.applicationId] || (realms[message.avps["Destination-Realm"]]||realms["*"]||{})["*"];
-            if(peerConfig){
-                if(peerConfig["policy"]=="fixed") {
-                    for (i=0; i<peerConfig["peers"].length; i++) {
-                        dLogger.debug("Checking peer "+peerConfig["peers"][i]);
-                        if(peerConnections[peerConfig["peers"][i]]) if(peerConnections[peerConfig["peers"][i]].getState()=="Open") return peerConnections[peerConfig["peers"][i]];
+            var chkRoute, route;
+            var routes=config.node.diameter.routes;
+            for(i=0; i<routes.length; i++){
+                chkRoute=routes[i];
+                if(chkRoute["realm"]=="*" || chkRoute["realm"]==message.avps["Destination-Realm"]){
+                    if(chkRoute["applicationId"]=="*" || chkRoute["applicationId"]==message.applicationId){
+                        route=chkRoute;
+                        break;
+                    }
+                }
+            }
+            if(route){
+                if(route["policy"]=="fixed") {
+                    for (i=0; i<route["peers"].length; i++) {
+                        dLogger.debug("Checking peer "+route["peers"][i]);
+                        if(peerConnections[route["peers"][i]]) if(peerConnections[route["peers"][i]].getState()=="Open") return peerConnections[route["peers"][i]];
                     }
                     dLogger.verbose("All routes closed [fixed policy]");
                     return null;
@@ -75,8 +86,8 @@ var createPolicyServer=function(){
                 else {
                     // Policy is "random"
                     var activePeerEntries=[];
-                    for (i = 0; i < peerConfig["peers"].length; i++) {
-                        if(peerConnections[peerConfig["peers"][i]]) if (peerConnections[peerConfig["peers"][i]].getState() == "Open") activePeerEntries.push(peerConnections[peerConfig["peers"][i]]);
+                    for (i = 0; i < route["peers"].length; i++) {
+                        if(peerConnections[route["peers"][i]]) if (peerConnections[route["peers"][i]].getState() == "Open") activePeerEntries.push(peerConnections[route["peers"][i]]);
                     }
                     if(activePeerEntries.length>0) return activePeerEntries[Math.floor(Math.random()*activePeerEntries.length)];
                     else dLogger.verbose("All routes closed [random policy]");
@@ -92,7 +103,7 @@ var createPolicyServer=function(){
             dLogger.warn("Message has no routing AVP");
             return null;
         }
-    };
+    }
 
     /**
      * Invoked by the connection when a new complete message is available
@@ -286,7 +297,7 @@ var createPolicyServer=function(){
             }
             if(!found) peerConnections[diameterHost].end();
         }
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Passive connections
@@ -323,14 +334,14 @@ var createPolicyServer=function(){
         // If here, peer was not found for the origin IP-Address
         dLogger.warn("Received connection from unknown peer "+socket["remoteAddress"]);
         socket.end();
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Radius functions
     ///////////////////////////////////////////////////////////////////////////
     function onRadiusSocketError(err){
         dLogger.error("Radius server socket error: "+err.message);
-    };
+    }
 
     /**
      * Called when radius request received on auth port
@@ -352,8 +363,13 @@ var createPolicyServer=function(){
 
     /**
      * Called when a datagram is received on any of the server sockets (auth or acct)
+     *
+     * Server requests is always incremented
+     * Server error if socket error, no handler or handler generates exception
+     *
      * @param buffer
      * @param rinfo
+     * @param socket
      */
     function onRadiusRequestReceived(socket, buffer, rinfo){
         if(dLogger["inDebug"]) dLogger.debug("Radius request received from "+rinfo.address+" with "+buffer.length+" bytes of data");
@@ -394,8 +410,11 @@ var createPolicyServer=function(){
                 dLogger.error(e.message);
             }
         }
-        else dLogger.error("Unknown code: "+radiusMessage.code);
-    };
+        else{
+            radiusStats.incrementServerError(client.name);
+            dLogger.error("Unknown code: "+radiusMessage.code);
+        }
+    }
 
     /**
      * Invoked by the handlers to send a reply radius message
@@ -413,8 +432,8 @@ var createPolicyServer=function(){
 
         var buffer=radius.encode_response(radiusReply);
 
-        radiusStats.incrementServerResponse(requestMessage._clientName, code);
         dLogger.logRadiusServerResponse(requestMessage._clientName, code);
+        radiusStats.incrementServerResponse(requestMessage._clientName, code);
         requestMessage._socket.send(buffer, 0, buffer.length, requestMessage._port, requestMessage._ipAddress);
     };
 
@@ -447,25 +466,27 @@ var createPolicyServer=function(){
                 /*add_message_authenticator: false */};
 
             var buffer=radius.encode(radiusRequest);
-            radiusStats.incrementClientRequest(code, ipAddress);
 
             // Send the message
             dLogger.logRadiusClientRequest(ipAddress, code, false);
             rParams.socket.send(buffer, 0, buffer.length, port, ipAddress);
+            radiusStats.incrementClientRequest(ipAddress, code);
 
             // Setup response hook
             var timeoutFnc=function(){
                 tried++;
+                radiusStats.incrementClientTimeout(ipAddress, code);
                 if(tried==nTries){
                     // Timeout and retries expired
                     delete radiusRequestPointers[rParams.socket.address().port+":"+rParams.id];
-                    radiusStats.incrementClientError(ipAddress);
+
                     if(callback) callback(new Error("timeout"));
                 }
                 else {
                     // Re-send the message
                     dLogger.logRadiusClientRequest(ipAddress, code, true);
                     rParams.socket.send(buffer, 0, buffer.length, port, ipAddress);
+                    radiusStats.incrementClientRequest(ipAddress, code);
 
                     // Re-set response hook
                     radiusRequestPointers[rParams.socket.address().port+":"+rParams.id]["timer"]=setTimeout(timeoutFnc, timeout);
@@ -479,8 +500,10 @@ var createPolicyServer=function(){
         }
         catch(err){
             dLogger.error("Could not send radius request: "+err.message);
+            // TODO: REMOVE THIS
+            console.log(err.stack);
             radiusStats.incrementClientError(ipAddress);
-            if(callback) callback(err);
+            if(callback) callback(err, null);
         }
     };
 
@@ -490,8 +513,7 @@ var createPolicyServer=function(){
      * @param code
      * @param attributes
      * @param serverName
-     * @param callback(err, response)
-     * @returns
+     * @param callback //(err, response)//
      */
     radiusServer.sendServerRequest=function(code, attributes, serverName, callback){
         var servers=config.node.radius.radiusServerMap;
@@ -506,7 +528,7 @@ var createPolicyServer=function(){
         radiusServer.sendRequest(code, attributes, server["IPAddress"], server["ports"][code], server["secret"], server["timeoutMillis"], server["tries"], function(err, response){
             if(err){
                 server["nErrors"]=(server["nErrors"]||0)+1;
-                if(server["nErrors"]>server["errorThreshold"]){
+                if(server["nErrors"]>=server["errorThreshold"]){
                     // Setup quarantine time
                     dLogger.warn(serverName+" in now in quarantine");
                     server["quarantineDate"]=new Date(Date.now()+server["quarantineTimeMillis"]);
@@ -529,10 +551,8 @@ var createPolicyServer=function(){
      * @param attributes
      * @param serverGroupName
      * @param callback
-     * @returns
      */
     radiusServer.sendServerGroupRequest=function(code, attributes, serverGroupName, callback){
-        var requestSent=false;
         var serverGroups=config.node.radius.radiusServerGroupMap;
         if(!serverGroups[serverGroupName]) throw serverGroupName+" radius server group is unknown";
 
@@ -565,7 +585,14 @@ var createPolicyServer=function(){
         if(dLogger["inDebug"]) dLogger.debug("Radius response received from "+rInfo.address+" with "+buffer.length+" bytes of data");
 
         // Pre-decode message
-        var response=radius.decode_without_secret({packet: buffer});
+        var response;
+        try{
+            response=radius.decode_without_secret({packet: buffer});
+        } catch(err){
+            dLogger.error("Error decoding response: "+err.message);
+            radiusStats.incrementClientError(rInfo.address);
+            return;
+        }
 
         // Lookup in response hooks
         var requestPointer=radiusRequestPointers[lInfo.port+":"+response.identifier];
@@ -574,19 +601,27 @@ var createPolicyServer=function(){
             return;
         }
 
+        var callback=requestPointer.callback;
+        clearTimeout(requestPointer.timer);
+        delete radiusRequestPointers[lInfo.port+":"+response.identifier];
+
         // decode message
-        response=radius.decode({packet: buffer, secret: requestPointer.secret});
+        try {
+            response = radius.decode({packet: buffer, secret: requestPointer.secret});
+        } catch(err){
+            dLogger.error("Error decoding response: "+err.message);
+            radiusStats.incrementClientError(rInfo.address);
+            return;
+        }
 
         // Log and increment counter
         dLogger.logRadiusClientResponse(rInfo.address, response.code);
         radiusStats.incrementClientResponse(rInfo.address, response.code);
 
         // Process message
-        clearTimeout(requestPointer.timer);
-        delete radiusRequestPointers[lInfo.port+":"+response.identifier];
         dLogger.debug("Executing callback");
         try{
-            requestPointer.callback(null, response);
+            callback(null, response);
         }
         catch(err){
             dLogger.error("Error in diameter response callback: "+err.message);
@@ -613,11 +648,12 @@ var createPolicyServer=function(){
         var radiusAcctSocket;
         var diameterSocket;
 
-        config.initialize().then(
+        config.initialize(hostName).then(
             function () {
 
                 // Initialize arm library
-                arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB());
+                arm.setLogger(aLogger);
+                arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB(), config.getDBQueryOptions(), config.getDBWriteOptions());
                 arm.setConfigProperties({
                     maxBytesCredit:null,
                     maxSecondsCredit:null,

@@ -1,11 +1,7 @@
-/**
- * Created by francisco on 1/18/15.
- */
-
 // Holds the policySever configuration
 // which consists of a set of JSON objects, read from file or from the backend database
 // config.<configItem>.<json-object>
-// <configItem> may be one of "node", "dispatcher", "dictionary", "cdrChannels" or "policy"
+// <configItem> may be one of "node", "dispatcher", "dictionary", or "policy"
 
 // configService tries to get the configItem from file, reading the conf/<configItem>.json
 // file, or the conf/policy/<setName>.json files, and then tries to get the configuration
@@ -19,9 +15,7 @@ var os=require("os");
 var fs=require("fs");
 var MongoClient=require("mongodb").MongoClient;
 
-var hostName=os.hostname();
-
-// If database.json not found, continue without database
+// If database.json not found and environment variable not set, continue without database
 var dbParams={};
 try {
     dbParams=JSON.parse(fs.readFileSync(__dirname + "/conf/database.json", {encoding: "utf8"}));
@@ -40,12 +34,13 @@ catch(err){
 
 var createConfig=function() {
 
+    var hostName;
+
     var config = {
         node: null,
         dispatcher: null,
         diameterDictionary: null,
-        policyParams: {},
-        cdrChannels: []
+        policyParams: {}
     };
 
     var configDB;
@@ -56,13 +51,18 @@ var createConfig=function() {
     config.getClientDB=function(){return clientDB};
     config.getEventDB=function(){return eventDB};
 
+    config.getDBQueryOptions=function(){return dbParams["queryOptions"]||{}};
+    config.getDBWriteOptions=function(){return dbParams["writeOptions"]||{}};
+
     /**
      * Returns a promise to be fulfilled when connected to database and initialized
      *
      * @returns {*}
      */
-    config.initialize = function () {
+    config.initialize = function (hostNameOverride) {
         var dbPromise;
+
+        hostName=hostNameOverride||os.hostname();
 
         // Connect to database if required
         if(dbParams["configDatabaseURL"]) dbPromise=Q.all(
@@ -71,12 +71,14 @@ var createConfig=function() {
                     Q.nfcall(MongoClient.connect, dbParams["clientDatabaseURL"], dbParams["databaseOptions"]),
                     Q.nfcall(MongoClient.connect, dbParams["eventDatabaseURL"], dbParams["databaseOptions"])
                 ]).spread(function (a, b, c) {
+                    // When all connections are established, store them
                     configDB = a;
                     clientDB = b;
                     eventDB = c;
                 }); else dbPromise=Q(null);
 
-        // Initialize
+        // Initialize. Call updateAll() when promise for all connections is solved, and return new promise for
+        // execution of all configuration steps
         return dbPromise.then(function(){
             return config.updateAll();
         });
@@ -93,16 +95,13 @@ var createConfig=function() {
             var node=data;
 
             if(node.diameter) {
-                // Hook route map
-                var appConfig;
-                var routeMap = {};
-                var routes = node.diameter.routes || [];
-                if (routes) for (var i = 0; i < routes.length; i++) {
-                    appConfig = {peers: routes[i]["peers"], policy: routes[i].policy};
-                    if (!routeMap[routes[i]["realm"]]) routeMap[routes[i]["realm"]] = {};
-                    routeMap[routes[i]["realm"]][routes[i]["applicationId"]] = appConfig;
-                }
-                node.diameter.routeMap = routeMap;
+                // Just do a sanity check
+                if(node.diameter.routes) node.diameter.routes.forEach(function(route){
+                    if(!route["realm"]) route["realm"]="*";
+                    if(!route["applicationId"]) route["applicationId"]="*";
+                    if(!route["policy"]) route["policy"]="fixed";
+                    if(!route["peers"]) throw new Error("Diameter routes have bad syntax. Missing peers");
+                }); else node.diameter.routes=[];
             }
 
             // Hook radius client map
@@ -143,6 +142,7 @@ var createConfig=function() {
                 if(!configDB) throw Error("No configuration found for node. Database url is "+dbParams["configDatabaseURL"]);
                 configDB.collection("nodes").findOne({"hostName": hostName}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
+                    if(!dbDoc) deferred.reject(new Error(hostName+" not found"));
                     else{
                         try{ cookNode(dbDoc);} catch(e){ deferred.reject(e); }
                         deferred.resolve();
@@ -199,6 +199,7 @@ var createConfig=function() {
                 if(!configDB) throw Error("No configuration found for dispatcher. Database url is "+dbParams["configDatabaseURL"]);
                 configDB.collection("dispatcher").findOne({}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
+                    if(!dbDoc) deferred.reject(new Error("dispatcher collection not found"));
                     else{
                         try{ cookDispatcher(dbDoc);} catch(e){ deferred.reject(e); }
                         deferred.resolve();
@@ -340,6 +341,7 @@ var createConfig=function() {
                 if(!configDB) throw Error("No configuration found for diameter dictionary. Database url is "+dbParams["configDatabaseURL"]);
                 configDB.collection("diameterDictionary").findOne({}, dbParams["queryOptions"], function(err, dbDoc){
                     if(err) deferred.reject(err);
+                    if(!dbDoc) deferred.reject(new Error("diameterDictionary collection not found"));
                     else{
                         try{ cookDiameterDictionary(dbDoc);} catch(e){ deferred.reject(e); }
                         deferred.resolve();
@@ -351,53 +353,6 @@ var createConfig=function() {
                 if(err) deferred.reject(err);
                 else{
                     try{ cookDiameterDictionary(JSON.parse(doc));} catch(e){ deferred.reject(e); }
-                    deferred.resolve();
-                }
-            }
-        });
-
-        return deferred.promise;
-    };
-
-    /**
-     * Reads the cdrChannels configuration object
-     * @returns {*}
-     */
-    config.updateCdrChannels=function(){
-
-        var cookCdrChannels=function(data){
-
-            var cdrChannels=[];
-
-            for(var i=0; i<data.length; i++){
-                if(data[i].enabled){
-                    cdrChannels.push(data[i]);
-                }
-            }
-
-            // Everything OK. Update configuration
-            config.cdrChannels=cdrChannels;
-        };
-
-        var deferred= Q.defer();
-
-        fs.readFile(__dirname+"/conf/cdrChannels.json", {encoding: "utf8"}, function(err, doc){
-            if(err && err.code==='ENOENT'){
-                // File not found. Read from database
-                if(!configDB) throw Error("No configuration found for cdr channels. Database url is "+dbParams["configDatabaseURL"]);
-                configDB.collection("cdrChannels").find({}).toArray(function(err, dbDocs){
-                    if(err) deferred.reject(err);
-                    else{
-                        try{ cookCdrChannels(dbDocs);} catch(e){ deferred.reject(e); }
-                        deferred.resolve();
-                    }
-                })
-            }
-            else{
-                // File found. Resolve
-                if(err) deferred.reject(err);
-                else{
-                    try{ cookCdrChannels(JSON.parse(doc));} catch(e){ deferred.reject(e); }
                     deferred.resolve();
                 }
             }
@@ -459,8 +414,7 @@ var createConfig=function() {
                 config.updateNode(),
                 config.updateDispatcher(),
                 config.updateDiameterDictionary(),
-                config.updatePolicyParams(),
-                config.updateCdrChannels()
+                config.updatePolicyParams()
             ])
     };
 

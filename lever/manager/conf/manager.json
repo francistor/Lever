@@ -2,7 +2,7 @@
     "__configDatabaseURL": "someURL",
     "__clientDatabaseURL": "someURL",
     "__eventDatabaseURL": "someURL",
-	"port": 9001,
+	"port": 9100,
     "databaseOptions":{
         "db": {
             "retryMiliSeconds": 5000

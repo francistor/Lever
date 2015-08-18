@@ -279,7 +279,7 @@ function createMessage(request){
 		return buff.slice(0, writePtr);
 		
 		// Iterate through avp names and array values
-        // Notice that messages decoded always have arrays as values, but messages build by handlers may be simple objects
+        // Notice that messages decoded always have arrays as values, but messages built by handlers may be simple objects
 		// avps: { name: [value], name: [ {name: value}, {name: value}] }
 		function encodeAVPs(ptr, root){
                 var isMandatory;

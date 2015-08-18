@@ -6,7 +6,8 @@ echo "leverClientDatabase=\"${LEVER_CLIENTDATABASE_URL}\";" >> urlConfig.js
 echo "leverEventDatabase=\"${LEVER_EVENTDATABASE_URL}\";" >> urlConfig.js
 
 # Load scripts
-mongo baseConfig.js
+mongo base.js
+mongo diameterDictionary.js
 mongo services.js
 mongo clients.js
 mongo events.js

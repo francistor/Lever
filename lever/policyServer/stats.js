@@ -106,6 +106,7 @@ var createRadiusStats=function(){
 
     var stats={};
 
+    // Server
     stats.serverAccessRequests={};
     stats.serverAccessAccepts={};
     stats.serverAccessRejects={};
@@ -113,16 +114,31 @@ var createRadiusStats=function(){
     stats.serverAccountingRequests={};
     stats.serverAccountingResponses={};
 
+    stats.serverCoARequests={};
+    stats.serverCoAAccepts={};
+    stats.serverCoARejects={};
+
+    stats.serverOtherRequests={};
+    stats.serverOtherResponses={};
+
+    // Client
     stats.clientAccessRequests={};
     stats.clientAccessAccepts={};
     stats.clientAccessRejects={};
+    stats.clientAccessTimeouts={};
 
     stats.clientAccountingRequests={};
     stats.clientAccountingResponses={};
+    stats.clientAccountingTimeouts={};
 
     stats.clientCoARequests={};
     stats.clientCoAAccepts={};
     stats.clientCoARejects={};
+    stats.clientCoATimeouts={};
+
+    stats.clientOtherRequests={};
+    stats.clientOtherResponses={};
+    stats.clientOtherTimeouts={};
 
     stats.serverErrors={};
     stats.clientErrors={};
@@ -147,6 +163,26 @@ var createRadiusStats=function(){
         stats.serverAccountingResponses[clientName]= (stats.serverAccountingResponses[clientName]||0)+1;
     };
 
+    stats.incrementServerCoARequest=function(clientName) {
+        stats.serverCoARequests[clientName]= (stats.serverCoARequests[clientName]||0)+1;
+    };
+
+    stats.incrementServerCoAAccept=function(clientName) {
+        stats.serverCoAAccepts[clientName]= (stats.serverCoAAccepts[clientName]||0)+1;
+    };
+
+    stats.incrementServerCoAReject=function(clientName) {
+        stats.serverCoARejects[clientName]= (stats.serverCoARejects[clientName]||0)+1;
+    };
+
+    stats.incrementServerOtherRequest=function(clientName) {
+        stats.serverOtherRequests[clientName]= (stats.serverOtherRequests[clientName]||0)+1;
+    };
+
+    stats.incrementServerOtherResponse=function(clientName) {
+        stats.serverOtherResponses[clientName]= (stats.serverOtherResponses[clientName]||0)+1;
+    };
+
     stats.incrementClientAccessRequest=function(ipAddress) {
         stats.clientAccessRequests[ipAddress]= (stats.clientAccessRequests[ipAddress]||0)+1;
     };
@@ -159,12 +195,20 @@ var createRadiusStats=function(){
         stats.clientAccessRejects[ipAddress]= (stats.clientAccessRejects[ipAddress]||0)+1;
     };
 
+    stats.incrementClientAccessTimeout=function(ipAddress) {
+        stats.clientAccessTimeouts[ipAddress]= (stats.clientAccessTimeouts[ipAddress]||0)+1;
+    };
+
     stats.incrementClientAccountingRequest=function(ipAddress) {
         stats.clientAccountingRequests[ipAddress]= (stats.clientAccountingRequests[ipAddress]||0)+1;
     };
 
     stats.incrementClientAccountingResponse=function(ipAddress) {
         stats.clientAccountingResponses[ipAddress]= (stats.clientAccountingResponses[ipAddress]||0)+1;
+    };
+
+    stats.incrementClientAccountingTimeout=function(ipAddress) {
+        stats.clientAccountingTimeouts[ipAddress]= (stats.clientAccountingTimeouts[ipAddress]||0)+1;
     };
 
     stats.incrementClientCoARequest=function(ipAddress) {
@@ -179,6 +223,22 @@ var createRadiusStats=function(){
         stats.clientCoARejects[ipAddress]= (stats.clientCoARejects[ipAddress]||0)+1;
     };
 
+    stats.incrementClientCoATimeout=function(ipAddress) {
+        stats.clientCoATimeouts[ipAddress]= (stats.clientCoATimeouts[ipAddress]||0)+1;
+    };
+
+    stats.incrementClientOtherRequest=function(ipAddress) {
+        stats.clientOtherRequests[ipAddress]= (stats.clientOtherRequests[ipAddress]||0)+1;
+    };
+
+    stats.incrementClientOtherResponse=function(ipAddress) {
+        stats.clientOtherResponses[ipAddress]= (stats.clientOtherResponses[ipAddress]||0)+1;
+    };
+
+    stats.incrementClientOtherTimeout=function(ipAddress) {
+        stats.clientOtherTimeouts[ipAddress]= (stats.clientOtherTimeouts[ipAddress]||0)+1;
+    };
+
     stats.incrementServerError=function(clientName) {
         stats.serverErrors[clientName]= (stats.serverErrors[clientName]||0)+1;
     };
@@ -189,20 +249,25 @@ var createRadiusStats=function(){
 
     // Helper functions
     stats.incrementServerRequest=function(clientName, code){
-        if(code.substr(0, 6)=='Access') stats.incrementServerAccessRequest(clientName);
-        else stats.incrementServerAccountingRequest(clientName);
+        if(code.substring(0, 6)=="Access") stats.incrementServerAccessRequest(clientName);
+        else if(code.substring(0, 10)==("Accounting")) stats.incrementServerAccountingRequest(clientName);
+        else if(code.substring(0, 3)=="CoA") stats.incrementServerCoARequest(clientName);
+        else stats.incrementServerOtherRequest(clientName);
     };
 
     stats.incrementServerResponse=function(clientName, code){
         if(code=="Access-Accept") stats.incrementServerAccessAccept(clientName);
         else if(code=="Access-Reject") stats.incrementServerAccessReject(clientName);
         else if(code=="Accounting-Response") stats.incrementServerAccountingResponse(clientName);
+        else if(code=="CoA-ACK") stats.incrementServerCoAAccept(clientName);
+        else if(code=="CoA-NAK") stats.incrementServerCoAReject(clientName);
     };
 
     stats.incrementClientRequest=function(ipAddress, code){
-        if(code.substr(0, 6)=="Access") stats.incrementClientAccessRequest(ipAddress);
-        else if(code.substr(0, 10)=="Accounting") stats.incrementClientAccountingRequest(ipAddress);
-        else if(code.substr(0, 3)=="CoA") stats.incrementClientCoARequest(ipAddress);
+        if(code.substring(0, 6)=="Access") stats.incrementClientAccessRequest(ipAddress);
+        else if(code.substring(0, 10)=="Accounting") stats.incrementClientAccountingRequest(ipAddress);
+        else if(code.substring(0, 3)=="CoA") stats.incrementClientCoARequest(ipAddress);
+        else stats.incrementClientOtherRequest(ipAddress);
     };
 
     stats.incrementClientResponse=function(ipAddress, code){
@@ -211,6 +276,14 @@ var createRadiusStats=function(){
         else if(code=="Accounting-Response") stats.incrementClientAccountingResponse(ipAddress);
         else if(code=="CoA-ACK ") stats.incrementClientCoAAccept(ipAddress);
         else if(code=="CoA-NAK") stats.incrementClientCoAReject(ipAddress);
+        else stats.incrementClientOtherResponse(ipAddress);
+    };
+
+    stats.incrementClientTimeout=function(ipAddress, code){
+        if(code.substring(0, 6)=="Access") stats.incrementClientAccessTimeout(ipAddress);
+        else if(code.substring(0, 10)=="Accounting") stats.incrementClientAccountingTimeout(ipAddress);
+        else if(code.substring(0, 3)=="CoA") stats.incrementClientCoATimeout(ipAddress);
+        else stats.incrementClientOtherTimeout(ipAddress);
     };
 
 

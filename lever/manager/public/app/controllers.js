@@ -392,4 +392,8 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
         });
     }
 
+    $scope.getServiceCredit=function(serviceName){
+
+    }
+
 }]);

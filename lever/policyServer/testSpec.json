@@ -1,0 +1,138 @@
+[
+    {
+        "execute": false,
+        "description": "Initial Wait",
+        "type": "Wait",
+        waitTime:2000
+    },
+    {
+        "execute": false,
+        "description": "Peers status",
+        "type": "Peers",
+        peers: [
+            {"peer": "client|test-server", "state":"Open", "description": "test-client <-> test-server Open"},
+            {"peer": "server|test-client", "state":"Open", "description": "test-server <-> test-client Open"},
+            {"peer": "server|test-metaServer", "state":"Open", "description": "test-server <-> test-metaServer Open"},
+            {"peer": "metaServer|test-server", "state":"Open", "description": "test-metaServer <-> test-server Open"}
+        ]
+    },
+    {
+        "execute": false,
+        "description": "Access-Request to be accepted by server locally",
+        "comments": "Takes one second, due to timeout from non-existing-server",
+        "type": "Radius",
+        code: "Access-Request",
+        "attributes": {"User-Name":"acceptUser@localRealm"},
+        "serverGroupName": "allServers",
+        stats: [
+            {counter: "client|clientAccessRequests|"+nonExistingServerIPAddress, value: 1, "description": "Client Access-Request to non existing server"},
+{counter: "client|clientAccessTimeouts|"+nonExistingServerIPAddress, value: 1, "description": "Client Access-Timeout from non existing server"},
+{counter: "client|clientAccessRequests|"+serverIPAddress, value: 1, "description": "Client Access-Request to server"},
+{counter: "client|clientAccessAccepts|"+serverIPAddress, value: 1, "description": "Client Access-Accept from server"},
+
+{counter: "server|serverAccessRequests|"+clientName, value: 1, "description": "Server Access-Request from client"},
+{counter: "server|serverAccessAccepts|"+clientName, value: 1, "description": "Server Access-Accept to client"}
+]
+},
+{
+"execute": false,
+"description": "Access-Request to be rejected by server locally",
+"comments": "Takes one second, due to timeout from non-existing-server",
+"type": "Radius",
+code: "Access-Request",
+"attributes": {"User-Name":"rejectUser@localRealm"},
+"serverGroupName": "allServers",
+stats: [
+{counter: "client|clientAccessRequests|"+nonExistingServerIPAddress, value: 1, "description": "Client Access-Request to non existing server"},
+{counter: "client|clientAccessTimeouts|"+nonExistingServerIPAddress, value: 1, "description": "Client Access-Timeout from non existing server"},
+{counter: "client|clientAccessRequests|"+serverIPAddress, value: 1, "description": "Client Access-Request to server"},
+{counter: "client|clientAccessAccepts|"+serverIPAddress, value: 0, "description": "Client Access-Accept from server"},
+{counter: "client|clientAccessRejects|"+serverIPAddress, value: 1, "description": "Client Access-Reject from server"},
+
+{counter: "server|serverAccessRequests|"+clientName, value: 1, "description": "Server Access-Request from client"},
+{counter: "server|serverAccessAccepts|"+clientName, value: 0, "description": "Server Access-Accept from client"},
+{counter: "server|serverAccessRejects|"+clientName, value: 1, "description": "Server Access-Reject from client"}
+]
+},
+{
+"execute": false,
+"description": "Access-Request to be discarded by server locally",
+"comments": "Non existing Server is in quarantine. Takes 0 seconds",
+"type": "Radius",
+code: "Access-Request",
+"attributes": {"User-Name":"errorUser@localRealm"},
+"serverGroupName": "allServers",
+stats: [
+{counter: "client|clientAccessRequests|"+nonExistingServerIPAddress, value: 0, "description": "Client Access-Request to non existing server [quarantine]"},
+{counter: "client|clientAccessTimeouts|"+nonExistingServerIPAddress, value: 0, "description": "Client Access-Timeout from non existing server [quarantine]"},
+{counter: "client|clientAccessRequests|"+serverIPAddress, value: 1, "description": "Client Access-Request to server"},
+{counter: "client|clientAccessTimeouts|"+serverIPAddress, value: 1, "description": "Client Access-Timeout from server"},
+{counter: "client|clientAccessAccepts|"+serverIPAddress, value: 0, "description": "Client Access-Accept from server"},
+{counter: "client|clientAccessRejects|"+serverIPAddress, value: 0, "description": "Client Access-Reject from server"},
+
+{counter: "server|serverAccessRequests|"+clientName, value: 1, "description": "Server Access-Request from client"},
+{counter: "server|serverAccessAccepts|"+clientName, value: 0, "description": "Server Access-Accept from client"},
+{counter: "server|serverAccessRejects|"+clientName, value: 0, "description": "Server Access-Reject from client"}
+]
+},
+{
+"execute": true,
+"description": "Access-Request to be accepted by remote proxy",
+"comments": "Non existing Server is in quarantine. Takes 0 seconds",
+"type": "Radius",
+code: "Access-Request",
+"attributes": {"User-Name":"acceptUser@proxyRealm"},
+"serverGroupName": "allServers",
+stats: [
+{counter: "client|clientAccessRequests|"+nonExistingServerIPAddress, value: 0, "description": "Client Access-Request to non existing server [quarantine]"},
+{counter: "client|clientAccessTimeouts|"+nonExistingServerIPAddress, value: 0, "description": "Client Access-Timeout from non existing server [quarantine]"},
+{counter: "client|clientAccessRequests|"+serverIPAddress, value: 1, "description": "Client Access-Request to server"},
+{counter: "client|clientAccessTimeouts|"+serverIPAddress, value: 0, "description": "Client Access-Timeout from server"},
+{counter: "client|clientAccessAccepts|"+serverIPAddress, value: 1, "description": "Client Access-Accept from server"},
+{counter: "client|clientAccessRejects|"+serverIPAddress, value: 0, "description": "Client Access-Reject from server"},
+
+{counter: "server|serverAccessRequests|"+clientName, value: 1, "description": "Server Access-Request from client"},
+{counter: "server|serverAccessAccepts|"+clientName, value: 1, "description": "Server Access-Accept from client"},
+{counter: "server|serverAccessRejects|"+clientName, value: 0, "description": "Server Access-Reject from client"},
+
+{counter: "server|clientAccessRequests|"+metaServerExtIPAddress, value: 1, "description": "Server Access-Request to metaServerExt"},
+{counter: "server|clientAccessTimeouts|"+metaServerExtIPAddress, value: 1, "description": "Server Access-Timeout to metaServerExt"},
+{counter: "server|clientAccessRequests|"+metaServerIPAddress, value: 1, "description": "Server Access-Request to metaServer"},
+{counter: "server|clientAccessAccepts|"+metaServerIPAddress, value: 1, "description": "Server Access-Accept from metaServer"},
+{counter: "server|clientAccessRejects|"+metaServerIPAddress, value: 0, "description": "Server Access-Reject from metaServer"},
+
+{counter: "metaServer|serverAccessRequests|"+serverName, value: 1, "description": "Metaserver Access-Request from server [proxy]"},
+{counter: "metaServer|serverAccessAccepts|"+serverName, value: 1, "description": "Metaserver Access-Accept to server [proxy]"},
+{counter: "metaServer|serverAccessRejects|"+serverName, value: 0, "description": "Metaserver Access-Reject to server [proxy]"}
+]
+},
+{
+"description": "Access-Request to be rejected by remote proxy",
+"type": "Radius",
+code: "Access-Request",
+"attributes": {"User-Name":"rejectUser@proxyRealm"},
+"serverGroupName": "allServers",
+waitTime:0
+},
+{
+"description": "Accounting-Request to be answered by server locally",
+"type": "Radius",
+code: "Accounting-Request",
+"attributes": {"User-Name":"acceptUser@localRealm"},
+"serverGroupName": "allServers"
+},
+{
+"description": "Accounting-Request to be discarded by server locally",
+"type": "Radius",
+code: "Accounting-Request",
+"attributes": {"User-Name":"errorUser@localRealm"},
+"serverGroupName": "allServers"
+},
+{
+"description": "Accounting-Request to be proxyed to server",
+"type": "Radius",
+code: "Accounting-Request",
+"attributes": {"User-Name":"acceptUser@proxyRealm"},
+"serverGroupName": "allServers"
+}
+];

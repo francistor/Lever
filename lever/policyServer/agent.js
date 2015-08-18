@@ -42,12 +42,6 @@ var createAgent=function(config, diameterServer, radiusServer){
         res.json({});
     });
 
-    httpServer.get("/agent/updateCdrChannels", function(req, res){
-        mLogger.debug("Reloading cdr channels");
-        config.updateCdrChannels();
-        res.json({});
-    });
-
     httpServer.get("/agent/getDiameterStats", function(req, res){
         mLogger.debug("Getting diameter stats");
         res.json(diameterStats);
@@ -66,6 +60,12 @@ var createAgent=function(config, diameterServer, radiusServer){
     httpServer.get("/agent/getRadiusServerStatus", function(req, res){
         mLogger.debug("Getting radius server status");
         res.json(config.node.radius.radiusServerMap);
+    });
+
+    httpServer.get("/agent/stop", function(req,res){
+        mLogger.debug("Stopping process");
+        setTimeout(function(){process.exit()}, 1000);
+        res.json({});
     });
 };
 

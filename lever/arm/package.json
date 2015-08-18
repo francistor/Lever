@@ -1,0 +1,15 @@
+{
+  "name": "arm",
+  "version": "1.0.0",
+  "description": "Client and Service Library for Lever",
+  "main": "arm.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Francisco Rodriguez",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "~2.0",
+    "q": "~1.1.2"
+    }
+}

@@ -1,7 +1,7 @@
 var Q=require("q");
 var hLogger=require("../log").hLogger;
 var cdrWriter=require("../cdrService").CDRService;
-var arm=require("../arm").arm;
+var arm=require("../../arm/arm").arm;
 var config=require("../configService").config;
 
 var accessRequestHandler=function(radiusServer, message){

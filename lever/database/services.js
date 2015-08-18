@@ -9,6 +9,20 @@ var db=connect(leverConfigDatabase.substring(10));
 db.calendars.drop();
 
 // Array items must be in the appropriate order
+var noCalendar=
+{
+    name: "emptyCalendar",
+    calendarItems:
+    [
+        {
+            type: 3,
+            startTime: "00:00",
+            endTime: "00:00",
+            tag: "default"
+        }
+    ]
+};
+
 var speedyNightCalendar=
 {
 	name: "speedyNight",
@@ -38,7 +52,8 @@ var speedyNightCalendar=
 	 	{
 	 		type: 3,
 	 		startTime: "07:00",
-	 		endTime: "20:00"
+	 		endTime: "20:00",
+            tag: "default"
 	 	}
 	]	
 };
@@ -191,9 +206,110 @@ var plan1003=
 	]
 };
 
+var plan1004=
+{
+    name: "1004",
+    description: "Fair Usage Policy 6GB/Month. Daily purchasable recharges",
+    services:
+    [
+        {
+            name: "FUPHigh",
+            description: "FUP with quota",
+            serviceId: 0,
+            ratingGroup: 1,
+            subscribable: false,
+            autoActivated: true,
+            roamingAreas: null,
+            preAuthorized: true,
+            creditPoolNames: ["bytesRecurring", "bytesPurchased"],
+            sortCreditsByExpirationDate: false,      // If false, credits will be used in the order declared in "creditPoolNames"
+            oocAction: 0,                            // 0: Terminate. 1: Redirect. 2: Restrict_access, 3: None
+            recharges:
+            [
+                {
+                    name: "Monthly automatic recharge",
+                    bytes: 6*1024*1024*1024,
+                    validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                    creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
+                    mayUnderflow: false,
+                    creditPool: "bytesRecurring"
+                },
+                {
+                    name: "Recharge one day",
+                    bytes: 1024*1024*1024,
+                    validity: "1D",
+                    creationType: 4,		// Portal
+                    mayUnderflow: false,
+                    creditPool: "bytesPurchased",
+                    price:
+                    [
+                        {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
+                        {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
+                    ]
+                }
+            ]
+        },
+        {
+            name: "FUPLow",
+            description: "Low speed service",
+            serviceId: 0,
+            ratingGroup: 0,
+            subscribable: false,
+            autoActivated: true,
+            roamingAreas: null,
+            preAuthorized: false
+        }
+    ]
+};
+
+var plan1005=
+{
+    name: "1005",
+    description: "20 hours free on nights and weekends. Otherwise pay per time of usage",
+    services:
+        [
+            {
+                name: "speedyNight",
+                description: "Speedy Night and Weekend",
+                serviceId: 0,
+                ratingGroup: 105,
+                subscribable: false,
+                autoActivated: true,
+                roamingAreas: null,
+                preAuthorized: true,
+                calendarName: "speedyNight",
+                creditPoolNames: ["speedyNightPool", "defaultPool"],
+                oocAction: 3,                           // 0: Terminate. 1: Redirect. 2: Restrict_access. 3: Nothing
+                sortCreditsByExpirationDate: false,     // If false, credits will be used in the order declared in "creditPoolNames"
+                recharges:
+                [
+                    {
+                        name: "SpeedyNight 20H Recurring",
+                        seconds: 20*3600,
+                        validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                        creationType: 3,		// Recurring
+                        mayUnderflow: false,	// Postpaid
+                        creditPool: "speedyNightPool",
+                        calendarTags: ["speedyNight-TO-BE-IMPLEMENTED"]
+                    },
+                    {
+                        name: "Default traffic",
+                        seconds: 0,             // Placeholder to count seconds
+                        validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                        creationType: 3,		// Recurring
+                        mayUnderflow: true,	    // Postpaid
+                        creditPool: "defaultPool"
+                    }
+                ]
+            }
+        ]
+};
+
 db.plans.insert(plan1001);
 db.plans.insert(plan1002);
 db.plans.insert(plan1003);
+db.plans.insert(plan1004);
+db.plans.insert(plan1005);
 
 print("done");
 print("");

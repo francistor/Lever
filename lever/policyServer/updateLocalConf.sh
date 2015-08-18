@@ -26,8 +26,4 @@ mongoexport --jsonArray --host $host --db $database --collection policyParams --
 node prettyprint.js policyParams.json > conf/policyParams.json
 rm policyParams.json
 
-mongoexport --jsonArray --host $host --db $database --collection cdrChannels --out cdrChannels.json >> out.txt
-node prettyprint.js cdrChannels.json > conf/cdrChannels.json
-rm cdrChannels.json
-
 echo export done!

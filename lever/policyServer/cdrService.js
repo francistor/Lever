@@ -13,16 +13,18 @@ var createCDRService=function(){
 
     var cdrService={};
 
-    //var cdrConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/cdr.json", {encoding: "utf8"}));
-    //if(!cdrConfig) throw Error("Bad cdr.json syntax");
-
-    var lastCheckDate=new Date().getTime();
+    var lastCheckTimestamp=Date.now();
 
     // Helper functions
     var rollChannelFile=function(channel){
 
         // Skip if checked "recently"
-        if((new Date().getTime()-lastCheckDate) < checkIntervalMillis) return;
+        var nowTimestamp=Date.now();
+        if(channel.ws && (now-lastCheckTimestamp) < checkIntervalMillis){
+            lastCheckTimestamp=nowTimestamp;
+            return;
+        }
+        lastCheckTimestamp=nowTimestamp;
 
         // Flush
         if(channel.ws && channel.ws.fileDescriptor) fs.fsync(channel.ws.fileDescriptor);
@@ -78,9 +80,9 @@ var createCDRService=function(){
         var cdrDoc={};
 
         // Iterate through channels
-        if(config.cdrChannels) for(var i=0; i<config.cdrChannels.length; i++){
+        if(config.node.cdrChannels) for(var i=0; i<config.node.cdrChannels.length; i++){
             // Write on each one of the channels
-            channel=config.cdrChannels[i];
+            channel=config.node.cdrChannels[i];
 
             // Write
             if(channel.type==="file"){
@@ -118,9 +120,19 @@ var createCDRService=function(){
                 } else cdrDoc=avps;
 
                 // Write doc here
-                console.log("Not implemented");
+                console.log("Database channel not implemented");
             }
         }
+    };
+
+    // Close all channel files. Used only for testing
+    cdrService.closeChannels=function(){
+        config.node.cdrChannels.forEach(function(channel){
+            if(channel.type==="file") if(channel.ws){
+                channel.ws.end();
+                channel.ws=null;
+            }
+        });
     };
 
     return cdrService;
