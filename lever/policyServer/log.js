@@ -1,76 +1,80 @@
-// For sharing winston logging
-
 var winston=require("winston");
 var fs=require("fs");
-// Read and configure logging configuration, logging.json MUST
-// contain properties for the transport configurations
-var logConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/logging.json", {encoding: "utf8"}));
 
-// Diameter server
-var policyServerTransports=[];
-if("console" in logConfig["policyServer"]) policyServerTransports.push(new (winston.transports.Console)(logConfig["policyServer"].console));
-if("file" in logConfig["policyServer"]) policyServerTransports.push(new (winston.transports.File)(logConfig["policyServer"].file));
-var dLogger=new (winston.Logger)({
-	"transports": policyServerTransports
-});
+var createLogger=function(){
 
-dLogger.logDiameterMessage=function(originHost, destinationHost, message){
-    var header=message.isRequest ? "[REQUEST]":"[RESPONSE]";
-    dLogger.verbose(header+" "+originHost+"-->"+destinationHost+":"+message.applicationId+":"+message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+    var configFile=process.env["LOG_CONFIG_FILE"]||"logging.json";
+    var logConfig=JSON.parse(fs.readFileSync(__dirname+"/conf/"+configFile, {encoding: "utf8"}));
+    var messageLogLevel=logConfig["_messageLogLevel"];
+
+    // Load transports configuration
+    var loggerTransports=[];
+    var transport;
+    for(var transportKey in logConfig) if(logConfig.hasOwnProperty(transportKey) && transportKey.substring(0, 1)!="_"){
+        transport=new winston.transports[logConfig[transportKey]["type"]](logConfig[transportKey]["properties"]);
+        transport._name=transport;
+        loggerTransports.push(transport);
+    }
+
+    // Instantiate logger
+    var logger=new (winston.Logger)({
+        "transports": loggerTransports
+    });
+
+    // Helper function to check if level is enabled
+    logger.isLevelEnabled=function(level){
+        for(var transport in logger.transports) if(logger.transports.hasOwnProperty(transport)){
+            if(logger.levels[level]>=logger.levels[logger.transports[transport].level]) return true;
+        }
+        return false;
+    };
+
+    // Sets cached level-enabled properties
+    logger.updateLevelCache=function(){
+        logger.isErrorEnabled=logger.isLevelEnabled("error");       // 5
+        logger.isWarnEnabled=logger.isLevelEnabled("warn");         // 4
+        logger.isInfoEnabled=logger.isLevelEnabled("info");         // 3
+        logger.isVerboseEnabled=logger.isLevelEnabled("verbose");   // 2
+        logger.isDebugEnabled=logger.isLevelEnabled("debug");       // 1
+        logger.isSillyEnabled=logger.isLevelEnabled("silly");       // 0
+    };
+
+    // Helper function to update the log level
+    logger.setLogLevel=function(transportKey, level){
+        logger.transport.forEach(function(transport){
+            if(transport._name===transportKey) transport.level=level;
+        });
+
+        logger.updateLevelCache();
+    };
+
+    // Logging of messages
+    logger.logDiameterMessage=function(originHost, destinationHost, message){
+        var header=message.isRequest ? "[REQUEST]":"[RESPONSE]";
+        logger.log(messageLogLevel, "%s %s --> %s : %s : %s", header, originHost, destinationHost, message.applicationId, message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+    };
+
+    logger.logRadiusServerRequest=function(clientName, code){
+        logger.log(messageLogLevel, "%s --> ME: %s", clientName, code);
+    };
+
+    logger.logRadiusServerResponse=function(clientName, code){
+        logger.log(messageLogLevel, "ME --> %s : %s", clientName, code);
+    };
+
+    logger.logRadiusClientRequest=function(ipAddress, code, tried){
+        logger.log(messageLogLevel, "ME --> %s : %s", ipAddress, code+(tried>0 ? " [retransmission]":""));
+    };
+
+    logger.logRadiusClientResponse=function(ipAddress, code){
+        logger.log(messageLogLevel, "%s --> ME: %s", ipAddress, code);
+    };
+
+    logger.updateLevelCache();
+    return logger;
 };
 
-dLogger.logRadiusServerRequest=function(clientName, code){
-    dLogger.verbose(clientName+"-->ME:"+code);
-};
+exports.logger=createLogger();
 
-dLogger.logRadiusServerResponse=function(clientName, code){
-    dLogger.verbose("ME-->"+clientName+":"+code);
-};
 
-dLogger.logRadiusClientRequest=function(ipAddress, code, tried){
-    dLogger.verbose("ME-->"+ipAddress+":"+code+(tried>0 ? " [retransmission]":""));
-};
-
-dLogger.logRadiusClientResponse=function(ipAddress, code){
-    dLogger.verbose(ipAddress+"-->ME:"+code);
-};
-
-// handler functions
-var handlerTransports=[];
-if("console" in logConfig["handlers"]) handlerTransports.push(new (winston.transports.Console)(logConfig["handlers"].console));
-if("file" in logConfig["handlers"]) handlerTransports.push(new (winston.transports.File)(logConfig["handlers"].file));
-var hLogger=new (winston.Logger)({
-    "transports": handlerTransports
-});
-
-// Diameter Manager server
-var managementTransports=[];
-if("console" in logConfig["management"]) managementTransports.push(new (winston.transports.Console)(logConfig["management"].console));
-if("file" in logConfig["management"]) managementTransports.push(new (winston.transports.File)(logConfig["management"].file));
-var mLogger=new (winston.Logger)({
-    "transports": managementTransports
-});
-
-// Credit control api
-var armTransports=[];
-if("console" in logConfig["arm"]) armTransports.push(new (winston.transports.Console)(logConfig["arm"].console));
-if("file" in logConfig["arm"]) managementTransports.push(new (winston.transports.File)(logConfig["arm"].file));
-var aLogger=new (winston.Logger)({
-    "transports": armTransports
-});
-
-dLogger["inDebug"]=logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="debug";
-aLogger["inDebug"]=logConfig.arm.console.level==="debug" || logConfig.arm.file.level==="debug";
-hLogger["inDebug"]=logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="debug";
-mLogger["inDebug"]=logConfig.management.console.level==="debug" ||logConfig.management.file.level==="debug";
-
-dLogger["inVerbose"]=logConfig.policyServer.console.level==="verbose" || logConfig.policyServer.console.level==="debug" ||logConfig.policyServer.file.level==="verbose" || logConfig.policyServer.file.level==="debug";
-aLogger["inVerbose"]=logConfig.arm.console.level==="verbose" || logConfig.arm.console.level==="debug" ||logConfig.arm.file.level==="verbose" || logConfig.arm.file.level==="debug";
-hLogger["inVerbose"]=logConfig.handlers.console.level==="verbose" || logConfig.handlers.console.level==="debug" ||logConfig.handlers.file.level==="verbose" || logConfig.handlers.file.level==="debug";
-mLogger["inVerbose"]=logConfig.management.console.level==="verbose" || logConfig.management.console.level==="debug" ||logConfig.management.file.level==="verbose" || logConfig.management.file.level==="debug";
-
-exports.dLogger=dLogger;
-exports.aLogger=aLogger;
-exports.hLogger=hLogger;
-exports.mLogger=mLogger;
 

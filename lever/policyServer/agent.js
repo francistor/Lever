@@ -1,5 +1,5 @@
 // Instrumentation agent
-var mLogger=require("./log").mLogger;
+var logger=require("./log").logger;
 var diameterStats=require("./stats").diameterStats;
 var radiusStats=require("./stats").radiusStats;
 var config=require("./configService").config;
@@ -16,54 +16,54 @@ var createAgent=function(config, diameterServer, radiusServer){
 
     // Start server
     httpServer.listen(config.node["management"]["httpPort"]);
-    mLogger.info("HTTP manager listening on port "+config.node["management"]["httpPort"]);
+    logger.info("[Agent] listening on port %s", config.node["management"]["httpPort"]);
 
     httpServer.get("/agent/updateAll", function(req, res){
-        mLogger.debug("Reloading configuration");
+        logger.verbose("[Agent] Reloading configuration (/agent/updateAll)");
         config.updateAll();
         res.json({});
     });
 
     httpServer.get("/agent/updateNodeConfig", function(req, res){
-        mLogger.debug("Reloading basic configuration");
+        logger.verbose("[Agent] Reloading basic configuration (/agent/updateNodeConfig)");
         config.updateNode();
         res.json({});
     });
 
     httpServer.get("/agent/updateDispatcherConfig", function(req, res){
-        mLogger.debug("Reloading dispatcher configuration");
+        logger.verbose("[Agent] Reloading dispatcher configuration (/agent/updateDispatcherConfig)");
         config.updateDispatcher();
         res.json({});
     });
 
     httpServer.get("/agent/updateDiameterDictionary", function(req, res){
-        mLogger.debug("Reloading diameter dictionary configuration");
+        logger.verbose("[Agent] Reloading diameter dictionary configuration (/agent/updateDiameterDictionary)");
         config.updateDiameterDictionary();
         res.json({});
     });
 
     httpServer.get("/agent/getDiameterStats", function(req, res){
-        mLogger.debug("Getting diameter stats");
+        logger.verbose("[Agent] Getting diameter stats (/agent/getDiameterStats)");
         res.json(diameterStats);
     });
 
     httpServer.get("/agent/getRadiusStats", function(req, res){
-        mLogger.debug("Getting radius stats");
+        logger.verbose("[Agent] Getting radius stats (/agent/getRadiusStats)");
         res.json(radiusStats);
     });
 
     httpServer.get("/agent/getPeerStatus", function(req, res){
-        mLogger.debug("Getting connection status");
+        logger.verbose("[Agent] Getting connection status (/agent/getPeerStatus)");
        res.json(diameterServer?diameterServer.getPeerStatus():{});
     });
 
     httpServer.get("/agent/getRadiusServerStatus", function(req, res){
-        mLogger.debug("Getting radius server status");
+        logger.verbose("[Agent] Getting radius server status ((agent/getRadiusServerStatus)");
         res.json(config.node.radius.radiusServerMap);
     });
 
     httpServer.get("/agent/stop", function(req,res){
-        mLogger.debug("Stopping process");
+        logger.verbose("[Agent] Stopping process (/agent/stop)");
         setTimeout(function(){process.exit()}, 1000);
         res.json({});
     });

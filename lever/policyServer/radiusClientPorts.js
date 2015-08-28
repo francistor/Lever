@@ -3,7 +3,7 @@
  */
 
 var dgram=require("dgram");
-var dLogger=require("./log").dLogger;
+var logger=require("./log").logger;
 
 var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAddress, boundCallback){
 
@@ -39,7 +39,7 @@ var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAdd
         // Setup event listeners
         sockets[i].on("message", onMessage);
     }
-    dLogger.info(numPorts+" radius client sockets created over IP Address "+listenAddress+" and base port "+basePort);
+    if(logger.isInfoEnabled) logger.info("%d radius client sockets created over IP Address %s and base port %d", numPorts, listenAddress, basePort);
 
     // Message handler. MUST be a response
     function onMessage(buffer, rinfo){
@@ -47,7 +47,7 @@ var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAdd
     }
 
     function onError(err){
-        dLogger.error("Radius client socket error: "+err.message);
+        if(logger.isErrorEnabled) logger.error("Radius client socket error: %s", err.message);
     }
 
     // Chooses a port and Id and returns it

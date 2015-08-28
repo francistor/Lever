@@ -13,10 +13,10 @@ rm ${_REAL_SCRIPT_DIR}/testFinished.txt > /dev/null
 rm /c/var/lever/policyServer/cdr/cdr_* > /dev/null
 
 # Launch server instances
-(cd  ${_HOME_DIR} && node runServer --hostName test-server > log/test-server.log &)
-(cd  ${_HOME_DIR} && node runServer --hostName test-metaServer > log/test-metaServer.log &)
+(cd  ${_HOME_DIR} && export LOG_CONFIG_FILE=test-server-logging.json && node runServer --hostName test-server > /dev/null &)
+(cd  ${_HOME_DIR} && export LOG_CONFIG_FILE=test-metaServer-logging.json && node runServer --hostName test-metaServer > /dev/null &)
 echo [TEST] Servers launched
-(cd  ${_HOME_DIR}/test && node runUnitTest --hostName test-client &)
+(cd  ${_HOME_DIR}/test && export LOG_CONFIG_FILE=test-client-logging.json && node runUnitTest --hostName test-client &)
 echo [TEST] Client launched
 sleep 30
 

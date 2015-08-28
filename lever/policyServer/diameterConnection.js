@@ -2,7 +2,7 @@
 // Handle reading messages from TCP sockets, invoking diameterServer
 // for each complete message
 
-var dLogger=require("./log").dLogger;
+var logger=require("./log").logger;
 var sendCER=require("./baseHandler").sendCER;
 var sendWDR=require("./baseHandler").sendDWR;
 var net=require("net");
@@ -100,7 +100,7 @@ var createConnection=function(diameterServer, diameterHost, dwrInterval)
         }
 
         var messageBuffer;
-        if(dLogger["inDebug"]) dLogger.debug("Receiving " + buffer.length + " bytes from " + dc.diameterHost);
+        if(logger.isDebugEnabled) logger.debug("Receiving %s bytes from %s", buffer.length, dc.diameterHost);
 
         try{
             // Iterate until all the received buffer has been copied
@@ -130,9 +130,9 @@ var createConnection=function(diameterServer, diameterHost, dwrInterval)
                 }
             }
         }
-        catch(e){
-            dLogger.error("Diameter decoding error: "+e.message);
-            dLogger.error(e.stack);
+        catch(err){
+            if(logger.isErrorEnabled) logger.error("Diameter decoding error: %s", err.message);
+            if(logger.isVerboseEnabled) logger.verbose(err.stack);
             socket.end();
             state="Closing";
         }
@@ -143,7 +143,7 @@ var createConnection=function(diameterServer, diameterHost, dwrInterval)
      * A CER command is sent.
      */
     var onConnect=function(){
-        dLogger.verbose("Connection established with "+dc.diameterHost);
+        if(logger.isVerboseEnabled) logger.verbose("Connection established with %s", dc.diameterHost);
         sendCER(dc);
     };
 
@@ -156,7 +156,7 @@ var createConnection=function(diameterServer, diameterHost, dwrInterval)
 
     // Error received. Just log. End event will be received
     var onError=function(err){
-        dLogger.error("Error event received for connection "+dc.diameterHost+": "+err.message);
+        logger.error("Error event received for connection with %s : %s", dc.diameterHost, err.message);
     };
 
     ///////////////////////////////////////////////////////////////////////////

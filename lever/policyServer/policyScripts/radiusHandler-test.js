@@ -1,5 +1,5 @@
 var config=require("./../configService").config;
-var hLogger=require("../log").hLogger;
+var logger=require("../log").logger;
 var cdrWriter=require("../cdrService").CDRService;
 var stats=require("../stats").radiusStats;
 
@@ -7,7 +7,7 @@ var accessRequestHandler=function(radiusServer, message){
 
     if(!message.attributes["User-Name"]){
         stats.incrementServerError(message._clientName);
-        hLogger.error("Radius request without User-Name from "+message._clientName);
+        logger.error("Radius request without User-Name from %s", message._clientName);
         return;
     }
 
@@ -55,7 +55,7 @@ var accountingRequestHandler=function(radiusServer, message){
 
     if(!message.attributes["User-Name"]){
         stats.incrementServerError(message._clientName);
-        hLogger.error("Radius request without User-Name from "+message._clientName);
+        logger.error("Radius request without User-Name from %s", message._clientName);
         return;
     }
 

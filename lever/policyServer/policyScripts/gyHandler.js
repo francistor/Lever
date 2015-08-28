@@ -1,6 +1,6 @@
 // Gy message handlers
 
-var hLogger=require("./../log").hLogger;
+var logger=require("./../log").logger;
 var resultCodes=require("./../message").resultCodes;
 var config=require("./../configService").config;
 var createMessage=require("./../message").createMessage;

@@ -1,6 +1,6 @@
 // Gy message handlers
 
-var hLogger=require("./../log").hLogger;
+var logger=require("./../log").logger;
 var resultCodes=require("./../message").resultCodes;
 var config=require("./../configService").config;
 var createMessage=require("./../message").createMessage;
@@ -29,7 +29,7 @@ var ccrHandler=function(connection, message){
     connection.diameterServer.sendRequest(null, proxyMessage, 3000, function(error, response){
 
         if(error){
-            hLogger.error(error.message);
+            logger.error(error.message);
         }
         else {
             // TODO: Check result code

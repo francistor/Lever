@@ -1,6 +1,6 @@
 // Base Diameter message handlers
 
-var hLogger=require("./log").hLogger;
+var logger=require("./log").logger;
 var os=require("os");
 var resultCodes=require("./message").resultCodes;
 var config=require("./configService").config;
@@ -65,13 +65,13 @@ var sendCER=function(connection){
                 connection.setOpen();
             }
             else{
-                hLogger.error("CEA Error. Unsuccessful result code");
+                logger.error("CEA Error. Unsuccessful result code");
                 // Connection will be deleted in the "close" event handler
                 connection.end();
             }
         }
         else{
-            hLogger.error("Error in CEA: "+err.message);
+            logger.error("Error in CEA: %s", err.message);
             // Connection will be deleted in the "close" event handler
             connection.end();
         }
@@ -116,14 +116,14 @@ var cerHandler=function(connection, message){
         connection.diameterServer.sendReply(connection, replyMessage);
     }
     else{
-        hLogger.warn("Origin-Host mismatch. Expecting "+connection.diameterHost+" and got "+request["Origin-Host"][0]);
+        logger.warn("Origin-Host mismatch. Expecting %s and got %s", connection.diameterHost, request["Origin-Host"][0]);
         connection.end();
     }
 };
 
 var sendDWR=function(connection){
     var diameterConfig=config.node.diameter;
-    var dictionary=config.diameterDictionary;
+    //var dictionary=config.diameterDictionary;
 
     var requestMessage=createMessage();
     var request=requestMessage.avps;
@@ -141,12 +141,12 @@ var sendDWR=function(connection){
             if(message.avps["Result-Code"][0]===resultCodes.DIAMETER_SUCCESS){
             }
             else{
-                hLogger.error("DWR Error. Unsuccessful result code");
+                logger.error("DWR Error. Unsuccessful result code");
                 connection.end();
             }
         }
         else{
-            hLogger.error("DWR Error: "+err.message);
+            logger.error("DWR Error: "+err.message);
             connection.end();
         }
     });

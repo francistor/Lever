@@ -1,6 +1,6 @@
 // Object for manipulating diameter messages
 
-var dLogger=require("./log").dLogger;
+var logger=require("./log").logger;
 var ipaddr=require('ipaddr.js');
 var config=require("./configService").config;
 
@@ -150,7 +150,7 @@ function createMessage(request){
 						break;
 					case "Enumerated":
 						avp.value=avpDef.enumCodes[buff.readInt32BE(ptr)];
-						if(avp.value===undefined) dLogger.warn("Unknown enumerated code: "+buff.readInt32BE(ptr)+ " for "+avpDef.name);
+						if(avp.value===undefined) if(logger.isWarnEnabled) logger.warn("Unknown enumerated code: %s for %s", buff.readInt32BE(ptr), avpDef.name);
 						break;
 
 					case "OctetString":
@@ -175,7 +175,7 @@ function createMessage(request){
 							for(i=0; i<8; i++) ipv6Parts[i]=buff.readUInt16BE(ptr+2+2*i);
 							avp.value=new ipaddr.IPv6(ipv6Parts).toString();
 						}
-						else dLogger.error("Unknown address family: "+addrFamily);
+						else if(logger.isErrorEnabled) logger.error("Unknown address family: %s", addrFamily);
 						break;
 
                     // Not strictly Diameter type
@@ -208,10 +208,10 @@ function createMessage(request){
 						break;
 
 					default:
-						dLogger.error("Unknown AVP type: "+avpDef.type);
+						if(logger.isWarnEnabled) logger.warn("Unknown AVP type: "+avpDef.type);
 				}
 			}
-			else dLogger.warn("Unknown AVP Code: "+avpCode);
+			else if(logger.isWarnEnabled) logger.warn("Unknown AVP Code: %s", avpCode);
 			
 			// Add value
 			if(avp.value){
@@ -309,7 +309,7 @@ function createMessage(request){
 			var avpFlags=0;
 			var avpDef=dictionary.avpNameMap[name];
 			if(!avpDef){
-				dLogger.warn("Unknown attribute:"+name+": "+JSON.stringify(message.avps[name]));
+				if(logger.isWarnEnabled) logger.warn("Unknown attribute: %s : %s", name, JSON.stringify(message.avps[name]));
 				return 0;
 			}
 
@@ -341,7 +341,7 @@ function createMessage(request){
 					case "Enumerated":
 						avpCode=avpDef['enumValues'][value];
 						if(avpCode==undefined){
-							dLogger.warn("Unknown enumerated value: "+value+ "for "+avpDef.name);
+							if(logger.isWarnEnabled) logger.warn("Unknown enumerated value: %s for %s", value, avpDef.name);
 							return 0;
 						}
 						buff.writeInt32BE(avpCode, ptr);
@@ -402,8 +402,9 @@ function createMessage(request){
 						break;
 				}
 			}
-			catch(e){
-				dLogger.warn("Error encoding "+name+" with value: "+value);
+			catch(err){
+				if(logger.isWarnEnabled) logger.warn("Error encoding %s with value %s", name, value);
+                if(logger.isVerboseEnabled) logger.verbose(err.stack);
                 return 0;
 			}
 

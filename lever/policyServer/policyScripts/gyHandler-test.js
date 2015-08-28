@@ -1,6 +1,6 @@
 // Gy message handlers
 
-var hLogger=require("./../log").hLogger;
+var logger=require("./../log").logger;
 var resultCodes=require("./../message").resultCodes;
 var config=require("./../configService").config;
 var createMessage=require("./../message").createMessage;
@@ -35,7 +35,7 @@ var ccrHandler=function(connection, message){
         // Send message to proxy
         connection.diameterServer.sendRequest(null /* connection not specified */, proxyMessage, 1000, function(error, response){
             if(error){
-                hLogger.error(error.message);
+                logger.error(error.message);
                 return;
             }
 

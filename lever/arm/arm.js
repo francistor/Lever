@@ -26,7 +26,7 @@ var createArm=function(){
     var queryOptions;
     var writeOptions;
 
-    var aLogger={};
+    var logger={};
 
     // Initial values, to be overriden by setConfigProperties
     var configProperties={
@@ -85,10 +85,10 @@ var createArm=function(){
 
     /**
      * Inject logger
-     * @param logger
+     * @param l
      */
-    arm.setLogger=function(logger){
-        aLogger=logger||{};
+    arm.setLogger=function(l){
+        logger=l||{};
     };
 
     /** Returns promise to be resolved when plans and calendars are read
@@ -210,19 +210,13 @@ var createArm=function(){
      */
     arm.getCredit=function(clientContext, service, eventDate, isOnlineSession){
 
-        if(!eventDate) eventDate=new Date();
+        if(!service) throw new Error("arm.getCredit: service is empty");
 
-        // Return null if no service match
-        // TODO: Remove from this method
-        if(service==null){
-            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: No serviceMatch");
-            return null;
-        }
+        if(!eventDate) eventDate=new Date();
 
         // null values mean no limit
         var creditGranted={
-            bytes: 0,
-            seconds: 0,
+            bytes: 0,            seconds: 0,
             expirationDate: null,
             fui: false,                             // Final Unit Indication
             fua: service.oocAction                  // Final Unit Action
@@ -232,7 +226,7 @@ var createArm=function(){
         if(!service.preAuthorized){
             creditGranted.bytes=configProperties.maxBytesCredit;
             creditGranted.seconds=configProperties.maxSecondsCredit;
-            if(aLogger["inDebug"]) aLogger.debug("arm.getCredit: Service without credit control");
+            if(logger.isDebugEnabled) logger.debug("arm.getCredit: Service without credit control");
             return creditGranted;
         }
 
@@ -477,7 +471,7 @@ var createArm=function(){
         // WriteEvent and update credits
         return arm.writeCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
             catch(function(err){
-                if(aLogger) aLogger.error("Could not write ccEvent due to: "+err.message);
+                if(logger.isErrorEnabled) logger.error("Could not write ccEvent due to %s", err.message);
             }).
             then(function(){
                 // Update client credits
@@ -687,7 +681,7 @@ var createArm=function(){
             }
         }
 
-        return service;
+        if(service) return service; else throw new Error("No service found for serviceId "+serviceId+"and rating group "+ratingGroup);
     }
 
     /**

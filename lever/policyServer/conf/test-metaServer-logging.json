@@ -10,6 +10,6 @@
 
     "file":{
         "type": "DailyRotateFile",
-        "properties": {"datePattern": ".yyyy-MM-dd", "timestamp": true, "level": "verbose", "filename": "log/policyServer.log", "json": false}
+        "properties": {"datePattern": ".yyyy-MM-dd", "timestamp": true, "level": "verbose", "filename": "log/test-meta-server.log", "json": false}
     }
 }

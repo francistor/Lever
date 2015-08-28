@@ -6,3 +6,4 @@ nohup.out
 out.txt
 node_modules/
 bower_components/
+**/log/**

@@ -1,12 +1,12 @@
 var Q=require("q");
-var hLogger=require("../log").hLogger;
+var logger=require("../log").logger;
 var cdrWriter=require("../cdrService").CDRService;
 var arm=require("../../arm/arm").arm;
 var config=require("../configService").config;
 
 var accessRequestHandler=function(radiusServer, message){
 
-    hLogger.info("Access request");
+    logger.info("Access request");
 
     var clientContext=null;
 
@@ -16,7 +16,7 @@ var accessRequestHandler=function(radiusServer, message){
     getClientData().then(function(){
         if(!clientContext || !clientContext.plan){
             // Client not found
-            hLogger.warn("Client not found");
+            logger.warn("Client not found");
             var permissiveService=config.policyParams["global"]["global"]["serviceOnSubscriptionNotFound"];
             if(permissiveService){
                 radiusServer.sendReply(message, "Access-Accept", {"Reply-Message": "Permissive service"});
@@ -30,7 +30,7 @@ var accessRequestHandler=function(radiusServer, message){
         validateClient().then(function(validationResult){
             if(validationResult==false){
                 // Proxy rejected
-                if(hLogger["inVerbose"]) hLogger.verbose("Remote server sent Auth-Reject");
+                logger.verbose("Remote server sent Auth-Reject");
                 radiusServer.sendReply(message, "Access-Reject", {"Reply-Message": "Proxy Rejected"});
             }
             else{
@@ -43,12 +43,12 @@ var accessRequestHandler=function(radiusServer, message){
             }
         }, function(){
             // Proxy error
-            hLogger.warn("Error proxying request");
+            logger.warn("Error proxying request");
         }).done();
 
         }, function(err){
             // Database error getting client
-            hLogger.error("Database error getting client data: "+err.message);
+            logger.error("Database error getting client data: "+err.message);
             radiusServer.sendReply(message, "Access-Reject", {"Reply-Message": err.message});
         }).done();
 
@@ -76,8 +76,6 @@ var accessRequestHandler=function(radiusServer, message){
     /**
      * Returns promise with fulfilled value true or false, or rejected if proxy error
      * clientContext is decorated with proxy attributes
-     * @param clientContext
-     * @param message
      */
     function validateClient(){
         var proxyPromise;
@@ -100,12 +98,12 @@ var accessRequestHandler=function(radiusServer, message){
 
 var accountingRequestHandler=function(radiusServer, message){
 
-    hLogger.info("Accounting request");
+    logger.info("Accounting request");
 
     // Proxy
     radiusServer.sendRequest("Accounting-Request", [], "127.0.0.1", 11813, "secret", 2000, 2, function(err, response){
         if(err){
-            hLogger.error("Error in request to proxy server: "+err.message);
+            logger.error("Error in request to proxy server: "+err.message);
         }
         else{
             radiusServer.sendReply(message, "Accounting-Response", []);
