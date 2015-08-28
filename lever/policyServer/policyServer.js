@@ -648,19 +648,21 @@ var createPolicyServer=function(hostName){
         var radiusAcctSocket;
         var diameterSocket;
 
-        config.initialize(hostName).then(
-            function () {
+        config.initialize(hostName).then(function () {
 
                 // Initialize arm library
                 arm.setLogger(aLogger);
                 arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB(), config.getDBQueryOptions(), config.getDBWriteOptions());
                 arm.setConfigProperties({
-                    maxBytesCredit:null,
-                    maxSecondsCredit:null,
-                    minBytesCredit:0,
-                    minSecondsCredit:0,
+                    maxBytesCredit: null,
+                    maxSecondsCredit: null,
+                    minBytesCredit: 0,
+                    minSecondsCredit: 0,
                     expirationRandomSeconds: null});
 
+                return arm.reloadPlansAndCalendars();
+
+            }).then(function(){
                 // Create management HTTP server
                 createAgent(config, diameterServer, radiusServer);
 
@@ -681,7 +683,7 @@ var createPolicyServer=function(hostName){
                     dLogger.info("Diameter server not started");
                 }
 
-                // Radius //
+                // Radius
                 if (config.node.radius) {
                     // Server sockets
                     radiusAuthSocket = dgram.createSocket("udp4");

@@ -1,0 +1,15 @@
+{
+    "__COMMENT": "Use transport names and properties as specified in https://github.com/winstonjs/winston/blob/master/docs/transports.md",
+
+    "_messageLogLevel": "verbose",
+
+    "console":{
+        "type": "Console",
+        "properties": {"timestamp": true, "level": "verbose"}
+    },
+
+    "file":{
+        "type": "DailyRotateFile",
+        "properties": {"datePattern": "yyy-MM-dd", "timestamp": true, "level": "verbose", "filename": "log/policyServer.log", "json": false}
+    }
+}

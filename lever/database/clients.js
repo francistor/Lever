@@ -34,21 +34,24 @@ var client1=
         billingDay: 1,
         timeZone: "America/Sao_Paulo"
     },
-    creditPools:
+    credit: {
+        _version: 1,
+        creditPools:
         [
-            {
-                poolName: "bytesRecurring",
-                mayUnderflow: false,
-                bytes: 1000,
-                expirationDate: ISODate("2015-05-30T01:00:00Z")
-            },
-            {
-                poolName: "bytesPurchased",
-                mayUnderflow: false,
-                bytes: 2000,
-                expirationDate: ISODate("2015-05-28T01:00:00Z")
-            }
+        {
+            poolName: "bytesRecurring",
+            mayUnderflow: false,
+            bytes: 1000,
+            expirationDate: ISODate("2015-05-30T01:00:00Z")
+        },
+        {
+            poolName: "bytesPurchased",
+            mayUnderflow: false,
+            bytes: 2000,
+            expirationDate: ISODate("2015-05-28T01:00:00Z")
+        }
         ]
+    }
 };
 
 var login1={
@@ -88,14 +91,16 @@ var client2=
         billingDay: 1,
         timeZone: "America/Sao Paulo"
     },
-    creditPools:
-        [
+    credit: {
+        _version: 1,
+        creditPools: [
             {
                 poolName: "ppu",
                 mayUnderflow: false,
                 expirationDate: ISODate("2015-07-07T03:00:00Z")
             }
         ]
+    }
 };
 
 var login2={
@@ -138,8 +143,9 @@ var client3=
         billingDay: 1,
         timeZone: "America/Sao Paulo"
     },
-    creditPools:
-        [
+    credit: {
+        _version: 1,
+        creditPools: [
             {
                 poolName: "speedyNightPeakPool",
                 mayUnderflow: true,
@@ -148,7 +154,8 @@ var client3=
                 seconds: 0,
                 expirationDate: null
             }
-        ],
+        ]
+    },
     captureSets:
         [
         ]
@@ -182,8 +189,8 @@ var phone3={
 
 // Automated testing client 4
 // FUP with turbo button
-var client4RecurringExpDate=new Date("2015-07-01T01:00:00Z");
-var client4PurchasedExpDate=new Date("2015-06-28T01:00:00Z");
+var client4RecurringExpDate=new Date("2015-06-30T22:00:00Z");
+var client4PurchasedExpDate=new Date("2015-06-28T22:00:00Z");
 var client4=
 {
     clientId: 4,
@@ -196,21 +203,23 @@ var client4=
         status: 0,
         billingDay: 1
     },
-    creditPools:
-        [
+    credit: {
+        _version: 1,
+        creditPools: [
             {
                 poolName: "bytesRecurring",
                 mayUnderflow: false,
-                bytes: 5*1024*1024*1024,
+                bytes: 5 * 1024 * 1024 * 1024,
                 expirationDate: client4RecurringExpDate
             },
             {
                 poolName: "bytesPurchased",
                 mayUnderflow: false,
-                bytes: 1024*1024*1024,
+                bytes: 1024 * 1024 * 1024,
                 expirationDate: client4PurchasedExpDate
             }
         ]
+    }
 };
 
 var login4={
@@ -230,6 +239,45 @@ var line4={
 var phone4={
     clientId:4,
     phone: "999999994"
+};
+
+// Automated testing client 5
+// Speedy night
+var client5=
+{
+    clientId: 5,
+    provision: {
+        legacyClientId: "lci1005",
+        legacyClientIdSec: null,
+        legalId: "50825187Q",
+        name: "Francisco García",
+        planName: "1005",
+        status: 0,
+        billingDay: 1
+    },
+    credit:{
+        _version: 0
+    }
+
+};
+
+var login5={
+    clientId:4,
+    userName: "test-speedynight@test",
+    password: "test"
+};
+
+var line5={
+    clientId:5,
+    nasPort: 1005,
+    nasIPAddress: "127.0.0.1",
+    ipv4Address: "192.168.1.5",
+    ipv6DelegatedPrefix: "2001:1005::/56"
+};
+
+var phone5={
+    clientId:5,
+    phone: "999999995"
 };
 
 
@@ -252,6 +300,10 @@ db.clients.insert(client4);
 db.userNames.insert(login4);
 db.lines.insert(line4);
 db.phones.insert(phone4);
+db.clients.insert(client5);
+db.userNames.insert(login5);
+db.lines.insert(line5);
+db.phones.insert(phone5);
 
 // Unique index: legacyClientId, deletedDate
 db.clients.ensureIndex({"provision.legacyClientId": 1}, {unique: true});

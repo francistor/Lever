@@ -23,6 +23,7 @@ var noCalendar=
     ]
 };
 
+// Sunday : 0
 var speedyNightCalendar=
 {
 	name: "speedyNight",
@@ -32,21 +33,21 @@ var speedyNightCalendar=
 	 		type: 1,
 	 		startDate: "2014-01-01",
 	 		endDate: "2014-01-02",
-	 		tag: "speedynight"
+	 		tag: "offPeak"
 	 	},
 	 	{
 	 		type: 2,
-	 		startWeekDay: 6,
+	 		startWeekDay: 5,
 	 		startTime: "20:00",
-	 		endWeekDay: 2,
+	 		endWeekDay: 1,
 	 		endTime: "07:00",
-	 		tag: "speedynight"
+	 		tag: "offPeak"
 	 	},
 	 	{
 	 		type: 3,
 	 		startTime: "20:00",
 	 		endTime: "07:00",
-	 		tag: "speedynight"
+	 		tag: "offPeak"
 	 		
 	 	},
 	 	{
@@ -271,8 +272,8 @@ var plan1005=
             {
                 name: "speedyNight",
                 description: "Speedy Night and Weekend",
-                serviceId: 0,
-                ratingGroup: 105,
+                serviceId: 1,
+                ratingGroup: 2,
                 subscribable: false,
                 autoActivated: true,
                 roamingAreas: null,
@@ -290,7 +291,7 @@ var plan1005=
                         creationType: 3,		// Recurring
                         mayUnderflow: false,	// Postpaid
                         creditPool: "speedyNightPool",
-                        calendarTags: ["speedyNight-TO-BE-IMPLEMENTED"]
+                        calendarTags: ["offPeak"]
                     },
                     {
                         name: "Default traffic",

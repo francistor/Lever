@@ -37,6 +37,11 @@ var createArm=function(){
         expirationRandomSeconds: null
     };
 
+    // Cache of configured plans
+    var plansCache={};
+    // Cache of calendars
+    var calendarsCache={};
+
     /**
      * Returns promise resolved when both connections to databases are established.
      * To be used for standalone testing
@@ -86,6 +91,41 @@ var createArm=function(){
         aLogger=logger||{};
     };
 
+    /** Returns promise to be resolved when plans and calendars are read
+     *
+     */
+    arm.reloadPlansAndCalendars=function(){
+        var deferred= Q.defer();
+
+        var newPlansCache={}, newCalendarsCache={};
+
+        // Read plans
+        configDB.collection("plans").find({}).toArray(function(err, plansArray){
+            if(err) deferred.reject(err);
+            else{
+                configDB.collection("calendars").find({}).toArray(function(err, calendarsArray){
+                    if(err) deferred.reject(err);
+
+                    // Cook result
+                    plansArray.forEach(function(plan){
+                        newPlansCache[plan["name"]]=plan;
+                    });
+                    calendarsArray.forEach(function(calendar){
+                        newCalendarsCache[calendar["name"]]=calendar;
+                    });
+
+                    // Swap
+                    plansCache=newPlansCache;
+                    calendarsCache=newCalendarsCache;
+
+                    deferred.resolve(null);
+                });
+            }
+        });
+
+        return deferred.promise;
+    };
+
     /**
      * Setup configuration properties
      */
@@ -103,7 +143,6 @@ var createArm=function(){
 
         // Find collection where to do the looking up
         if(clientPoU.phone) collectionName="phones"; else if(clientPoU.userName) collectionName="userNames"; else collectionName="lines";
-
         var deferred= Q.defer();
 
         // Find clientId in the appropriate collection
@@ -124,19 +163,23 @@ var createArm=function(){
     };
 
     /**
-     * Returns a promise to be resolved with the plan object
+     * Returns a plan object, if applicable decorated with calendars on each service
      * @param planName
+     * @returns {*}
      */
     arm.getPlan=function(planName){
-        var deferred= Q.defer();
+        var planInfo=plansCache[planName];
 
-        configDB.collection("plans").findOne({name: planName}, {}, queryOptions, function(err, plan){
-            if(err) deferred.reject(err);
-            else if(!plan) deferred.resolve(null);
-            else deferred.resolve(plan);
-        });
+        // Decorate with calendars
+        if(planInfo){
+            if(planInfo.services) planInfo.services.forEach(function(service){
+                if(service.calendarName){
+                    service.calendar=calendarsCache[service.calendarName];
+                }
+            });
+        }
 
-        return deferred.promise;
+        return planInfo;
     };
 
     /**
@@ -152,12 +195,7 @@ var createArm=function(){
             then(function(client){
                 if(!client) return null;
                 else{
-                    clientContext={client:client};
-                    return arm.getPlan(client.provision.planName).
-                        then(function(plan){
-                            if(plan) clientContext["plan"]=plan;
-                            return clientContext;
-                        });
+                    return {client:client, plan:arm.getPlan(client.provision.planName)};
                 }});
     };
 
@@ -166,9 +204,11 @@ var createArm=function(){
      * @param clientContext
      * @param service
      * @param eventDate if not specified, will be taken as current date
+     * @param isOnlineSession if true, randomization and minimum/maximum values are applied. Use false to
+     * show credit to the user or in management applications. Use true in CreditControl
      * @returns {*}
      */
-    arm.getCredit=function(clientContext, service, eventDate){
+    arm.getCredit=function(clientContext, service, eventDate, isOnlineSession){
 
         if(!eventDate) eventDate=new Date();
 
@@ -196,30 +236,31 @@ var createArm=function(){
             return creditGranted;
         }
 
-        // Add credit by iterating through the credit pools
-        var timeFrameData=getTimeFrameData(eventDate, service.calendarName);
-        getTargetCreditPools(clientContext, service, timeFrameData.tag).forEach(function(credit){
-            // null values will remain unmodified (they mean unlimited credit)
-            if(typeof(credit.bytes)=='undefined') creditGranted.bytes=null; else if(credit.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=credit.bytes;
-            if(typeof(credit.seconds)=='undefined') creditGranted.seconds=null; else if(credit.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=credit.seconds;
+        // Expiration date for a service with calendar is at most the next validity of the timeFrame
+        // if onlineSession only
+        var timeFrameData=getTimeFrameData(eventDate, service.calendar);
+        if(isOnlineSession && timeFrameData.endDate) creditGranted.expirationDate=timeFrameData.endDate;
 
-            // Expiration date for a pool with calendar is the next validity of the timeFrame
-            if(credit.calendarTags) if(credit.expirationDate && timeFrameData.endDate.getTime()<credit.expirationDate) credit.expirationDate=timeFrameData.endDate;
+        // Add credit by iterating through the credit pools
+        getTargetCreditPools(clientContext, service, timeFrameData.tag).forEach(function(creditPool){
+            // null values will remain unmodified (they mean unlimited credit)
+            if(typeof(creditPool.bytes)=='undefined'||creditPool.mayUnderflow) creditGranted.bytes=null; else if(creditPool.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=creditPool.bytes;
+            if(typeof(creditPool.seconds)=='undefined'||creditPool.mayUnderflow) creditGranted.seconds=null; else if(creditPool.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=creditPool.seconds;
 
             // IMPORTANT: Expiration date is set to minimum value among all credits
-            if(!creditGranted.expirationDate) creditGranted.expirationDate=credit.expirationDate;
-            else if(credit.expirationDate && credit.expirationDate.getTime()<creditGranted.expirationDate) creditGranted.expirationDate=credit.expirationDate;
+            if(!creditGranted.expirationDate) creditGranted.expirationDate=creditPool.expirationDate;
+            else if(creditPool.expirationDate && creditPool.expirationDate.getTime()<creditGranted.expirationDate.getTime()) creditGranted.expirationDate=creditPool.expirationDate;
         });
 
         // If any resource is zero, should be returned as zero
         // isFinal flag is only set if maxSeconds or maxBytes is defined
         if(creditGranted.bytes!==0 && creditGranted.seconds!==0) {
             // Enforce maximum value
-            if (configProperties.maxBytesCredit){
+            if (configProperties.maxBytesCredit && isOnlineSession){
                 if (!creditGranted.bytes || creditGranted.bytes > configProperties.maxBytesCredit) creditGranted.bytes = configProperties.maxBytesCredit;
                 else creditGranted.fui=true;
             }
-            if (configProperties.maxSecondsCredit){
+            if (configProperties.maxSecondsCredit && isOnlineSession){
                 if (!creditGranted.seconds || creditGranted.seconds > configProperties.maxSecondsCredit) creditGranted.seconds = configProperties.maxSecondsCredit;
                 else creditGranted.fui=true;
             }
@@ -232,21 +273,20 @@ var createArm=function(){
             */
 
             // Enforce minimum value
-            if (configProperties.minBytesCredit) if (creditGranted.bytes && creditGranted.bytes < configProperties.minBytesCredit) creditGranted.bytes = configProperties.minBytesCredit;
-            if (configProperties.minSecondsCredit) if (creditGranted.seconds && creditGranted.seconds < configProperties.minSecondsCredit) creditGranted.seconds = configProperties.minSecondsCredit;
-            if (configProperties.minSecondsCredit) if (creditGranted.expirationDate && creditGranted.expirationDate.getTime() - eventDate.getTime() < configProperties.minSecondsCredit * 1000) creditGranted.expirationDate = new Date(eventDate.getTime() + configProperties.minSecondsCredit * 1000);
+            if (configProperties.minBytesCredit && isOnlineSession) if (creditGranted.bytes && creditGranted.bytes < configProperties.minBytesCredit) creditGranted.bytes = configProperties.minBytesCredit;
+            if (configProperties.minSecondsCredit && isOnlineSession) if (creditGranted.seconds && creditGranted.seconds < configProperties.minSecondsCredit) creditGranted.seconds = configProperties.minSecondsCredit;
+            if (configProperties.minSecondsCredit && isOnlineSession) if (creditGranted.expirationDate && creditGranted.expirationDate.getTime() - eventDate.getTime() < configProperties.minSecondsCredit * 1000) creditGranted.expirationDate = new Date(eventDate.getTime() + configProperties.minSecondsCredit * 1000);
         }
 
         // Randomize validity date, but only if expiration date looks like a day or month edge
-        if(configProperties.expirationRandomSeconds) if(creditGranted.expirationDate && creditGranted.expirationDate.getMinutes()==0 && creditGranted.expirationDate.getSeconds()==0){
+        if(configProperties.expirationRandomSeconds && isOnlineSession) if(creditGranted.expirationDate && creditGranted.expirationDate.getMinutes()==0 && creditGranted.expirationDate.getSeconds()==0){
             creditGranted.expirationDate=new Date(creditGranted.expirationDate.getTime()+Math.floor(Math.random()*1000*configProperties.expirationRandomSeconds));
         }
-
         return creditGranted;
     };
 
     /**
-     * Updates the clientContext object passed with the credits updated and the dirtyCreditPools mark if applicable
+     * Updates the clientContext object passed with the credits updated and marks dirtyCreditPools if applicable
      * @param clientContext
      * @param service
      * @param bytes
@@ -256,33 +296,33 @@ var createArm=function(){
     arm.discountCredit=function(clientContext, service, bytes, seconds, tag){
         var toDiscount;
 
-        getTargetCreditPools(clientContext, service, tag).forEach(function(credit){
+        getTargetCreditPools(clientContext, service, tag).forEach(function(creditPool){
             // All credits are here valid (i.e. before expiration date)
 
             // Discount the bytes
-            if(!(typeof(credit.bytes)=='undefined') && bytes){
+            if(!(typeof(creditPool.bytes)=='undefined') && bytes){
                 clientContext.client.creditsDirty=true;
-                if(credit.mayUnderflow) {
-                    credit.bytes-=bytes;
+                if(creditPool.mayUnderflow) {
+                    creditPool.bytes-=bytes;
                     bytes=0;
                 }
                 else{
-                    toDiscount=Math.min(credit.bytes, bytes);
-                    credit.bytes-=toDiscount;
+                    toDiscount=Math.min(creditPool.bytes, bytes);
+                    creditPool.bytes-=toDiscount;
                     bytes-=toDiscount;
                 }
             }
             // Discount the seconds
-            if(!(typeof(credit.seconds)=='undefined') && seconds){
+            if(!(typeof(creditPool.seconds)=='undefined') && seconds){
                 clientContext.client.creditsDirty=true;
-                if(credit.mayUnderflow) {
-                    credit.seconds-=seconds;
+                if(creditPool.mayUnderflow) {
+                    creditPool.seconds-=seconds;
                     seconds=0;
                 }
                 else{
-                    toDiscount=Math.min(credit.seconds, seconds);
-                    credit.seconds-=toDiscount;
-                    credit.seconds-=toDiscount;
+                    toDiscount=Math.min(creditPool.seconds, seconds);
+                    creditPool.seconds-=toDiscount;
+                    seconds-=toDiscount;
                 }
             }
         });
@@ -299,14 +339,17 @@ var createArm=function(){
 
         var i;
         var creditPools;
-        var creditPool=null;
+        var creditPool;
         var currentTime=eventDate.getTime();
 
-        clientContext.plan.services.forEach(function(service){
+        if(clientContext.plan && clientContext.plan.services) clientContext.plan.services.forEach(function(service){
             if(service.recharges) service.recharges.forEach(function(recharge){
                 if(recharge.creationType===3){
+                    creditPool=null;
+                    if(!clientContext.client.credit) clientContext.client.credit={_version: 0, creditPools: []};
+                    if(!clientContext.client.credit.creditPools) clientContext.client.credit.creditPools=[];
                     // Found recurring recharge
-                    creditPools=clientContext.client.creditPools;
+                    creditPools=clientContext.client.credit.creditPools;
                     for(i=0; i<creditPools.length; i++){
                         if(creditPools[i].poolName==recharge.creditPool){
                             // Found credit pool for the recurring recharge
@@ -315,7 +358,7 @@ var createArm=function(){
                                 // Credit expired. Do refill
                                 creditPool.bytes=recharge.bytes;
                                 creditPool.seconds=recharge.seconds;
-                                creditPool.expirationDate=getNextExpirationDate(eventDate, recharge.validity, clientContext.client.billingDay);
+                                creditPool.expirationDate=getNextExpirationDate(eventDate, recharge.validity, clientContext.client.provision.billingDay);
                                 clientContext.client.creditsDirty=true;
                             }
                             break;
@@ -328,7 +371,8 @@ var createArm=function(){
                             mayUnderflow: recharge.mayUnderflow,
                             bytes: recharge.bytes,
                             seconds: recharge.seconds,
-                            expirationDate: getNextExpirationDate(eventDate, recharge.validity, clientContext.client.billingDay)
+                            expirationDate: getNextExpirationDate(eventDate, recharge.validity, clientContext.client.provision.billingDay),
+                            calendarTags: recharge.calendarTags
                         };
                         creditPools.push(creditPool);
                         clientContext.client.creditsDirty=true;
@@ -350,8 +394,8 @@ var createArm=function(){
 
         // Loop backwards, because we are modifying the array while iterating through it, and array
         // is re-indexed when removing an element
-        var creditPools=clientContext.client.creditPools;
-        for(var i=0; i<creditPools.length; i++){
+        var creditPools=(clientContext.client.credit||{}).creditPools;
+        if(creditPools) for(var i=0; i<creditPools.length; i++){
             if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<currentTime){
                 creditPools.splice(i--, 1);
             }
@@ -393,10 +437,12 @@ var createArm=function(){
      *
      * Finally, new granted units are calculated. The tag for the eventDate is obtained, and credit is
      * drawn from the pools with matching or no tag. If matching tag, expiration date is calculated for
-     * that particular pool as the date of the end of the current timeFrame.
+     * that particular pool as the date of the end of the current timeFrame. Since expiration date is set
+     * to the minimum among all credit pools, expiration will be at most the date of the next timeframe
      */
     arm.executeCCRequest=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
 
+        if(!ccElements) throw new Error("executeCCRequest: empty ccElements");
         if(!eventDate) eventDate=new Date();
 
         // First discount credit without updating recurrent credits or deleting expired items
@@ -404,7 +450,7 @@ var createArm=function(){
             ccElements.forEach(function(ccElement){
                 // Decorate with service
                 if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
-                var brokenCCElements=arm.breakCCElement(ccElement, ccElement.service.calendarName);
+                var brokenCCElements=arm.breakCCElement(ccElement, ccElement.service.calendar, eventDate);
                 // Do discount
                 if(ccElement.service){
                     brokenCCElements.forEach(function(brokenCCElement){
@@ -423,25 +469,32 @@ var createArm=function(){
             ccElements.forEach(function(ccElement){
                 // Decorate with service if not done yet
                 if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
-                if(ccElement.service) ccElement.granted=arm.getCredit(clientContext, ccElement.service, eventDate);
+                if(ccElement.service) ccElement.granted=arm.getCredit(clientContext, ccElement.service, eventDate, true);
                 else throw new Error("Service not found for event "+JSON.stringify(ccElement));
             });
         }
 
-        // WriteEvent
+        // WriteEvent and update credits
         return arm.writeCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
             catch(function(err){
-                aLogger.error("Could not write ccEvent due to: "+err.message);
+                if(aLogger) aLogger.error("Could not write ccEvent due to: "+err.message);
             }).
             then(function(){
                 // Update client credits
                 if(clientContext.client.creditsDirty) {
                     return Q.ninvoke(clientDB.collection("clients"), "updateOne",
-                        {clientId: clientContext.client.clientId},
-                        {$set: {"creditPools": clientContext.client.creditPools}},
+                        {"clientId": clientContext.client.clientId, "credit._version": clientContext.client.credit._version},
+                        {$set: {"credit": {_version: clientContext.client.credit._version+1, creditPools: clientContext.client.credit.creditPools}}},
                         writeOptions);
                 }
                 else return null;
+            }).
+            then(function(updateResult){
+                // Credit was not written because it was not dirty
+                if(updateResult==null) return null;
+
+                // Check that one item was written. Otherwise fail due to concurrent modification
+                if(updateResult.result["n"]==1) return null; else throw new Error("Concurrent modification error");
             });
     };
 
@@ -453,15 +506,31 @@ var createArm=function(){
      * @param ccRequestType
      * @param ccElements (cleaned up!)
      * @param sessionId
-     * @parame eventDate
+     * @param eventDate
      *
      * CCEvent={
-     *  clientId,
-     *  eventTimestap,
-     *  sessionId,
-     *  ccRequestType,
-     *  ccElements: [<array of ccElements>]
-     *  }
+     *  clientContext: <>,
+     *  ccRequestType: <>,
+     *  sessionId: <>,
+     *  eventDate: <>,
+     *  ccElements [
+     *      {
+     *      serviceId:<>,
+     *      ratingGroup: <>,
+     *      serviceName: <>,      --> Note this is the serviceName, not the full service
+     *      used: {
+     *          startDate: <>,
+     *          bytesDown: <>,
+     *          bytesUp: <>,
+     *          seconds: <>
+     *      },
+     *      granted: {
+     *          bytes: <>,
+     *          seconds: <>,
+     *          expirationDate: <>,
+     *          fui: <>,
+     *          fua: <>
+     *     }
      */
     arm.writeCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
 
@@ -478,7 +547,7 @@ var createArm=function(){
 
         var event={
             clientId: clientContext.client.clientId,
-            eventTimestamp: eventTimestamp/1000,
+            eventDate: eventDate,
             sessionId: sessionId,
             ccRequestType: ccRequestType,
             ccElements: ccElements
@@ -491,6 +560,7 @@ var createArm=function(){
      * Returns an array of events, each one spanning only one calendar item
      * @param ccElement
      * @param calendar
+     * @param eventDate
      * @returns {Array}
      *
      * ccElement={
@@ -505,10 +575,10 @@ var createArm=function(){
      *          bytesUp: <>,
      *          seconds: <>
      *      },
-     *      tag: <> --> Calculated
+     *      tag: <>
      * }
      */
-    arm.breakCCElement=function(ccElement, calendar){
+    arm.breakCCElement=function(ccElement, calendar, eventDate){
 
         // Do nothing if no calendar specified
         if(!calendar) return [ccElement];
@@ -517,7 +587,7 @@ var createArm=function(){
         var fragmentSeconds;
         var remainingSeconds=ccElement.used.seconds;
         var nextTimeFrame;
-        var nextDate=new Date(ccElement.eventDate.getTime()-1000*ccElement.used.seconds); // Start date
+        var nextDate=new Date(eventDate.getTime()-1000*ccElement.used.seconds); // Start date
         var brokenCCElements=[];
 
         while(remainingSeconds>0){
@@ -567,7 +637,8 @@ var createArm=function(){
         var elements=/([0-9]+)([CMDHmdh])/.exec(validity);
         if(elements.length!=3) throw new Error("Bad validity specification "+validity);
 
-        var expDate=eventDate;
+        // Copy object. Otherwise object passed would be modified
+        var expDate=new Date(eventDate.getTime());
 
         if(elements[2]=="C"){
             if(eventDate.getDate()>=billingDay) expDate.setMonth(expDate.getMonth()+1);
@@ -629,7 +700,7 @@ var createArm=function(){
 
         var targetCreditPools=[];
 
-        var clientCreditPools=clientContext.client.creditPools;
+        var clientCreditPools=(((clientContext.client.credit)||{}).creditPools)||[];
         service.creditPoolNames.forEach(function(servicePoolName){
             clientCreditPools.forEach(function(clientPool){
                 if(clientPool.poolName==servicePoolName){
@@ -769,11 +840,11 @@ var speedyNightCalendar=
         ]
 };
 
+var eventDate=new Date();
 var event={
     serviceId: 0,
     ratingGroup: 0,
     service: "none",
-    eventDate: new Date(),
     sessionId: "1-1",
     used:{
         bytesDown:1000,
@@ -796,9 +867,10 @@ console.log(serviceMgr.getTimeFrameEndDate(
 var arm=exports.arm;
 //unitTest();
 
-//var brokenEvents=arm.breakCCElement(event, speedyNightCalendar);
+//var brokenEvents=arm.breakCCElement(event, speedyNightCalendar, eventDate);
 //console.log(JSON.stringify(brokenEvents, null, 2));
 
+// TODO: Delete this
 function unitTest() {
 
     arm.setConfigProperties({
@@ -825,7 +897,7 @@ function unitTest() {
             console.log("");
             console.log("Credits before event");
             console.log("---------------------------");
-            console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+            console.log(JSON.stringify(clientContext.client.credit.creditPools, null, 2));
 
             var ccElements = [
                 {ratingGroup: 101, serviceId: 3, used: {bytes: 500, seconds: 3600}},
@@ -849,7 +921,7 @@ function unitTest() {
                         console.log("");
                         console.log("Credits after event");
                         console.log("---------------------------");
-                        console.log(JSON.stringify(clientContext.client.creditPools, null, 2));
+                        console.log(JSON.stringify(clientContext.client.credit.creditPools, null, 2));
 
                     }, function(err){
                         console.log("Error updating credit: "+err.message);
