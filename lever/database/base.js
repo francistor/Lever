@@ -1,6 +1,6 @@
 load("urlConfig.js");
 
-// Add parameter with hostname to policyserver
+// Add parameter with hostName to policyserver
 // If RadiusPort is 0, do no start radius server
 
 // Client --> Server --> MetaServer
@@ -23,25 +23,30 @@ var clientManagementPort=9001;
 var metaServerManagementPort=9002;
 
 // Non loopback address of this node
-var ipAddress="192.168.1.102";
+ipAddress="192.168.1.33";
 
 print("");
 print("----------------------------------");
 print("Creating nodes configuration");
 print("----------------------------------");
 
+// node-name, radius-ip-address, radius-auth-port, radius-acct-port, diameter-listen-address, diameter-port
 
-// test-client 0, 0, 93868
-// test-server 1812, 1813, 3868
-// test-metaserver, 2812, 2813, 4868
-// 8950AAA, 11812, 11813, 13868 [Non loopback address]
-// diameter-tool, 0, 0, ?
+// test-client 0, 0, 0, 127.0.0.1, 93868
+// test-server
+//      127.0.0.1, 1812, 1813
+//      127.0.0.1, 3868
+// test-metaserver, 127.0.0.1, 2812, 2813, 4868
+// 8950AAA, xxxx, 11812, 11813, 13868 [Non loopback address]
+// diameter-tool, 192.168.x.x, 0, 0, ?
 
 
 // -client, -server, -metaserver1 (lever), -metaserver2 (8950AAA)
 
-// Remove mongodb://
+// Remove mongodb:// with substring(10)
 var db=connect(leverConfigDatabase.substring(10));
+
+// Clear configuration
 db.nodes.drop();
 
 var serverNode=
@@ -51,7 +56,7 @@ var serverNode=
 
     "radius": {
         "_version": 1001,
-        "IPAddress": 0,
+        "listenIPAddress": "127.0.0.1",
         "authPort": 1812,
         "acctPort": 1813,
 
@@ -71,12 +76,13 @@ var serverNode=
             {"name": "ExternalServer", "servers": [metaServerNameExt], "policy": "fixed"}
         ],
 
+        "clientIPAddress": "127.0.0.1",
         "baseClientPort": 40000,
         "numClientPorts": 10
     },
 
     "diameter": {
-        "IPAddress-not-used": "127.0.0.1",
+        "listenAddress": "127.0.0.1",
         "port": 3868,
         "diameterHost": serverName,
         "diameterRealm": realm,
@@ -122,7 +128,7 @@ var serverNode=
 
     cdrChannels:[
         {name: "file", "type": "file", "location": "/var/lever/policyServer/cdr/cdr_server_test", "extension": ".txt", "rolling": "none", "format": "livingstone", "enabled": true},
-        {name: "database", "type": "database", "location": "mongodb://cdrdb.lever/cdr", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
+        {name: "database", "type": "database", "location": "mongodb://eventdb.lever/leverEvents", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
     ],
 
     "management":{
@@ -156,7 +162,6 @@ var clientNode=
     },
 
     "diameter": {
-        "IPAddress-not-used": "127.0.0.1",
         "listenAddress": "0.0.0.0",
         "port": 93868,
         "diameterHost": clientName,
@@ -182,7 +187,7 @@ var clientNode=
 
     cdrChannels:[
         {name: "file", "type": "file", "location": "/var/lever/policyServer/cdr/cdr_client_test", "extension": ".txt", "rolling": "none", "format": "livingstone", "enabled": true},
-        {name: "database", "type": "database", "location": "mongodb://cdrdb.lever/cdr", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
+        {name: "database", "type": "database", "location": "mongodb://eventdb.lever/leverEvents", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
     ],
 
     "management":{
@@ -231,7 +236,7 @@ var metaServerNode=
 
     cdrChannels:[
         {name: "file", "type": "file", "location": "/var/lever/policyServer/cdr/cdr_metaServer_test", "extension": ".txt", "rolling": "none", "format": "livingstone", "enabled": true},
-        {name: "database", "type": "database", "location": "mongodb://cdrdb.lever/cdr", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
+        {name: "database", "type": "database", "location": "mongodb://eventdb.lever/leverEvents", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": true}
     ],
 
     "management":{
@@ -311,37 +316,8 @@ print("done");
 print("");
 
 print("----------------------------------");
-print("Creating CDR Channels configuration");
-print("----------------------------------");
-db.cdrChannels.drop();
-
-var localFileChannel={
-    "type": "file",
-    "location": "/var/lever/policyServer/cdr/cdr_test",
-    "extension": ".txt",
-    "rolling": "none",
-    "format": "livingstone",
-    "enabled": true
-};
-
-var dbChannel={
-    "type": "database",
-    "location": "mongodb://cdrdb.lever/cdr",
-    "collection": "cdr",
-    "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"],
-    "enabled": true
-};
-
-db.cdrChannels.insert(localFileChannel);
-db.cdrChannels.insert(dbChannel);
-
-print("done");
-print("");
-
-print("----------------------------------");
 print("Creating Policy configuration");
 print("----------------------------------");
-
 
 db.policyParams.drop();
 

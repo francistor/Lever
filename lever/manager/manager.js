@@ -16,6 +16,7 @@ var request=require('request');
 var MongoClient=require("mongodb").MongoClient;
 var ObjectID=require('mongodb').ObjectID;
 var bodyParser=require('body-parser');
+var arm=require("arm").arm;
 
 process.title="lever-manager";
 
@@ -177,65 +178,31 @@ mApp.post("/dyn/config/diameterDictionary", function(req, res){
     });
 });
 
-// Get client
-mApp.post("/dyn/clients/findClient", function(req, res){
-    var clientData={};
-    var collectionName;
-    var query;
-    if(logger.inDebug) logger.info("Got findClient request as "+JSON.stringify(req.body));
+mApp.post("/dyn/clients/getFullClientData", function(req, res){
+    var collectionName, query;
+
+    // Get the client context
     var searchField=req.body.field;
-    if(searchField=="phone"){ collectionName="phones"; query={phone: req.body.phone};}
-    if(searchField=="userNames"){ collectionName="userName"; query={userName: req.body.userName};}
-    if(searchField=="line"){ collectionName="lines"; query={nasPort: req.body.phone, nasIPAddress:req.body.nasIPAddress};}
-    if(searchField=="legacyClientId"){ collectionName="clients"; query={legacyClientId: req.body.legacyClientId};}
-    // Search the PoU
-    if(logger.inDebug) logger.debug("Finding clientId based on "+collectionName);
-    clientDB.collection(collectionName).findOne(query, {}, config["queryOptions"], function(err, pou){
-        if(!err){
-            if(!pou) { res.json({}); return;}
+    if(searchField=="phone"){ query={phone: req.body.phone};}
+    else if(searchField=="userName"){ query={userName: req.body.userName};}
+    else if(searchField=="line"){ query={nasPort: parseInt(req.body.nasPort), nasIPAddress:req.body.nasIPAddress};}
+    else {res.status(500).send("Error: Bad query data"); return;}
 
-            // Search the Client
-            if(logger.inDebug) logger.debug("Finding client "+pou.clientId);
-            clientDB.collection("clients").findOne({clientId: pou.clientId}, {}, config["queryOptions"], function (err, client) {
-                if (!err) {
-                    if(!client) { res.json({}); logger.warn("PoU without client"); return;}
-                    clientData.client = client;
-
-                    // Get the plan data
-                    if(logger.inDebug) logger.debug("Finding plan "+client.provision.planName);
-                    configDB.collection("plans").findOne({name: client.provision.planName}, {}, config["queryOptions"], function (err, plan) {
-                        if (!err) {
-                            clientData.plan = plan;
-
-                            // Get all PoU
-                            if(logger.inDebug) logger.debug("Finding all PoU for "+client.clientId);
-                            getClientPoU(client.clientId).then(function(clientPoU){
-                                clientData.pointsOfUsage=clientPoU;
-                                res.json(clientData);
-                            }, function(err){
-                                logger.error("Error finding client. Error getting PoUs: "+err.message+" "+JSON.stringify(req.body));
-                                res.status(500).send("Error: " + err.message);
-                            });
-                        }
-                        else{
-                            logger.error("Error finding client. Error getting plan: "+err.message+" "+JSON.stringify(req.body));
-                            res.status(500).send("Error: " + err.message);
-                        }
-                    });
-                }
-                else{
-                    logger.error("Error finding client. Error getting client: "+err.message+" "+JSON.stringify(req.body));
-                    res.status(500).send("Error: " + err.message);
-                }
-            });
-        }
-        else{
-            logger.error("Error finding client. Error finding client from PoU: "+err.message+" "+JSON.stringify(req.body));
-            res.status(500).send("Error: "+err.message);
-        }
+    var fullClientData={};
+    arm.findClient(query).then(function(client){
+        if(!client) return Q.reject(new Error("Client not found"));
+        return arm.getClientContext(client);
+    }).then(function(clientContext){
+        fullClientData.client=clientContext.client;
+        fullClientData.plan=clientContext.plan;
+        return arm.getClientAllPoU(clientContext.client.clientId);
+    }).then(function(pou){
+        fullClientData.pointsOfUsage=pou;
+        res.json(fullClientData);
+    }).fail(function(err){
+        res.status(500).send("Error: " +  err.message);
     });
 });
-
 
 // Initialization
 Q.all(
@@ -248,6 +215,8 @@ Q.all(
         configDB=a;
         clientDB=b;
         eventDB=c;
+        arm.setDatabaseConnections(configDB, clientDB, eventDB, config["databaseOptions"], config["queryOptions"]);
+        return arm.reloadPlansAndCalendars();
     }).then(function(){
         // Start server
         mApp.listen(config["port"]);
@@ -255,44 +224,7 @@ Q.all(
     }).done();
 
 
-// Connect to mongodb and start server
-/*
-MongoClient.connect(config["databaseURL"], config["databaseOptions"], function(err, db){
-    if(!err && db){
-        // Start server
-        mApp.listen(config["port"]);
-        configDB=db;
-        logger.info("Connected to configuration database "+config["databaseURL"]);
-        logger.info("PolicyServer manager listening on port "+config["port"]);
 
-        db.on('close', function () {
-            logger.info("Connection to database closed");
-        });
-    }
-    else{
-        logger.error("Could not connect to database");
-    }
-});
-*/
 
-////////////////////////////////////////////////////////////////////
-// Helper functions
-
-// Returns promise to be resolved with an object containing all client PoU
-function getClientPoU(clientId){
-    return Q.all(
-        // Connect to all three databases
-        [
-            Q.ninvoke(clientDB.collection("phones").find({clientId: clientId}, {}, config["queryOptions"]), "toArray"),
-            Q.ninvoke(clientDB.collection("userNames").find({clientId: clientId}, {}, config["queryOptions"]), "toArray"),
-            Q.ninvoke(clientDB.collection("lines").find({clientId: clientId}, {}, config["queryOptions"]), "toArray")
-        ]).spread(function(phones, userNames, lines){
-            return {
-                phones: phones,
-                userNames: userNames,
-                lines: lines
-            }
-        });
-}
 
 

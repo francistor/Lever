@@ -232,7 +232,7 @@ function unitTest(){
         console.log("[Test] " + testItem.description);
 
         if (testItem.type=="CCR") {
-            arm.getClientContext(testItem.clientPoU).then(function(clientContext){
+            arm.getGuidedClientContext(testItem.clientPoU).then(function(clientContext){
                 if(!clientContext) throw new Error("Client not found");
                 if(!clientContext.plan) throw new Error("Plan not found");
                 var requestType;

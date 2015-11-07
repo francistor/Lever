@@ -28,7 +28,7 @@ var argument;
 for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runSever [--hostName <hostName>]");
+        console.log("Usage: node runUnitTest [--hostName <hostName>]");
         process.exit(0);
     }
 
@@ -62,7 +62,7 @@ var testItems=[
         execute: true,
         description: "Initial Wait",
         type: "Wait",
-        waitTime:3000
+        waitTime:10000
     },
     {
         execute: true,
@@ -269,7 +269,7 @@ var testItems=[
         ]
     },
     {
-        execute: false,
+        execute: true,
         description: "Capabilities Exchange. Gy CCR-Initial to be proxied to metaServer",
         type: "Diameter",
         applicationId: "Credit-Control",
@@ -380,7 +380,7 @@ function nextTestItem(){
     // Peers
     /////////////////////////////////////////////////
     } else if(testItem.type=="Peers"){
-            checkPeers(testItem.peers, 0);
+        checkPeers(testItem.peers, 0);
     /////////////////////////////////////////////////
     // Wait
     /////////////////////////////////////////////////
@@ -492,6 +492,8 @@ function checkPeers(peersSpec){
             if (!body) throw new Error("Could not get peers for server");
             peerStats["server"] = JSON.parse(body);
 
+            console.log(body);
+
             request.get(metaServerManagementUrl + "getPeerStatus", function (error, response, body) {
                 if (!body) throw new Error("Could not get peers for metaServer");
                 peerStats["metaServer"] = JSON.parse(body);
@@ -510,7 +512,7 @@ function checkPeers(peersSpec){
                     }
 
                     // Test
-                    if(state==spec.state) console.log("\t[Test][OK] "+spec.description); else console.log("\t[Test][ERROR] "+spec.description+" "+state+" "+spec.state);
+                    if(state==spec.state) console.log("\t[Test][OK] "+spec.description); else console.log("\t[Test][ERROR] "+spec.description+" "+state);
                 });
 
                 setTimeout(nextTestItem, 0);

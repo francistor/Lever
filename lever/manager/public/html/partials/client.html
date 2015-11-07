@@ -258,75 +258,82 @@
                 <div class="panel-body">
                     <div class="row">
                         <div class="col-md-12">
-                            <table class="table" ng-repeat="service in plan.services">
-                                <thead>
-                                <tr>
-                                    <th>{{service.description}}</th>
-                                    <th>&nbsp;</th>
-                                    <th>&nbsp;</th>
-                                    <th>&nbsp;</th>
-                                    <th>&nbsp;</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <!-- Total credit -->
-                                <tr>
-                                    <td>
-                                        Total Credit
-                                    </td>
-                                    <td>
-                                        XXX [units]
-                                    </td>
-                                    <td>
-                                        -
-                                    </td>
-                                    <td>
-                                        [day/month/year]
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-info btn-circle"><i class="fa fa-arrow-right"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <!-- Separator -->
-                                <tr>
-                                    <td>
-                                        &nbsp;
-                                    </td>
-                                    <td>
-                                        &nbsp;
-                                    </td>
-                                    <td>
-                                        &nbsp;
-                                    </td>
-                                    <td>
-                                        &nbsp;
-                                    </td>
-                                    <td>
-                                        &nbsp;
-                                    </td>
-                                </tr>
-                                <!-- Recharges -->
-                                <tr ng-repeat="recharge in service.recharges">
-                                    <td>
-                                        {{recharge.name}}
-                                    </td>
-                                    <td>
-                                        {{recharge.bytes |formatResource:'GB'}}
-                                    </td>
-                                    <td>
-                                        {{recharge.seconds ? (recharge.seconds)/(3600)+"GB" : "-"}}
-                                    </td>
-                                    <td>
-                                        1 month
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                            <div ng-repeat="service in plan.services">
+                                <!-- total credit -->
+                                <table class="table">
+                                    <thead>
+                                    <tr>
+                                        <th>{{service.description}}</th>
+                                        <th>&nbsp;</th>
+                                        <th>&nbsp;</th>
+                                        <th>&nbsp;</th>
+                                        <th>&nbsp;</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <!-- Total credit -->
+                                    <tr>
+                                        <td>
+                                            Total Credit
+                                        </td>
+                                        <td>
+                                            XXX [units]
+                                        </td>
+                                        <td>
+                                            -
+                                        </td>
+                                        <td>
+                                            [day/month/year]
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-info btn-circle"><i class="fa fa-arrow-right"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+
+                                <div class="panel panel-warning" ng-if="service.recharges">
+                                    <div class="panel-heading">
+                                        <h5 class="panel-title">Recharges</h5>
+                                    </div>
+                                    <div class="panel-body">
+                                        <!-- Recharges -->
+                                        <table class="table" >
+                                            <thead>
+                                            <tr>
+                                                <th>Recharge Name</th>
+                                                <th>Volume</th>
+                                                <th>Time</th>
+                                                <th>Expiration</th>
+                                            </tr>
+                                            </thead>
+
+                                            <tr ng-repeat="recharge in service.recharges">
+                                                <td>
+                                                    {{recharge.name}}
+                                                </td>
+                                                <td>
+                                                    {{recharge.bytes |formatResource:'GB'}}
+                                                </td>
+                                                <td>
+                                                    {{recharge.seconds ? (recharge.seconds)/(3600)+"Hr" : "-"}}
+                                                </td>
+                                                <td>
+                                                    1 month
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+
+                            </div>
                         </div>
                     </div>
                 </div>

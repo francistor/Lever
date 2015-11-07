@@ -2,7 +2,7 @@ var managerControllers=angular.module('managerControllers', []);
 
 var requestTimeout=2000;
 
-// List of modes
+// List of nodes
 managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
     $scope.nodes=[];
@@ -367,7 +367,7 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
                 "frg@tid.es"
             ],
             lines:[
-                "127.0.0.1:1234567"
+                "127.0.0.1:1001"
             ]
         },
         plan:{}
@@ -376,7 +376,7 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
     $scope.findClient=function(){
         $http({
             method  : 'POST',
-            url     : '/dyn/clients/findClient',
+            url : '/dyn/clients/getFullClientData',
             data    : $scope.searchData,
             timeout: requestTimeout
         }).success(function(data){
@@ -385,15 +385,18 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
                 $scope.client=data.client;
                 $scope.pointsOfUsage=data.pointsOfUsage;
                 $scope.plan=data.plan;
+
+                // Iterate through services in the plan
+
             }
         }).error(function(data, status, headers, config, statusText){
             // Shows error message
-            niceAlert.error(headers("message"));
+            niceAlert.error(data);
         });
-    }
+    };
 
     $scope.getServiceCredit=function(serviceName){
 
-    }
+    };
 
 }]);

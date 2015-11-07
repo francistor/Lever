@@ -50,24 +50,24 @@ var createLogger=function(){
 
     // Logging of messages
     logger.logDiameterMessage=function(originHost, destinationHost, message){
-        var header=message.isRequest ? "[REQUEST]":"[RESPONSE]";
-        logger.log(messageLogLevel, "%s %s --> %s : %s : %s", header, originHost, destinationHost, message.applicationId, message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
+        var header=message.isRequest ? "Diameter Request":"Diameter Response";
+        logger.log(messageLogLevel, "[%s], %s --> %s: %s : %s", header, originHost, destinationHost, message.applicationId, message.commandCode+(message.avps["Result-Code"] ? " - "+message.avps["Result-Code"] : ""));
     };
 
     logger.logRadiusServerRequest=function(clientName, code){
-        logger.log(messageLogLevel, "%s --> ME: %s", clientName, code);
+        logger.log(messageLogLevel, "[Radius %s], %s --> ME", code, clientName);
     };
 
     logger.logRadiusServerResponse=function(clientName, code){
-        logger.log(messageLogLevel, "ME --> %s : %s", clientName, code);
+        logger.log(messageLogLevel, "[Radius %s], ME --> %s", code, clientName);
     };
 
     logger.logRadiusClientRequest=function(ipAddress, code, tried){
-        logger.log(messageLogLevel, "ME --> %s : %s", ipAddress, code+(tried>0 ? " [retransmission]":""));
+        logger.log(messageLogLevel, "[Radius %s], ME --> %s %s", code, ipAddress, (tried>0 ? " [retransmission]":""));
     };
 
     logger.logRadiusClientResponse=function(ipAddress, code){
-        logger.log(messageLogLevel, "%s --> ME: %s", ipAddress, code);
+        logger.log(messageLogLevel, "[Radius %s], %s --> ME", code, ipAddress);
     };
 
     logger.updateLevelCache();

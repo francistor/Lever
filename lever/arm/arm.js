@@ -44,7 +44,8 @@ var createArm=function(){
 
     /**
      * Returns promise resolved when both connections to databases are established.
-     * To be used for standalone testing
+     * To be used for standalone testing. Connection URLs to be got from environment variables
+     * only
      *
      * @returns {*}
      */
@@ -53,7 +54,7 @@ var createArm=function(){
         dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
         dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
         dbParams["eventDatabaseURL"]=process.env["LEVER_EVENTDATABASE_URL"];
-        if(!dbParams["configDatabaseURL"]||!dbParams["clientDatabaseURL"]||!dbParams["eventDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
+        if(!dbParams["configDatabaseURL"]||!dbParams["clientDatabaseURL"]||!dbParams["eventDatabaseURL"]) throw Error("Missing database URL environment variable");
 
         return  Q.all([
                     Q.ninvoke(MongoClient, "connect", dbParams["configDatabaseURL"], dbParams["databaseOptions"]),
@@ -68,7 +69,8 @@ var createArm=function(){
     };
 
     /**
-     * Gets database connections already established from external application. Normal use.
+     * Gets database connections already established from external application.
+     * Normal use.
      * @param configDatabase
      * @param clientDatabase
      * @param eventDatabase
@@ -84,6 +86,13 @@ var createArm=function(){
     };
 
     /**
+     * Setup configuration properties
+     */
+    arm.setConfigProperties=function(cp){
+        configProperties=cp;
+    };
+
+    /**
      * Inject logger
      * @param l
      */
@@ -92,7 +101,10 @@ var createArm=function(){
     };
 
     /** Returns promise to be resolved when plans and calendars are read
+     *  To be called on initialization.
      *
+     *  Applications SHOULD call this function periodically, using
+     *  a timer function
      */
     arm.reloadPlansAndCalendars=function(){
         var deferred= Q.defer();
@@ -105,20 +117,21 @@ var createArm=function(){
             else{
                 configDB.collection("calendars").find({}).toArray(function(err, calendarsArray){
                     if(err) deferred.reject(err);
+                    else {
+                        // Cook result
+                        plansArray.forEach(function (plan) {
+                            newPlansCache[plan["name"]] = plan;
+                        });
+                        calendarsArray.forEach(function (calendar) {
+                            newCalendarsCache[calendar["name"]] = calendar;
+                        });
 
-                    // Cook result
-                    plansArray.forEach(function(plan){
-                        newPlansCache[plan["name"]]=plan;
-                    });
-                    calendarsArray.forEach(function(calendar){
-                        newCalendarsCache[calendar["name"]]=calendar;
-                    });
+                        // Swap
+                        plansCache = newPlansCache;
+                        calendarsCache = newCalendarsCache;
 
-                    // Swap
-                    plansCache=newPlansCache;
-                    calendarsCache=newCalendarsCache;
-
-                    deferred.resolve(null);
+                        deferred.resolve(null);
+                    }
                 });
             }
         });
@@ -127,34 +140,55 @@ var createArm=function(){
     };
 
     /**
-     * Setup configuration properties
+     * Returns a promise to be fulfilled with the client object, given the clientId
+     * or legacyClientId.
+     *
+     * Resolves to null if not found
+     *
+     * @param clientData object containing clientId:<value> or legacyClientId:<value>
+     * @returns {*} promise
      */
-    arm.setConfigProperties=function(cp){
-        configProperties=cp;
+    arm.getClient=function(clientData){
+        var deferred= Q.defer();
+
+        // Find client
+        clientDB.collection("clients").findOne(clientData, {}, queryOptions, function(err, client){
+            if(err) deferred.reject(err);
+            else{
+                if(!client) deferred.resolve(null); else deferred.resolve(client);
+            }
+        });
+
+        return deferred.promise;
     };
 
     /**
      * Returns a promise to be fulfilled with the client object, or null if not found
      * clientPoU may have one of the following properties set: "phone", "userName", "nasPort, nasIPAddress"
+     *
+     * Resolves to null if not found
+     *
      * @param clientPoU
+     * @returns {*} promise
      */
-    arm.getClient=function(clientPoU){
+    arm.getGuidedClient=function(clientPoU){
         var collectionName;
 
         // Find collection where to do the looking up
-        if(clientPoU.phone) collectionName="phones"; else if(clientPoU.userName) collectionName="userNames"; else collectionName="lines";
+        if(clientPoU.phone) collectionName="phones"; else if(clientPoU.userName) collectionName="userNames"; else if(clientPoU.nasPort && clientPoU.nasIPAddress) collectionName="lines";
+        else throw Error("Bad clientPoU "+JSON.stringify(clientPoU));
+
         var deferred= Q.defer();
 
         // Find clientId in the appropriate collection
         clientDB.collection(collectionName).findOne(clientPoU, {}, queryOptions, function(err, pou){
             if(err) deferred.reject(err);
-            else if(!pou) deferred.resolve(null);
             else{
-                // Find the client object given the _id
-                clientDB.collection("clients").findOne({clientId: pou.clientId}, {}, queryOptions, function(err, client){
-                    if(err) deferred.reject(err);
-                    else if(!client) deferred.resolve(null);
-                    else deferred.resolve(client);
+                if (!pou) deferred.resolve(null);
+                else arm.getClient({clientId: pou.clientId}).then(function (client) {
+                    deferred.resolve(client);
+                }, function (err) {
+                    deferred.reject(err);
                 });
             }
         });
@@ -163,9 +197,31 @@ var createArm=function(){
     };
 
     /**
+     * Returns promise containing an object will all Points of Usage for the specified clientId.
+     *
+     * @param clientId
+     * @returns {*} promise
+     */
+    arm.getClientAllPoU=function(clientId){
+        return Q.all(
+            // Connect to all three databases
+            [
+                Q.ninvoke(clientDB.collection("phones").find({clientId: clientId}, {}, queryOptions), "toArray"),
+                Q.ninvoke(clientDB.collection("userNames").find({clientId: clientId}, {}, queryOptions), "toArray"),
+                Q.ninvoke(clientDB.collection("lines").find({clientId: clientId}, {}, queryOptions), "toArray")
+            ]).spread(function(phones, userNames, lines){
+                return {
+                    phones: phones,
+                    userNames: userNames,
+                    lines: lines
+                }
+            });
+    };
+
+    /**
      * Returns a plan object, if applicable decorated with calendars on each service
      * @param planName
-     * @returns {*}
+     * @returns {*} plan object
      */
     arm.getPlan=function(planName){
         var planInfo=plansCache[planName];
@@ -183,20 +239,37 @@ var createArm=function(){
     };
 
     /**
-     * Returns a promise to be resolved with the ClientContext object, which contains a "client" attribute and a
-     * "plan" attribute
-     * @param clientPoU
-     * @returns {*} null if client not found
+     * Returns a promise to be resolved with a client context object, which contains a "client"
+     * attribute and a "plan" attribute
+     * @param client
+     * @returns {*} promise
      */
-    arm.getClientContext=function(clientPoU){
-        var clientContext;
+    arm.getClientContext=function(client){
+        return Q({client:client, plan:arm.getPlan(client.provision.planName)});
+    };
 
-        return arm.getClient(clientPoU).
+    /**
+     * Returns a promise to be resolved with the ClientContext object, which contains a "client" attribute and a
+     * "plan" attribute. Promise is resolve to null if client is not found
+     * @param clientPoU
+     * @returns {*} promise
+     */
+    arm.getGuidedClientContext=function(clientPoU){
+
+        return arm.getGuidedClient(clientPoU).
             then(function(client){
-                if(!client) return null;
-                else{
-                    return {client:client, plan:arm.getPlan(client.provision.planName)};
-                }});
+                return arm.getClientContext(client);
+            });
+    };
+
+    /** Returns promise to be resolved with the client object
+     *
+     * @param query may contain a point of usage or a legacyClientId object
+     * @returns {*} promise
+     */
+    arm.findClient=function(query){
+        if(query.hasOwnProperty("legacyClientId")) return arm.getClient(query);
+        else return arm.getGuidedClient(query);
     };
 
     /**
@@ -325,6 +398,7 @@ var createArm=function(){
     /**
      * Creates or updates the client recurring credits
      * @param clientContext
+     * @param eventDate
      * @eventDate
      */
     arm.updateRecurringCredits=function(clientContext, eventDate){
@@ -527,9 +601,7 @@ var createArm=function(){
      *     }
      */
     arm.writeCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
-
         if(!eventDate) eventDate=new Date();
-        var eventTimestamp=eventDate.getTime();
 
         // Cleanup all service data attached to the credit element
         ccElements.forEach(function (ccElement) {
@@ -668,6 +740,7 @@ var createArm=function(){
      * @param clientContext
      * @param serviceId
      * @param ratingGroup
+     * @return {*} service object
      */
     function guideService(clientContext, serviceId, ratingGroup){
         var i;
@@ -689,6 +762,7 @@ var createArm=function(){
      * @param clientContext
      * @param service
      * @param tag
+     * @return [*] array of credit pools
      */
     function getTargetCreditPools(clientContext, service, tag){
 
@@ -884,7 +958,7 @@ function unitTest() {
     function test() {
         console.log("testing...");
 
-        arm.getClientContext({
+        arm.getGuidedClientContext({
             nasPort: 1001,
             nasIPAddress: "127.0.0.1"
         }).then(function (clientContext) {

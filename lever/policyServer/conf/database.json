@@ -1,4 +1,8 @@
 {
+  "__configDatabaseURL" : "use this property without __ to use a URL not in the environment variable LEVER_CONFIGDATABASE_URL",
+  "__clientDatabaseURL" : "use this property without __ to use a URL not in the environment variable LEVER_CLIENTDATABASE_URL",
+  "__eventDatabaseURL" :  "use this property without __ to use a URL not in the environment variable LEVER_EVENTDATABASE_URL",
+
     "databaseOptions":{
         "db": {
             "retryMiliSeconds": 5000

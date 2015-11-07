@@ -707,8 +707,8 @@ var createPolicyServer=function(hostName){
                     // Server sockets
                     radiusAuthSocket = dgram.createSocket("udp4");
                     radiusAcctSocket = dgram.createSocket("udp4");
-                    radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.IPAddress);
-                    radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.IPAddress);
+                    radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.listenIPAddress);
+                    radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.listenIPAddress);
                     radiusAuthSocket.on("message", onRadiusAuthRequestReceived);
                     radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
                     radiusAuthSocket.on("error", onRadiusSocketError);
@@ -718,7 +718,7 @@ var createPolicyServer=function(hostName){
 
                     // Client sockets
                     // TODO TODO TODO TODO: Turn this into a promise
-                    radiusClientPorts = createRadiusClientPorts(radiusServer, config.node.radius.baseClientPort, config.node.radius.numClientPorts, config.node.radius.IPAddress, initCallback);
+                    radiusClientPorts = createRadiusClientPorts(radiusServer, config.node.radius.baseClientPort, config.node.radius.numClientPorts, config.node.radius.clientIPAddress, initCallback);
                 } else {
                     logger.info("Radius server not started");
                     // Startup done

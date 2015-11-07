@@ -3,11 +3,11 @@
 _REAL_SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 _HOME_DIR=${_REAL_SCRIPT_DIR}/..
 
-# Syncronize database
+# Synchronize database
 (cd ${_HOME_DIR}/../database && toDatabase.sh)
 
 # Delete status file
-rm ${_REAL_SCRIPT_DIR}/testFinished.txt > /dev/null
+rm ${_HOME_DIR}/test/testFinished.txt > /dev/null
 
 # Delete CDR files
 rm /c/var/lever/policyServer/cdr/cdr_* > /dev/null
@@ -18,7 +18,7 @@ rm /c/var/lever/policyServer/cdr/cdr_* > /dev/null
 echo [TEST] Servers launched
 (cd  ${_HOME_DIR}/test && export LOG_CONFIG_FILE=test-client-logging.json && node runUnitTest --hostName test-client &)
 echo [TEST] Client launched
-sleep 30
+sleep 45
 
 # (cd  ${_HOME_DIR} && jasmine)
 echo [TEST] Tests run
