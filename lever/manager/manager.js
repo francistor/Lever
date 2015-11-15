@@ -57,15 +57,15 @@ mApp.get("/", function(req,res){
 // Just checks that configDB will not throw error when invoked
 mApp.use("/dyn", function (req, res, next){
     if(!configDB) res.status(500).send("Error: Configuration database connection closed");
-    if(!clientDB) res.status(500).send("Error: Client database connection closed");
-    if(!eventDB) res.status(500).send("Error: Event database connection closed");
+    else if(!clientDB) res.status(500).send("Error: Client database connection closed");
+    else if(!eventDB) res.status(500).send("Error: Event database connection closed");
     else next();
 });
 
-// Node middleware. Operations that are node specific
+// Node middleware. Operations that are node specific. Passes the node config in req.serverConfig
 mApp.use("/dyn/node/:hostName/", function (req, res, next){
     var hostName=req.params.hostName;
-    if(logger.inDebug) logger.debug("Hostname middleware. Getting node configuration for "+req.params.hostName);
+    if(logger.isDebugEnabled) logger.debug("Hostname middleware. Getting node configuration for "+req.params.hostName);
     configDB.collection("nodes").findOne({hostName: req.params.hostName}, {}, config["queryOptions"], function(err, item){
         if(err){
             logger.error("Node middleware: "+err.message);
@@ -73,7 +73,7 @@ mApp.use("/dyn/node/:hostName/", function (req, res, next){
         } else {
             if (!item) res.status(500).send("HostName " + hostName + " not found");
             else {
-                if(logger.inDebug) logger.debug("Hostname middleware. Got node configuration for"+req.params.hostName);
+                if(logger.isDebugEnabled) logger.debug("Hostname middleware. Got node configuration for "+req.params.hostName);
                 req.serverConfig = item;
                 next();
             }
@@ -84,10 +84,10 @@ mApp.use("/dyn/node/:hostName/", function (req, res, next){
 // Node proxy. Just forwards the request to the specified node
 mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
     var command=req.params.command;
-    var management=req.serverConfig.management;
-    if(logger.inDebug) logger.debug("Node proxy middleware. Requesting "+"http://"+management.IPAddress+":"+management.httpPort+"/agent/"+command);
+    var nodeManagement=req.serverConfig.management;
+    if(logger.isDebugEnabled) logger.debug("Node proxy middleware. Requesting "+"http://"+nodeManagement.IPAddress+":"+nodeManagement.httpPort+"/agent/"+command);
     request({
-            url: "http://"+management.IPAddress+":"+management.httpPort+"/agent/"+command,
+            url: "http://"+nodeManagement.IPAddress+":"+nodeManagement.httpPort+"/agent/"+command,
             timeout: requestTimeout
         },
         function(err, response, body){
@@ -103,9 +103,9 @@ mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
         });
 });
 
-// Get list of nodes
+// Get list of node names in Array
 mApp.get("/dyn/config/nodeList", function(req, res){
-    if(logger.inDebug) logger.debug("Getting nodes list");
+    if(logger.isDebugEnabled) logger.debug("Getting nodes list");
     configDB.collection("nodes").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
         if(!err){
             var nodeList=[];
@@ -127,29 +127,28 @@ mApp.get("/dyn/node/:hostName/nodeConfiguration", function(req, res) {
 // Updates node configuration (_id based)
 mApp.post("/dyn/config/nodeConfiguration", function(req, res){
     req.body._id=ObjectID.createFromHexString(req.body._id);
-    if(logger.inDebug) logger.debug("Updating node configuration for "+req.body._id);
-    configDB.collection("nodes").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
-        if(!err && result===1){
+    if(logger.isDebugEnabled) logger.debug("Updating node configuration for "+JSON.stringify(req.body._id));
+    console.log(req.body);
+    configDB.collection("nodes").updateOne({"_id": _id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+        if(!err && result.modifiedCount===1){
             logger.info("Updated node configuration");
             res.json({});
-        }
-        else if(result===0){
+        } else if(!err && result.modifiedCount===0){
             logger.error("Error updating node configuration: Data was modified by another user");
             res.status(500).send("Configuration modified by another user");
-        }
-        else{
-            logger.error("Error updating node configuration: "+err.message);
-            res.status(500).send(err.message);
+        } else{
+            logger.error("Error updating node configuration: "+(err==null?"":err.message));
+            res.status(500).send((err||{}).message);
         }
     });
 });
 
 // Reads diameter dictionary
 mApp.get("/dyn/config/diameterDictionary", function(req, res){
-    if(logger.inDebug) logger.debug("Getting Diameter dictionary");
+    if(logger.isDebugEnabled) logger.debug("Getting Diameter dictionary");
     configDB.collection("diameterDictionary").findOne({}, {}, config["queryOptions"], function(err, item){
         if(!err){
-            if(item) res.json(item);else res.status(500).send("Error: dictionary not found");
+            if(item) res.json(item); else res.status(500).send("Error: dictionary not found");
         }
         else{
             logger.error("Error getting Diameter dictionary: "+err.message);
@@ -160,20 +159,20 @@ mApp.get("/dyn/config/diameterDictionary", function(req, res){
 
 // Updates diameter dictionary
 mApp.post("/dyn/config/diameterDictionary", function(req, res){
-    req.body._id=ObjectID.createFromHexString(req.body._id);
-    if(logger.inDebug) logger.debug("Updating Diameter dictionary for "+req.body._id);
-    configDB.collection("diameterDictionary").update({"_id": req.body._id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
-        if(!err && result===1){
+    var _id=ObjectID.createFromHexString(req.body._id);
+    if(logger.isDebugEnabled) logger.debug("Updating Diameter dictionary for "+JSON.stringify(req.body._id));
+    configDB.collection("diameterDictionary").updateOne({"_id": _id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
+        if(!err && result.modifiedCount===1){
             logger.info("Updated diameter dictionary");
             res.json({});
         }
-        else if(result===0){
+        else if(!err && result.modifiedCount===0){
             logger.error("Error updating diameter dictionary: Data was modified by another user");
             res.status(500).send("Dictionary modified by another user");
         }
         else{
-            logger.error("Error updating diameter dictionary: "+err.message);
-            res.status(500).send(err.message);
+            logger.error("Error updating diameter dictionary: "+(err==null?"":err.message));
+            res.status(500).send((err||{}).message);
         }
     });
 });
@@ -182,26 +181,62 @@ mApp.post("/dyn/clients/getFullClientData", function(req, res){
     var collectionName, query;
 
     // Get the client context
-    var searchField=req.body.field;
+    var searchField=req.body.searchField;
     if(searchField=="phone"){ query={phone: req.body.phone};}
     else if(searchField=="userName"){ query={userName: req.body.userName};}
     else if(searchField=="line"){ query={nasPort: parseInt(req.body.nasPort), nasIPAddress:req.body.nasIPAddress};}
     else {res.status(500).send("Error: Bad query data"); return;}
 
-    var fullClientData={};
+    var fullClientContext={};
     arm.findClient(query).then(function(client){
-        if(!client) return Q.reject(new Error("Client not found"));
+        if(!client) throw new Error("Client not found");
         return arm.getClientContext(client);
     }).then(function(clientContext){
-        fullClientData.client=clientContext.client;
-        fullClientData.plan=clientContext.plan;
-        return arm.getClientAllPoU(clientContext.client.clientId);
+        fullClientContext=clientContext;
+        return arm.getClientAllPoU(clientContext.client._id);
     }).then(function(pou){
-        fullClientData.pointsOfUsage=pou;
-        res.json(fullClientData);
+        fullClientContext.pointsOfUsage=pou;
+        res.json(fullClientContext);
     }).fail(function(err){
         res.status(500).send("Error: " +  err.message);
     });
+});
+
+
+mApp.post("/dyn/clients/updateClientProvisionData", function(req, res) {
+    var _id = ObjectID.createFromHexString(req.body._id);
+    if (logger.isDebugEnabled) logger.debug("Updating Client provision data: " + JSON.stringify(req.body));
+    clientDB.collection("clients").updateOne({
+        "_id": _id,
+        "provision._version": req.body.provision._version - 1
+    }, {$set:{provision: req.body.provision}}, config["queryOptions"], function (err, result) {
+        if (!err && result.modifiedCount === 1) {
+            logger.info("Updated client");
+            res.json({});
+        }
+        else if (!err && result.modifiedCount === 0) {
+            logger.error("Error updating client provision data: Data was modified by another user");
+            res.status(500).send("Client provision data modified by another user");
+        }
+        else {
+            logger.error("Error updating client: "+(err==null?"":err.message));
+            res.status(500).send((err||{}).message);
+        }
+    });
+});
+
+mApp.post("/dyn/clients/addPoU", function(req, res){
+    var clientId = ObjectID.createFromHexString(req.body.clientId);
+    if (logger.isDebugEnabled) logger.debug("Adding point of usage: " + JSON.stringify(req.body));
+
+    var collectionName;
+    // Find collection where to do the looking up
+    if(req.body.pouType=="phone") collectionName="phones"; else if(req.body.pouType=="userName") collectionName="userNames"; else if(req.body.pouType=="line") collectionName="lines";
+    else {res.status(500).send("Bad Point of usage"); return;}
+
+    var pouDocument={clientId: clientId, }
+    ---< LEFT HERE
+
 });
 
 // Initialization

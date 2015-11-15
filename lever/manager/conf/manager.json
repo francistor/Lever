@@ -5,19 +5,22 @@
 	"port": 9100,
     "databaseOptions":{
         "db": {
-            "retryMiliSeconds": 5000
+            "retryMiliSeconds": 5000,
+            "__bufferMaxEntries": "Set to 0 so that, if error, do not try to buffer the operation. Just throw error",
+            "bufferMaxEntries": 0
         },
         "server": {
             "poolSize": 1,
             "autoReconnect": true,
             "socketOptions":{
-                "connectTimeoutMS": 1000,
-                "socketTimeoutMS": 2000
+                "connectTimeoutMS": 5000,
+                "__socketTimeoutMS": "Represents the time the socket will go away if not used",
+                "socketTimeoutMS": 0
             }
         }
     },
     "queryOptions":{
         "timeout": true,
-        "maxTimeMS": 1000
+        "maxTimeMS": 5000
     }
 }

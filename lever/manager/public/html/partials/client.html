@@ -13,34 +13,34 @@
                 <form name="clientSearchForm" role="form" class="form-inline">
                     <div class="form-group">
                         <label for="searchTypeSelect">Search by: </label>
-                        <select id="searchTypeSelect" class="form-control" ng-model="searchData.field">
+                        <select id="searchTypeSelect" class="form-control" ng-model="searchData.searchField">
                             <option value="phone">Phone</option>
                             <option value="userName">User Name</option>
                             <option value="line">Line</option>
                             <option value="legacyClientId">IT Identifier</option>
                         </select>
                     </div>
-                    <div class="form-group" ng-class="{'has-error': clientSearchForm.phoneText.$invalid}" ng-if="searchData.field=='phone'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.phoneText.$invalid}" ng-if="searchData.searchField=='phone'">
                         <label for="phoneText">Phone: </label>
                         <input type="text" id="phoneText" name="phoneText" class="form-control" ng-model="searchData.phone" ng-pattern="/^[0-9]{7,11}$/">
                     </div>
-                    <div class="form-group"  ng-class="{'has-error': clientSearchForm.userNameText.$invalid}" ng-if="searchData.field=='userName'">
+                    <div class="form-group"  ng-class="{'has-error': clientSearchForm.userNameText.$invalid}" ng-if="searchData.searchField=='userName'">
                         <label for="userNameText">User name: </label>
                         <input type="text" id="userNameText" name="userNameText" class="form-control" ng-model="searchData.userName" ng-pattern="/.+/">
                     </div>
-                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasPortText.$invalid}"ng-if="searchData.field=='line'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasPortText.$invalid}"ng-if="searchData.searchField=='line'">
                         <label for="nasPortText">NAS-Port: </label>
                         <input type="text" id="nasPortText" name="nasPortText" class="form-control" ng-model="searchData.nasPort" ng-pattern="/^[0-9]{1,10}$/">
                     </div>
-                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasIPAddressText.$invalid}" ng-if="searchData.field=='line'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasIPAddressText.$invalid}" ng-if="searchData.searchField=='line'">
                         <label for="nasIPAddressText">NAS-IP-Address: </label>
                         <input type="text" id="nasIPAddressText" name="nasIPAddressText" class="form-control" ng-model="searchData.nasIPAddress"  ng-pattern="/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
                     </div>
-                    <div class="form-group" ng-class="{'has-error': clientSearchForm.legacyClientIdText.$invalid}" ng-if="searchData.field=='legacyClientId'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.legacyClientIdText.$invalid}" ng-if="searchData.searchField=='legacyClientId'">
                         <label for="legacyClientIdText">IT Identifier: </label>
                         <input type="text" id="legacyClientIdText" name="legacyClientIdText" class="form-control" ng-model="searchData.legacyClientId" ng-pattern="/.+/">
                     </div>
-                    <button type="button" ng-if="searchData.field" class="btn btn-primary" ng-click="findClient()">Search
+                    <button type="button" ng-if="searchData.searchField" class="btn btn-primary" ng-click="getFullClientContext()">Search
                         <i class="fa fa-search">
                         </i>
                     </button>
@@ -85,7 +85,7 @@
                                             <option value="2">Blocked</option>
                                         </select>
                                     </div>
-                                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="clientUpdate()">
+                                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="updateClient()">
                                         Update
                                         <i class="fa fa-check">
                                         </i>

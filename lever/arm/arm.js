@@ -140,12 +140,12 @@ var createArm=function(){
     };
 
     /**
-     * Returns a promise to be fulfilled with the client object, given the clientId
+     * Returns a promise to be fulfilled with the client object, given the _id
      * or legacyClientId.
      *
      * Resolves to null if not found
      *
-     * @param clientData object containing clientId:<value> or legacyClientId:<value>
+     * @param clientData object containing _id:<value> or legacyClientId:<value>
      * @returns {*} promise
      */
     arm.getClient=function(clientData){
@@ -180,12 +180,12 @@ var createArm=function(){
 
         var deferred= Q.defer();
 
-        // Find clientId in the appropriate collection
+        // Find _id in the appropriate collection
         clientDB.collection(collectionName).findOne(clientPoU, {}, queryOptions, function(err, pou){
             if(err) deferred.reject(err);
             else{
                 if (!pou) deferred.resolve(null);
-                else arm.getClient({clientId: pou.clientId}).then(function (client) {
+                else arm.getClient({_id: pou.clientId}).then(function (client) {
                     deferred.resolve(client);
                 }, function (err) {
                     deferred.reject(err);
@@ -199,16 +199,16 @@ var createArm=function(){
     /**
      * Returns promise containing an object will all Points of Usage for the specified clientId.
      *
-     * @param clientId
+     * @param _id
      * @returns {*} promise
      */
-    arm.getClientAllPoU=function(clientId){
+    arm.getClientAllPoU=function(_id){
         return Q.all(
             // Connect to all three databases
             [
-                Q.ninvoke(clientDB.collection("phones").find({clientId: clientId}, {}, queryOptions), "toArray"),
-                Q.ninvoke(clientDB.collection("userNames").find({clientId: clientId}, {}, queryOptions), "toArray"),
-                Q.ninvoke(clientDB.collection("lines").find({clientId: clientId}, {}, queryOptions), "toArray")
+                Q.ninvoke(clientDB.collection("phones").find({clientId: _id}, {}, queryOptions), "toArray"),
+                Q.ninvoke(clientDB.collection("userNames").find({clientId: _id}, {}, queryOptions), "toArray"),
+                Q.ninvoke(clientDB.collection("lines").find({clientId: _id}, {}, queryOptions), "toArray")
             ]).spread(function(phones, userNames, lines){
                 return {
                     phones: phones,
@@ -223,19 +223,19 @@ var createArm=function(){
      * @param planName
      * @returns {*} plan object
      */
-    arm.getPlan=function(planName){
-        var planInfo=plansCache[planName];
+    arm.planInfo=function(planName){
+        var thisPlan=plansCache[planName];
 
         // Decorate with calendars
-        if(planInfo){
-            if(planInfo.services) planInfo.services.forEach(function(service){
+        if(thisPlan){
+            if(thisPlan.services) thisPlan.services.forEach(function(service){
                 if(service.calendarName){
                     service.calendar=calendarsCache[service.calendarName];
                 }
             });
         }
 
-        return planInfo;
+        return thisPlan;
     };
 
     /**
@@ -245,12 +245,12 @@ var createArm=function(){
      * @returns {*} promise
      */
     arm.getClientContext=function(client){
-        return Q({client:client, plan:arm.getPlan(client.provision.planName)});
+        return Q({client:client, plan:arm.planInfo(client.provision.planName)});
     };
 
     /**
      * Returns a promise to be resolved with the ClientContext object, which contains a "client" attribute and a
-     * "plan" attribute. Promise is resolve to null if client is not found
+     * "plan" attribute. Promise is resolved to null if client is not found
      * @param clientPoU
      * @returns {*} promise
      */
@@ -258,7 +258,8 @@ var createArm=function(){
 
         return arm.getGuidedClient(clientPoU).
             then(function(client){
-                return arm.getClientContext(client);
+                if(!client) return null;
+                else return arm.getClientContext(client);
             });
     };
 
@@ -551,7 +552,7 @@ var createArm=function(){
                 // Update client credits
                 if(clientContext.client.creditsDirty) {
                     return Q.ninvoke(clientDB.collection("clients"), "updateOne",
-                        {"clientId": clientContext.client.clientId, "credit._version": clientContext.client.credit._version},
+                        {"_id": clientContext.client._id, "credit._version": clientContext.client.credit._version},
                         {$set: {"credit": {_version: clientContext.client.credit._version+1, creditPools: clientContext.client.credit.creditPools}}},
                         writeOptions);
                 }
@@ -612,7 +613,7 @@ var createArm=function(){
         });
 
         var event={
-            clientId: clientContext.client.clientId,
+            clientId: clientContext.client._id,
             eventDate: eventDate,
             sessionId: sessionId,
             ccRequestType: ccRequestType,

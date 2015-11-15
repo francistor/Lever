@@ -23,7 +23,7 @@ db.phones.ensureIndex({phone: 1});
 
 var client1=
 {
-    clientId: 1,
+    _id: ObjectId("000000000000000000000001"),
     provision: {
         legacyClientId: "lci1001",
         legacyClientIdSec: null,
@@ -55,13 +55,13 @@ var client1=
 };
 
 var login1={
-    clientId:1,
+    clientId: ObjectId("000000000000000000000001"),
     userName: "frg@tid.es",
     password: "hash"
 };
 
 var line1={
-    clientId:1,
+    clientId: ObjectId("000000000000000000000001"),
     nasPort: 1001,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.1.1",
@@ -69,18 +69,18 @@ var line1={
 };
 
 var phone1={
-    clientId:1,
+    clientId: ObjectId("000000000000000000000001"),
     phone: "629629769"
 };
 
 var phone11={
-    clientId:1,
+    clientId: ObjectId("000000000000000000000001"),
     phone: "639629769"
 };
 
 var client2=
 {
-    clientId: 2,
+    _id: ObjectId("000000000000000000000002"),
     provision: {
         legacyClientId: "lci1002",
         legacyClientIdSec: null,
@@ -104,13 +104,13 @@ var client2=
 };
 
 var login2={
-    clientId:2,
+    clientId: ObjectId("000000000000000000000002"),
     userName: "frodriguezg@indra.es",
     password: "hash"
 };
 
 var line2={
-    clientId:2,
+    clientId: ObjectId("000000000000000000000002"),
     nasPort: 2001,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.2.1",
@@ -118,7 +118,7 @@ var line2={
 };
 
 var line22={
-    clientId:2,
+    clientId: ObjectId("000000000000000000000002"),
     nasPort: 2002,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.2.1",
@@ -126,13 +126,13 @@ var line22={
 };
 
 var phone2={
-    clientId:2,
+    clientId: ObjectId("000000000000000000000002"),
     phone: "650651194"
 };
 
 var client3=
 {
-    clientId: 3,
+    _id: ObjectId("000000000000000000000003"),
     provision: {
         legacyClientId: "lci1003",
         legacyClientIdSec: null,
@@ -162,20 +162,20 @@ var client3=
 };
 
 var login3={
-    clientId:3,
+    clientId: ObjectId("000000000000000000000003"),
     userName: "francisco.cardosogil@gmail.com",
     password: "hash"
 };
 
 
 var login33={
-    clientId:3,
+    clientId: ObjectId("000000000000000000000003"),
     userName: "emilio.vargas@gmail.com",
     password: "hash"
 };
 
 var line3={
-    clientId:3,
+    clientId: ObjectId("000000000000000000000003"),
     nasPort: 3001,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.3.1",
@@ -183,9 +183,13 @@ var line3={
 };
 
 var phone3={
-    clientId:3,
+    clientId: ObjectId("000000000000000000000003"),
     phone: "650651194"
 };
+
+// -------------------------------------------------------------------------
+// Automated Testing
+// -------------------------------------------------------------------------
 
 // Automated testing client 4
 // FUP with turbo button
@@ -193,8 +197,9 @@ var client4RecurringExpDate=new Date("2015-06-30T22:00:00Z");
 var client4PurchasedExpDate=new Date("2015-06-28T22:00:00Z");
 var client4=
 {
-    clientId: 4,
+    _id: ObjectId("000000000000000000000004"),
     provision: {
+        _version: 1,
         legacyClientId: "lci1004",
         legacyClientIdSec: null,
         legalId: "50825186Q",
@@ -223,13 +228,13 @@ var client4=
 };
 
 var login4={
-    clientId:4,
+    clientId: ObjectId("000000000000000000000004"),
     userName: "test-fup@test",
     password: "test"
 };
 
 var line4={
-    clientId:4,
+    clientId: ObjectId("000000000000000000000004"),
     nasPort: 1004,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.1.4",
@@ -237,7 +242,7 @@ var line4={
 };
 
 var phone4={
-    clientId:4,
+    clientId: ObjectId("000000000000000000000004"),
     phone: "999999994"
 };
 
@@ -245,8 +250,9 @@ var phone4={
 // Speedy night
 var client5=
 {
-    clientId: 5,
+    _id: ObjectId("000000000000000000000005"),
     provision: {
+        _version: 1,
         legacyClientId: "lci1005",
         legacyClientIdSec: null,
         legalId: "50825187Q",
@@ -256,19 +262,19 @@ var client5=
         billingDay: 1
     },
     credit:{
-        _version: 0
+        _version: 1
     }
 
 };
 
 var login5={
-    clientId:4,
+    clientId: ObjectId("000000000000000000000005"),
     userName: "test-speedynight@test",
     password: "test"
 };
 
 var line5={
-    clientId:5,
+    clientId: ObjectId("000000000000000000000005"),
     nasPort: 1005,
     nasIPAddress: "127.0.0.1",
     ipv4Address: "192.168.1.5",
@@ -276,7 +282,7 @@ var line5={
 };
 
 var phone5={
-    clientId:5,
+    clientId: ObjectId("000000000000000000000005"),
     phone: "999999995"
 };
 

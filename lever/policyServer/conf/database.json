@@ -5,14 +5,15 @@
 
     "databaseOptions":{
         "db": {
-            "retryMiliSeconds": 5000
+            "retryMiliSeconds": 5000,
+            "bufferMaxEntries": 0
         },
         "server": {
             "poolSize": 1,
             "autoReconnect": true,
             "socketOptions":{
-                "connectTimeoutMS": 1000,
-                "socketTimeoutMS": 2000
+                "connectTimeoutMS": 5000,
+                "socketTimeoutMS": 0
             }
         }
     },

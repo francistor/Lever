@@ -20,7 +20,7 @@ var client5DefaultExpDate=new Date("2015-12-31T23:00:00Z");
 
 var testItems=[
     // FUP
-    // Client initially has 5GB in recurring credit and 1GB in purchase credit
+    // Client initially has 5GB in recurring credit and 1GB in purchased credit
     // All credit is consumed. In the first UPDATE, 5,5GB (in two ccElements) and thus 0,5GB is granted
     {
         execute: true,
@@ -35,6 +35,7 @@ var testItems=[
             {poolName: "bytesPurchased", bytes: 1024*1024*1024, expirationDate: client4PurchasedExpDate, description: "bytesPurchased pool."}
         ],
         ccElements:[
+            // Returned all 6GB credit
             {ratingGroup: 1, serviceId: 1, _check_resultGranted:{ bytes: 6*1024*1024*1024, expirationDate: client4PurchasedExpDate, fui: false, fua: 0, description: "Granted from 5GB recurring plus 1GB purchased."}}
         ]
     },

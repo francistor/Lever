@@ -1,4 +1,4 @@
-var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers', 'angularBootstrapNavTree', 'xeditable']);
+var managerApp=angular.module("managerApp", ['ngRoute', 'managerControllers', 'angularBootstrapNavTree', 'xeditable', 'angularSpinner']);
 
 managerApp.config(['$routeProvider',
   function($routeProvider) {
@@ -29,6 +29,32 @@ managerApp.config(['$routeProvider',
 managerApp.run(function(editableOptions) {
     editableOptions.theme = 'bs3'; // bootstrap3 theme. Can be also 'bs2', 'default'
 });
+
+/**
+ * Interceptor to force login page in all http requests if a 401 unauthorized is returned
+ *
+ */
+managerApp.factory("httpInterceptor", ['$location', '$q', 'usSpinnerService', function($location, $q, usSpinnerService){
+    return {
+        request: function(config){
+            usSpinnerService.spin("spinner-main");
+            return config;
+        },
+        response: function(response){
+            usSpinnerService.stop("spinner-main");
+            return response;
+        },
+        responseError: function(rejection){
+            usSpinnerService.stop("spinner-main");
+            if(rejection.status==401){
+                //window.location.href=loginPage;
+            }
+            return $q.reject(rejection);
+        }
+    }
+}]).config(['$httpProvider', function($httpProvider){
+    $httpProvider.interceptors.push("httpInterceptor");
+}]);
 
 
 /**
@@ -75,7 +101,7 @@ managerApp.filter('formatResource',function(){
         if(units=="GB") return Math.round(value/(1024*1024*1024))+"GB";
         if(units=="MB") return Math.round(value/(1024*1024))+"GB";
         if(units=="H") return Math.round(value/(3600))+" Hours";
-        if(units=="H") return Math.round(value/(86400))+" Days";
+        if(units=="D") return Math.round(value/(86400))+" Days";
         else return value;
     }
 });

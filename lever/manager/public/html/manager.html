@@ -32,12 +32,14 @@
     <script src="/bower_components/angular-bootstrap-nav-tree/dist/abn_tree_directive.js"></script>
     <script src="/bower_components/angular-xeditable/dist/js/xeditable.js"></script>
 
+    <script src="/bower_components/spin.js/spin.js"></script>
+    <script src="/bower_components/angular-spinner/angular-spinner.js"></script>
+
     <!-- Include the plugin's CSS and JS: -->
 
 </head>
 
 <body>
-
     <div id="wrapper">
 
         <nav class="navbar navbar-default navbar-fixed-top" role="navigation" style="margin-bottom: 0">
@@ -159,6 +161,8 @@
             </div>
             <!-- /.navbar-static-side -->
         </nav>
+
+        <span us-spinner spinner-key="spinner-main"></span>
 
         <div ng-view id="page-wrapper">
 

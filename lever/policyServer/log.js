@@ -12,7 +12,7 @@ var createLogger=function(){
     var transport;
     for(var transportKey in logConfig) if(logConfig.hasOwnProperty(transportKey) && transportKey.substring(0, 1)!="_"){
         transport=new winston.transports[logConfig[transportKey]["type"]](logConfig[transportKey]["properties"]);
-        transport._name=transport;
+        transport._name=transportKey;
         loggerTransports.push(transport);
     }
 

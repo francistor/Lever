@@ -20,7 +20,6 @@ managerControllers.controller("NodeListController", ['$scope', '$http', 'niceAle
 managerControllers.controller("NodeConfigController", ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
 
 		$scope.nodeConfig={};
-        $scope.isDisabled=false;
 
         // Get diameterConfig
         $http({
@@ -58,7 +57,6 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
         // Saves the node
         $scope.updateNodeConfig=function(){
             if(!$scope.nodeConfig) return;
-            $scope.isDisabled=true;
 
             // Update version of diameter config
             $scope.nodeConfig["_version"]++;
@@ -355,25 +353,9 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
 
     // Initialize objects
     $scope.clientData={};
-    $scope.searchData={phone: "629629769"};
+    $scope.searchData={phone: "999999994"};
 
-    var testClientData={
-        client: {},
-        pointsOfUsage:{
-            phones:[
-                "629629769"
-            ],
-            userNames:[
-                "frg@tid.es"
-            ],
-            lines:[
-                "127.0.0.1:1001"
-            ]
-        },
-        plan:{}
-    };
-
-    $scope.findClient=function(){
+    $scope.getFullClientContext=function(){
         $http({
             method  : 'POST',
             url : '/dyn/clients/getFullClientData',
@@ -387,8 +369,38 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
                 $scope.plan=data.plan;
 
                 // Iterate through services in the plan
-
             }
+        }).error(function(data, status, headers, config, statusText){
+            // Shows error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.updateClient=function(){
+        $scope.client.provision["_version"]++;
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/updateClientProvisionData',
+            data    : $scope.client,
+            timeout: requestTimeout
+        }).success(function(data){
+            niceAlert.info("Client updated.");
+        }).error(function(data, status, headers, config, statusText){
+            // Shows error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.addPoU=function(pou){
+
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/addPoU',
+            data    : {pouType: $scope.pouType, pouValue: $scope.pouValue, clientId: $scope.client._id},
+            timeout: requestTimeout
+        }).success(function(data){
+            niceAlert.info("Point of usage Added.");
+            // TODO: Refresh page
         }).error(function(data, status, headers, config, statusText){
             // Shows error message
             niceAlert.error(data);
