@@ -355,6 +355,10 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
     $scope.clientData={};
     $scope.searchData={phone: "999999994"};
 
+    $scope.inArrayComparator=function(actual, expected){
+        return expected.indexOf(actual)!=-1;
+    }
+
     $scope.getFullClientContext=function(){
         $http({
             method  : 'POST',
@@ -367,8 +371,8 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
                 $scope.client=data.client;
                 $scope.pointsOfUsage=data.pointsOfUsage;
                 $scope.plan=data.plan;
-
                 // Iterate through services in the plan
+
             }
         }).error(function(data, status, headers, config, statusText){
             // Shows error message
@@ -392,15 +396,30 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
     };
 
     $scope.addPoU=function(pou){
-
         $http({
             method  : 'POST',
             url : '/dyn/clients/addPoU',
             data    : {pouType: $scope.pouType, pouValue: $scope.pouValue, clientId: $scope.client._id},
             timeout: requestTimeout
         }).success(function(data){
-            niceAlert.info("Point of usage Added.");
-            // TODO: Refresh page
+            niceAlert.info("Point of usage added.");
+            $scope.pouType=null; $scope.pouValue=null;
+            $scope.getFullClientContext();
+        }).error(function(data, status, headers, config, statusText){
+            // Shows error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.deletePoU=function(pouType, pou){
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/deletePoU',
+            data    : {pouType: pouType, pou:pou},
+            timeout: requestTimeout
+        }).success(function(data){
+            niceAlert.info("Point of usage deleted.");
+            $scope.getFullClientContext();
         }).error(function(data, status, headers, config, statusText){
             // Shows error message
             niceAlert.error(data);

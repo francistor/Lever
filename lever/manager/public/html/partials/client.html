@@ -1,6 +1,11 @@
 <br>
 <legend>Client</legend>
 
+<!--
+-------------------------------------------------------------------------------
+SEARCH DATA
+-------------------------------------------------------------------------------
+-->
 <div class="panel panel-success">
     <div class="panel-heading">
         <h4 class="panel-title">
@@ -49,6 +54,12 @@
         </div>
     </div>
 </div>
+
+<!--
+-------------------------------------------------------------------------------
+CLIENT DATA
+-------------------------------------------------------------------------------
+-->
 
 <div class="accordion" id="clientData">
     <div class="accordion-group">
@@ -124,6 +135,12 @@
     </div>
 </div>
 
+<!--
+-------------------------------------------------------------------------------
+POINTS OF USAGE
+-------------------------------------------------------------------------------
+-->
+
 <div class="accordion" id="pouData">
     <div class="accordion-group">
 
@@ -154,7 +171,7 @@
                                         <span>{{pou.phone}}</span>
                                     </td>
                                     <td>
-                                        <i class="fa fa-times"></i>
+                                        <i class="fa fa-times mylink" ng-click="deletePoU('phone', pou)"></i>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -175,7 +192,7 @@
                                         <span>{{pou.userName}}</span>
                                     </td>
                                     <td>
-                                        <i class="fa fa-times"></i>
+                                        <i class="fa fa-times mylink" ng-click="deletePoU('userName', pou)"></i>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -196,7 +213,7 @@
                                         {{pou.nasIPAddress}}:{{pou.nasPort}}
                                     </td>
                                     <td>
-                                        <i class="fa fa-times"></i>
+                                        <i class="fa fa-times mylink" ng-click="deletePoU('line', pou)"></i>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -242,6 +259,12 @@
     </div>
 </div>
 
+<!--
+-------------------------------------------------------------------------------
+SERVICES
+-------------------------------------------------------------------------------
+-->
+
 <div class="accordion" id="servicesData">
     <div class="accordion-group">
         <div class="panel panel-info">
@@ -263,42 +286,38 @@
                                 <table class="table">
                                     <thead>
                                     <tr>
-                                        <th>{{service.description}}</th>
-                                        <th>&nbsp;</th>
-                                        <th>&nbsp;</th>
-                                        <th>&nbsp;</th>
-                                        <th>&nbsp;</th>
+                                        <th>Credits for {{service.description}}</th>
+                                        <th>Remanent Volume</th>
+                                        <th>Remanent Time</th>
+                                        <th>Expiration Date</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <!-- Total credit -->
-                                    <tr>
+                                    <tr ng-repeat="creditPool in client.credit.creditPools | filter: {poolName: service.creditPoolNames||[]} : inArrayComparator">
                                         <td>
-                                            Total Credit
+                                            {{creditPool.poolName}}
                                         </td>
                                         <td>
-                                            XXX [units]
+                                            {{creditPool.bytes|formatResource: 'GB'}}
                                         </td>
                                         <td>
-                                            -
+                                            {{creditPool.seconds|formatResource: 'H'}}
                                         </td>
                                         <td>
-                                            [day/month/year]
-                                        </td>
-                                        <td>
-                                            <button type="button" class="btn btn-info btn-circle"><i class="fa fa-arrow-right"></i>
-                                            </button>
+                                            {{creditPool.expirationDate|date: 'yyyy-MM-dd HH:mm'}}
                                         </td>
                                     </tr>
                                     </tbody>
                                 </table>
 
+
+                                <!-- Recharges -->
                                 <div class="panel panel-warning" ng-if="service.recharges">
                                     <div class="panel-heading">
                                         <h5 class="panel-title">Recharges</h5>
                                     </div>
                                     <div class="panel-body">
-                                        <!-- Recharges -->
+
                                         <table class="table" >
                                             <thead>
                                             <tr>
@@ -317,7 +336,7 @@
                                                     {{recharge.bytes |formatResource:'GB'}}
                                                 </td>
                                                 <td>
-                                                    {{recharge.seconds ? (recharge.seconds)/(3600)+"Hr" : "-"}}
+                                                    {{recharge.seconds |formatResource: 'H'}}
                                                 </td>
                                                 <td>
                                                     1 month

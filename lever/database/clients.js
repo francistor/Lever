@@ -7,19 +7,19 @@ print("----------------------------------");
 
 var db=connect(leverClientDatabase.substring(10));
 db.clients.drop();
-db.clients.ensureIndex({clientId: 1});
-db.clients.ensureIndex({legacyClientId: 1});
+db.clients.createIndex({clientId: 1});
+db.clients.createIndex({"provision.legacyClientId": 1}, {unique: true});
 
 db.lines.drop();
-db.lines.ensureIndex();
-db.lines.ensureIndex({clientId: 1});
-db.lines.ensureIndex({nasIPAddress: 1, nasPort: 1});
+db.lines.createIndex();
+db.lines.createIndex({clientId: 1});
+db.lines.createIndex({nasIPAddress: 1, nasPort: 1}, {unique: true});
 db.userNames.drop();
-db.userNames.ensureIndex({clientId: 1});
-db.userNames.ensureIndex({userName: 1});
+db.userNames.createIndex({clientId: 1});
+db.userNames.createIndex({userName: 1}, {unique: true});
 db.phones.drop();
-db.phones.ensureIndex({clientId: 1});
-db.phones.ensureIndex({phone: 1});
+db.phones.createIndex({clientId: 1});
+db.phones.createIndex({phone: 1}, {unique: true});
 
 var client1=
 {
@@ -184,7 +184,7 @@ var line3={
 
 var phone3={
     clientId: ObjectId("000000000000000000000003"),
-    phone: "650651194"
+    phone: "650651193"
 };
 
 // -------------------------------------------------------------------------
@@ -291,7 +291,7 @@ db.clients.insert(client1);
 db.userNames.insert(login1);
 db.lines.insert(line1);
 db.phones.insert(phone1);
-db.clients.insert(phone11);
+db.phones.insert(phone11);
 db.clients.insert(client2);
 db.userNames.insert(login2);
 db.lines.insert(line2);
@@ -310,15 +310,6 @@ db.clients.insert(client5);
 db.userNames.insert(login5);
 db.lines.insert(line5);
 db.phones.insert(phone5);
-
-// Unique index: legacyClientId, deletedDate
-db.clients.ensureIndex({"provision.legacyClientId": 1}, {unique: true});
-// Unique index: userName
-db.userNames.ensureIndex({userName: 1}, {unique: true});
-// Unique index: userName
-db.lines.ensureIndex({nasPort: 1, nasIPAddress: 1}, {unique: true});
-// Unique index: phones
-db.phones.ensureIndex({phone: 1}, {unique: true});
 
 print("done");
 print("");

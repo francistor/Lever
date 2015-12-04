@@ -93,7 +93,7 @@ var plan1001=
 				{
 					name: "Monthly automatic recharge",
 					bytes: 1024,
-					validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
+					validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
 					creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
 					mayUnderflow: false,
 					creditPool: "bytesRecurring"
@@ -146,7 +146,7 @@ var plan1002=
 			[
 				{
 					name: "1002 ppu",
-					validity: "1h", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
+					validity: "1h", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
 					creationType: 2,		// Pay Per Use
 					mayUnderflow: false,
 					creditPool: "ppu",
@@ -196,7 +196,7 @@ var plan1003=
 					name: "SpeedyNight Recurring",
 					bytes: 0,
 					seconds: 0,
-					validity: "1h", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months
+					validity: "1h", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
 					creationType: 3,		// Recurring
 					mayUnderflow: true,			// Postpaid
 					creditPool: "speedyNightPeakPool",
@@ -230,7 +230,7 @@ var plan1004=
                 {
                     name: "Monthly automatic recharge",
                     bytes: 6*1024*1024*1024,
-                    validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                    validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
                     creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
                     mayUnderflow: false,
                     creditPool: "bytesRecurring"

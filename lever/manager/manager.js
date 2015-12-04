@@ -27,6 +27,9 @@ var eventDB;
 
 // Configuration
 var requestTimeout=1000;
+var phoneRegEx=/[0-9]{9,11}/;
+var lineRegEx=/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{1,10}/;
+var userNameRegEx=/.+@.+/;
 
 // Read manager configuration
 var config=JSON.parse(fs.readFileSync(__dirname+"/conf/manager.json", {encoding: "utf8"}));
@@ -178,7 +181,7 @@ mApp.post("/dyn/config/diameterDictionary", function(req, res){
 });
 
 mApp.post("/dyn/clients/getFullClientData", function(req, res){
-    var collectionName, query;
+    var query;
 
     // Get the client context
     var searchField=req.body.searchField;
@@ -227,15 +230,59 @@ mApp.post("/dyn/clients/updateClientProvisionData", function(req, res) {
 
 mApp.post("/dyn/clients/addPoU", function(req, res){
     var clientId = ObjectID.createFromHexString(req.body.clientId);
-    if (logger.isDebugEnabled) logger.debug("Adding point of usage: " + JSON.stringify(req.body));
+    if(logger.isDebugEnabled) logger.debug("Adding point of usage: " + JSON.stringify(req.body));
 
     var collectionName;
     // Find collection where to do the looking up
     if(req.body.pouType=="phone") collectionName="phones"; else if(req.body.pouType=="userName") collectionName="userNames"; else if(req.body.pouType=="line") collectionName="lines";
     else {res.status(500).send("Bad Point of usage"); return;}
 
-    var pouDocument={clientId: clientId, }
-    ---< LEFT HERE
+    // Check validity
+    var pouDocument;
+    if(collectionName=="phones"){
+        if(!phoneRegEx.test(req.body.pouValue)){
+            res.status(500).send("Bad phone"); return;
+        }
+        pouDocument={clientId: clientId, phone: req.body.pouValue};
+    } else if(collectionName=="userNames"){
+        if(!userNameRegEx.test(req.body.pouValue)){
+            res.status(500).send("Bad username"); return;
+        }
+        pouDocument={clientId: clientId, userName: req.body.pouValue};
+    } else if(collectionName=="lines"){
+        if(!lineRegEx.test(req.body.pouValue)){
+            res.status(500).send("Bad line"); return;
+        }
+        var lineComponents=req.body.pouValue.split(":");
+        pouDocument={clientId: clientId, nasPort: lineComponents[1], nasIPAddress: lineComponents[0]};
+    }
+
+    // Do insertion
+    clientDB.collection(collectionName).insert(pouDocument, null, function(err, result){
+        if(!err){
+            res.json();
+            logger.info("Added point of usage "+ JSON.stringify(req.body));
+        }
+        else res.status(500).send(err.message);
+    });
+});
+
+mApp.post("/dyn/clients/deletePoU", function(req, res){
+    if (logger.isDebugEnabled) logger.debug("Deleting point of usage: " + JSON.stringify(req.body));
+
+    var collectionName;
+    // Find collection where to do the looking up
+    if(req.body.pouType=="phone") collectionName="phones"; else if(req.body.pouType=="userName") collectionName="userNames"; else if(req.body.pouType=="line") collectionName="lines";
+    else {res.status(500).send("Bad Point of usage"); return;}
+
+    // Do deletion
+    clientDB.collection(collectionName).deleteOne({_id: ObjectID.createFromHexString(req.body.pou._id)}, null, function(err, result){
+        if(!err){
+            res.json();
+            logger.info("Deleted point of usage "+ JSON.stringify(req.body));
+        }
+        else res.status(500).send(err.message);
+    });
 
 });
 

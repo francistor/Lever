@@ -278,8 +278,8 @@ var createArm=function(){
      * @param clientContext
      * @param service
      * @param eventDate if not specified, will be taken as current date
-     * @param isOnlineSession if true, randomization and minimum/maximum values are applied. Use false to
-     * show credit to the user or in management applications. Use true in CreditControl
+     * @param isOnlineSession if true, randomization and minimum/maximum values are applied. Use 'false' to
+     * show credit to the user or in management applications. Use 'true' in CreditControl
      * @returns {*}
      */
     arm.getCredit=function(clientContext, service, eventDate, isOnlineSession){
@@ -415,6 +415,7 @@ var createArm=function(){
             if(service.recharges) service.recharges.forEach(function(recharge){
                 if(recharge.creationType===3){
                     creditPool=null;
+                    // Create creditPools array if it does not exist
                     if(!clientContext.client.credit) clientContext.client.credit={_version: 0, creditPools: []};
                     if(!clientContext.client.credit.creditPools) clientContext.client.credit.creditPools=[];
                     // Found recurring recharge
