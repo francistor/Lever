@@ -131,7 +131,6 @@ mApp.get("/dyn/node/:hostName/nodeConfiguration", function(req, res) {
 mApp.post("/dyn/config/nodeConfiguration", function(req, res){
     req.body._id=ObjectID.createFromHexString(req.body._id);
     if(logger.isDebugEnabled) logger.debug("Updating node configuration for "+JSON.stringify(req.body._id));
-    console.log(req.body);
     configDB.collection("nodes").updateOne({"_id": _id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
         if(!err && result.modifiedCount===1){
             logger.info("Updated node configuration");

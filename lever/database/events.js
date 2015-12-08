@@ -13,7 +13,7 @@ db.ccEvents.drop();
 db.captureEvents.drop();
 
 // Add capture event
-var client3Id=clientDb.clients.findOne({"provision.legacyClientId": "lci1003"})._id;
+var client3Id=clientDb.clients.findOne({"provision.legacyClientId": "lci1001"})._id;
 var captureSet1=serviceDb.captureSets.findOne({name: "notificacion morosidad"})._id;
 
 var captureEvent=

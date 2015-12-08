@@ -7,6 +7,7 @@
 
 var fs=require("fs");
 var Q=require("q");
+var request=require('request');
 var MongoClient=require("mongodb").MongoClient;
 
 var createArm=function(){
@@ -273,6 +274,30 @@ var createArm=function(){
         else return arm.getGuidedClient(query);
     };
 
+    /** 
+        Returns promise to be resolved with true if the recharge was executed, false
+        if it was not executed. Rejected if the recharge was not found.
+
+        buyRecharge(clientId, rechargeName) --> doRecharge(client, recharge) --> validate; addRechargeToCreditPool(); writePurchaseEvent
+    */
+    arm.buyRecharge=function(clientContext, serviceName, rechargeName, eventDate){
+
+        // Find the recharge object to pass to doRecharge()
+        var services=clientContext.plan.services;
+        for(var i=0; i<services.length; i++){
+            if(services[i].name==serviceName){
+                for(var j=0; j<(services[i].recharges.length||0); j++){
+                    if(services[i].recharges[j].name==rechargeName){
+                        return doRecharge(clientContext.client, services[i].recharges[j], eventDate);
+                    }
+                }
+            }
+        }
+
+        // No recharge found
+        return Q.reject(new Error("No recharge found for "+serviceName+" with name "+rechargeName));
+    }
+
     /**
      * Returns and object with the credit for the specified service.
      * @param clientContext
@@ -290,7 +315,8 @@ var createArm=function(){
 
         // null values mean no limit
         var creditGranted={
-            bytes: 0,            seconds: 0,
+            bytes: 0,            
+            seconds: 0,
             expirationDate: null,
             fui: false,                             // Final Unit Indication
             fua: service.oocAction                  // Final Unit Action
@@ -472,9 +498,49 @@ var createArm=function(){
         }
     };
 
+
+    /*
+    * Checks the ccElements with no credit and whether there is a per-use recharge for the 
+    * service and, in this case, performs the recharge(s)
+    * 
+    * Returns a promise that will be resolved to true if a new recharge was performed, and false if
+    * no recharge was performed
+    */
+    arm.updatePerUseCredits=function(clientContext, ccElements, sessionId){
+
+        var rechargePromises=[];
+
+        ccElements.forEach(function(ccElement){
+
+            // Check if the credit is exhausted
+            if(ccElement.granted && ccElement.granted.bytes==0 && ccElement.granted.seconds==0){
+                // Check if there is a per-use recharge
+                if(clientContext.plan && clientContext.plan.services) clientContext.plan.services.forEach(function(service){
+                    if(ccElement.service===service.name){
+                        // Find a per-use recharge
+                        if(service.recharges) service.recharges.forEach(function(recharge){
+                            if(recharge.creationType==2){
+                                rechargePromises.push(doRecharge(clientContext.client, recharge));
+                            }
+                        })
+                    }
+                })
+            }
+        });
+
+        // Resolve to true if any of the recharges was performed
+        return Q.all(rechargePromises).then(function(results){
+            for(var i=0; i<results.length; i++){
+                if(results[i]) return true;
+            }
+            return false;
+        });
+    }
+
+
     /**
-     * Returns promise to be solved after writing event and updated credit. Event writing does not cause
-     * failure in promise
+     * Returns promise to be solved after having written the event and having updated the credit.
+     * for the client. The passed ccElements are decorated with the "granted" units 
      *
      * @param clientContext
      * @param ccRequestType
@@ -694,13 +760,91 @@ var createArm=function(){
     // Supporting functions
     ////////////////////////////////////////////////////////////////////////////
 
+    /* 
+        Returns promise resoved to true after executing the recharge, performing validation, recharge and writing of the event.
+        If the recharge was not autorized, the promise resolves to false
+    */
+    function doRecharge(client, recharge, eventDate){
+        var authPromise;
+
+        if(recharge.preauthValidator){
+            // TODO: add price
+            // TODO: add timeout
+            authPromise=Q.ninvoke(request, "post",
+                {url: recharge.preauthValidator, json: {lcid: client.provision.legacyClientId} });
+        } else authPromise=Q(null);
+
+        return authPromise.then(function(){
+            addRechargeToCreditPool(client, recharge, eventDate);
+            // TODO: write event
+            return true;
+        }, function(error){
+            // Authorization error
+            // TODO: treat error?
+            return false;
+        });
+    }
+
+    /* Updates the specified credit elements of a client with the also specified recharge,
+    * adding seconds, bytes and 
+    */
+    function addRechargeToCreditPool(client, recharge, eventDate){
+
+        // Just in case
+        if(!client.credit) client.credit={_version: 1, creditPools: []};
+
+        if(!eventDate) eventDate=new Date();
+
+        // Find the creditPool to recharge
+        var poolIndex=-1;
+        var creditPools=client.credit.creditPools;
+        for(var i=0; i<creditPools.length; i++){
+            if(creditPools[i].poolName==recharge.creditPool){
+                poolIndex=i;
+                break;
+            }
+        };
+
+        // If was expired, remove
+        if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<eventDate.getTime()){
+            creditPools.splice(poolIndex, 1);
+            poolIndex=-1;
+        }
+
+        // If no previous credit pool, create one
+        if(poolIndex=-1){
+            client.credit.creditPools.push({
+                poolName: recharge.creditPool, 
+                seconds: recharge.seconds, 
+                bytes: recharge.bytes,
+                expirationDate: getNextExpirationDate(eventDate, recharge.validity, client.billingDay),
+                mayUnderflow: recharge.mayUnderflow
+            }) 
+        }else {
+            // Add to old non expired recharge
+            // TODO: additive validities
+            var creditPool=creditPools[poolIndex];
+            if(creditPool.bytes && recharge.bytes) creditPool.bytes+=recharge.bytes;
+            // If recharge specifies now no control for bytes, set it!
+            if(!recharge.bytes) creditPool.bytes=null;
+            if(creditPool.seconds && recharge.seconds) creditPool.seconds+=recharge.seconds;
+            // If recharge specifies now no control for seconds, set it!
+            if(!recharge.seconds) creditPool.seconds=null;
+            creditPool.expirationDate=getNextExpirationDate(eventDate, recharge.validity, client.billingDay);
+            creditPool.mayUnderflow=recharge.mayUnderflow;
+        }
+    }
+
     /**
      * Returns the expiration date given the current date and a validity in (M)onths, (D)ays or (H)ours
      * @param eventDate
      * @param validity
      * @param billingDay
      * @returns {*}
+
+     * h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
      */
+     // TODO: validities with extension +h, +d, +m
     function getNextExpirationDate(eventDate, validity, billingDay){
         var elements=/([0-9]+)([CMDHmdh])/.exec(validity);
         if(elements.length!=3) throw new Error("Bad validity specification "+validity);
@@ -940,65 +1084,40 @@ var arm=exports.arm;
 //var brokenEvents=arm.breakCCElement(event, speedyNightCalendar, eventDate);
 //console.log(JSON.stringify(brokenEvents, null, 2));
 
-// TODO: Delete this
 function unitTest() {
 
     arm.setConfigProperties({
-        maxBytesCredit: 2*1024*1024*1024,
+        maxBytesCredit: null,
         maxSecondsCredit: null,
         minBytesCredit: 0,
         minSecondsCredit: 0,
         expirationRandomSeconds: null});
 
-    arm.setupDatabaseConnections().then(function () {
+    arm.setupDatabaseConnections().then(function(){
+        return arm.reloadPlansAndCalendars();
+    }).then(function () {
         test();
-    }, function (err) {
+    }).fail(function(err){
         console.log("Initialization error due to " + err);
-    }).done();
+    });
 
 
     function test() {
         console.log("testing...");
 
+        var theClientContext;
+
         arm.getGuidedClientContext({
-            nasPort: 1001,
+            nasPort: 1006,
             nasIPAddress: "127.0.0.1"
         }).then(function (clientContext) {
-            console.log("");
-            console.log("Credits before event");
-            console.log("---------------------------");
-            console.log(JSON.stringify(clientContext.client.credit.creditPools, null, 2));
-
-            var ccElements = [
-                {ratingGroup: 101, serviceId: 3, used: {bytes: 500, seconds: 3600}},
-                {ratingGroup: 101, serviceId: 4, used: {bytes: 600, seconds: 3600}}
-            ];
-
-            arm.executeCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements, "1-1", null).
-                then(function(){
-                        // Clean up all verbose info
-                        ccElements.forEach(function (ccElement) {
-                            if (ccElement.service) {
-                                ccElement.serviceName = ccElement.service.name;
-                                delete ccElement.service;
-                            }
-                        });
-
-                        console.log("Credits granted");
-                        console.log("---------------------------");
-                        console.log(JSON.stringify(ccElements, null, 2));
-
-                        console.log("");
-                        console.log("Credits after event");
-                        console.log("---------------------------");
-                        console.log(JSON.stringify(clientContext.client.credit.creditPools, null, 2));
-
-                    }, function(err){
-                        console.log("Error updating credit: "+err.message);
-                    });
-
-        }, function (err) {
-            console.log("Error getting client: " + err.message);
+            theClientContext=clientContext;
+            return arm.buyRecharge(clientContext, "lowSpeedIxD", "Daily", null);
+        }).then(function(rechargeDone){
+            console.log("Recharge done: "+rechargeDone);
+            console.log(JSON.stringify(theClientContext));
+        }, function(error){
+            console.log(error.message);
         }).done();
     }
 }

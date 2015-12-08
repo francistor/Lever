@@ -4,19 +4,26 @@ var Q=require("q");
 var arm=require("../arm").arm;
 
 var maxBytesCredit; // undefined
+var maxSecondsCredit;
 
-var client4RecurringExpDate=new Date("2015-06-30T22:00:00Z");
-var client4PurchasedExpDate=new Date("2015-06-28T22:00:00Z");
-var client4SessionDate=new Date("2015-06-15T15:00:00Z");
+var client1RecurringExpDate=new Date("2015-06-30T22:00:00Z");
+var client1PurchasedExpDate=new Date("2015-06-28T22:00:00Z");
+var client1SessionDate=new Date("2015-06-15T15:00:00Z")
+var client1Phone="999999991";
 
-var client5Session1Date=new Date("2015-12-15T13:00:00Z");
-var client5Session1ExpDate=new Date("2015-12-15T19:00:00Z");
-var client5Session2Date=new Date("2015-12-15T17:00:00Z");
-var client5Session2ExpDate=new Date("2015-12-15T19:00:00Z");
-var client5Session3Date=new Date("2015-12-19T21:00:00Z");
-var client5Session3ExpDate=new Date("2015-12-21T06:00:00Z");
-var client5SpeedyNightCreditExpDate=new Date("2015-12-31T23:00:00Z");
-var client5DefaultExpDate=new Date("2015-12-31T23:00:00Z");
+var client2Session1Date=new Date("2015-12-15T13:00:00Z");
+var client2Session1ExpDate=new Date("2015-12-15T19:00:00Z");
+var client2Session2Date=new Date("2015-12-15T17:00:00Z");
+var client2Session2ExpDate=new Date("2015-12-15T19:00:00Z");
+var client2Session3Date=new Date("2015-12-19T21:00:00Z");
+var client2Session3ExpDate=new Date("2015-12-21T06:00:00Z");
+var client2SpeedyNightCreditExpDate=new Date("2015-12-31T23:00:00Z");
+var client2DefaultExpDate=new Date("2015-12-31T23:00:00Z");
+var client2Line={nasPort: 1002, nasIPAddress: "127.0.0.1"};
+
+var client3PurchaseDate=new Date("2016-07-20T08:00:00Z");
+var client3PurchaseExpirationDate=new Date("2016-07-20T22:00:00Z"); // Next day GMT+2
+var client3Login={userName: "test-ixd@test"};
 
 var testItems=[
     // FUP
@@ -26,32 +33,32 @@ var testItems=[
         execute: true,
         type: "CCR",
         subtype: "INITIAL",
-        sessionId: "session-client4-1",
-        description: "Initial CCR for client 4. FUP service",
-        clientPoU: {phone: "999999994"},
-        date: client4SessionDate,
+        sessionId: "session-client1-1",
+        description: "Initial CCR for client 1. FUP service",
+        clientPoU: {phone: client1Phone},
+        date: client1SessionDate,
         _check_creditPoolsBefore:[
-            {poolName: "bytesRecurring", bytes: 5*1024*1024*1024, expirationDate: client4RecurringExpDate, description: "bytesRecurring pool."},
-            {poolName: "bytesPurchased", bytes: 1024*1024*1024, expirationDate: client4PurchasedExpDate, description: "bytesPurchased pool."}
+            {poolName: "bytesRecurring", bytes: 5*1024*1024*1024, expirationDate: client1RecurringExpDate, description: "bytesRecurring pool."},
+            {poolName: "bytesPurchased", bytes: 1024*1024*1024, expirationDate: client1PurchasedExpDate, description: "bytesPurchased pool."}
         ],
         ccElements:[
             // Returned all 6GB credit
-            {ratingGroup: 1, serviceId: 1, _check_resultGranted:{ bytes: 6*1024*1024*1024, expirationDate: client4PurchasedExpDate, fui: false, fua: 0, description: "Granted from 5GB recurring plus 1GB purchased."}}
+            {ratingGroup: 1, serviceId: 1, _check_resultGranted:{ bytes: 6*1024*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Granted from 5GB recurring plus 1GB purchased."}}
         ]
     },
     {
         execute: true,
         type: "CCR",
         subtype: "UPDATE",
-        sessionId: "session-client4-1",
-        description: "Update CCR for client 4. FUP service",
-        clientPoU: {phone: "999999994"},
-        date: new Date(client4SessionDate.getTime()+1000*3600),
+        sessionId: "session-client1-1",
+        description: "Update CCR for client 1. FUP service",
+        clientPoU: {phone: client1Phone},
+        date: new Date(client1SessionDate.getTime()+1000*3600),
         ccElements:[
             // Credit granted is the same for both ccElements, since they are taken from the same service
             // Note that first credit is discounted for all ccElements, and then credit is calculated
-            {ratingGroup: 1, serviceId: 1, used: {bytesDown: 4*1024*1024*1024+512*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client4PurchasedExpDate, fui: false, fua: 0, description: "Consumed 4GB recurring - Granted 0.5GB purchased."}},
-            {ratingGroup: 1, serviceId: 1, used: {bytesDown: 1024*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client4PurchasedExpDate, fui: false, fua: 0, description: "Consumed 1GB recurring plus 0.5GB purchased - Granted 0.5GB purchased."}}
+            {ratingGroup: 1, serviceId: 1, used: {bytesDown: 4*1024*1024*1024+512*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Consumed 4GB recurring - Granted 0.5GB purchased."}},
+            {ratingGroup: 1, serviceId: 1, used: {bytesDown: 1024*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Consumed 1GB recurring plus 0.5GB purchased - Granted 0.5GB purchased."}}
 
         ]
     },
@@ -59,16 +66,16 @@ var testItems=[
         execute: true,
         type: "CCR",
         subtype: "TERMINATE",
-        sessionId: "session-client4-1",
-        description: "Final CCR for client 4. FUP service. Overflow",
-        clientPoU: {phone: "999999994"},
-        date: new Date(client4SessionDate.getTime()+2000*3600),
+        sessionId: "session-client1-1",
+        description: "Final CCR for client 1. FUP service. Overflow",
+        clientPoU: {phone: client1Phone},
+        date: new Date(client1SessionDate.getTime()+2000*3600),
         ccElements:[
             {ratingGroup: 1, serviceId: 1, used: {bytesDown: 600*1024*1024, seconds: 3600}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "bytesRecurring", bytes: 0, expirationDate: client4RecurringExpDate, description: "bytesRecurring pool now 0."},
-            {poolName: "bytesPurchased", bytes: 0, expirationDate: client4PurchasedExpDate, description: "bytesPurchased pool now 0."}
+            {poolName: "bytesRecurring", bytes: 0, expirationDate: client1RecurringExpDate, description: "bytesRecurring pool now 0."},
+            {poolName: "bytesPurchased", bytes: 0, expirationDate: client1PurchasedExpDate, description: "bytesPurchased pool now 0."}
         ]
     },
 
@@ -84,34 +91,34 @@ var testItems=[
         execute: true,
         type: "CCR",
         subtype: "INITIAL",
-        sessionId: "session-client5-1",
-        description: "Initial CCR for session 1 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session1Date.getTime()),
+        sessionId: "session-client2-1",
+        description: "Initial CCR for session 1 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session1Date.getTime()),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow
-            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client5Session1ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
+            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client2Session1ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: 0, expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: 0, expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
     {
         execute: true,
         type: "CCR",
         subtype: "TERMINATE",
-        sessionId: "session-client5-1",
-        description: "Termination CCR for session 1 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session1Date.getTime()+1000*3600),
+        sessionId: "session-client2-1",
+        description: "Termination CCR for session 1 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session1Date.getTime()+1000*3600),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow
             {ratingGroup: 2, serviceId: 1, used: {bytesDown: 1234567, seconds: 3600}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: -3600, expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: -3600, expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
 
@@ -120,34 +127,34 @@ var testItems=[
         execute: true,
         type: "CCR",
         subtype: "INITIAL",
-        sessionId: "session-client5-2",
-        description: "Initial CCR for session 2 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session2Date.getTime()),
+        sessionId: "session-client2-2",
+        description: "Initial CCR for session 2 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session2Date.getTime()),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow
-            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client5Session2ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
+            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client2Session2ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: -3600, expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 20*3600, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: -3600, expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
     {
         execute: true,
         type: "CCR",
         subtype: "TERMINATE",
-        sessionId: "session-client5-2",
-        description: "Termination CCR for session 2 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session2Date.getTime()+5*1000*3600),
+        sessionId: "session-client2-2",
+        description: "Termination CCR for session 2 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session2Date.getTime()+5*1000*3600),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow. Expiration date in INITIAL is not honored!
             {ratingGroup: 2, serviceId: 1, used: {bytesDown: 1234567, seconds: 5*3600}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 17*3600, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: -3600*3, expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 17*3600, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: -3600*3, expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
 
@@ -156,34 +163,46 @@ var testItems=[
         execute: true,
         type: "CCR",
         subtype: "INITIAL",
-        sessionId: "session-client5-3",
-        description: "Initial CCR for session 3 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session3Date.getTime()),
+        sessionId: "session-client2-3",
+        description: "Initial CCR for session 3 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session3Date.getTime()),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow
-            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client5Session3ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
+            {ratingGroup: 2, serviceId: 1, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client2Session3ExpDate, fui: false, fua: 0, description: "Granted until speedy-night timeFrame."}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 17*3600, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: -3600*3, expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 17*3600, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: -3600*3, expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
     {
         execute: true,
         type: "CCR",
         subtype: "TERMINATE",
-        sessionId: "session-client5-3",
-        description: "Termination CCR for session 3 client 5. SpeedyNight service",
-        clientPoU: {nasPort: 1005, nasIPAddress: "127.0.0.1"},
-        date: new Date(client5Session3Date.getTime()+48*1000*3600),
+        sessionId: "session-client2-3",
+        description: "Termination CCR for session 3 client 2. SpeedyNight service",
+        clientPoU: client2Line,
+        date: new Date(client2Session3Date.getTime()+48*1000*3600),
         ccElements:[
             // bytes and seconds are null due to mayUnderflow. Expiration date in INITIAL is not honored!
             {ratingGroup: 2, serviceId: 1, used: {bytesDown: 1234567, seconds: 48*3600}}
         ],
         _check_creditPoolsAfter:[
-            {poolName: "speedyNightPool", seconds: 0, expirationDate: client5SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
-            {poolName: "defaultPool", seconds: -3600*(3+31), expirationDate: client5DefaultExpDate, description: "Default pool."}
+            {poolName: "speedyNightPool", seconds: 0, expirationDate: client2SpeedyNightCreditExpDate, description: "SpeedyNight pool."},
+            {poolName: "defaultPool", seconds: -3600*(3+31), expirationDate: client2DefaultExpDate, description: "Default pool."}
+        ]
+    },
+    {
+        execute: true,
+        type: "BuyRecharge",
+        description: "Buy recharge",
+        clientPoU: client3Login,
+        serviceName: "lowSpeedIxD",
+        rechargeName: "Daily",
+        date: new Date(client3PurchaseDate.getTime()),
+        _check_creditPoolsAfter:[
+            {poolName: "lowSpeed", expirationDate: client3PurchaseExpirationDate, description: "LowSpeed pool update"},
         ]
     }
 
@@ -196,7 +215,7 @@ function unitTest(){
 
     arm.setConfigProperties({
         maxBytesCredit: maxBytesCredit,
-        maxSecondsCredit: null,
+        maxSecondsCredit: maxSecondsCredit,
         minBytesCredit: 0,
         minSecondsCredit: 0,
         expirationRandomSeconds: null});
@@ -251,6 +270,17 @@ function unitTest(){
                     setTimeout(nextTestItem, 0);
                 }).done();
 
+            }).done();
+        } else if(testItem.type=="BuyRecharge"){
+            arm.getGuidedClientContext(testItem.clientPoU).then(function(clientContext){
+                if(!clientContext) throw new Error("Client not found");
+                if(!clientContext.plan) throw new Error("Plan not found");
+                arm.buyRecharge(clientContext, testItem.serviceName, testItem.rechargeName, testItem.date).then(function(isDone){
+                    console.log("Recharge done "+isDone);
+                    if(testItem._check_creditPoolsAfter) checkCreditPools(clientContext, testItem._check_creditPoolsAfter);
+                    // Next test
+                    setTimeout(nextTestItem, 0);
+                }).done();
             }).done();
         }
     }
