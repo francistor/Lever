@@ -27,6 +27,7 @@ var createArm=function(){
     var queryOptions;
     var writeOptions;
 
+    // Logger injected externally
     var logger={};
 
     // Initial values, to be overriden by setConfigProperties
@@ -50,7 +51,7 @@ var createArm=function(){
      *
      * @returns {*}
      */
-    arm.setupDatabaseConnections=function() {
+    arm.pSetupDatabaseConnections=function() {
         var dbParams = {};
         dbParams["configDatabaseURL"]=process.env["LEVER_CONFIGDATABASE_URL"];
         dbParams["clientDatabaseURL"]=process.env["LEVER_CLIENTDATABASE_URL"];
@@ -107,7 +108,7 @@ var createArm=function(){
      *  Applications SHOULD call this function periodically, using
      *  a timer function
      */
-    arm.reloadPlansAndCalendars=function(){
+    arm.pReloadPlansAndCalendars=function(){
         var deferred= Q.defer();
 
         var newPlansCache={}, newCalendarsCache={};
@@ -149,7 +150,7 @@ var createArm=function(){
      * @param clientData object containing _id:<value> or legacyClientId:<value>
      * @returns {*} promise
      */
-    arm.getClient=function(clientData){
+    arm.pGetClient=function(clientData){
         var deferred= Q.defer();
 
         // Find client
@@ -172,7 +173,7 @@ var createArm=function(){
      * @param clientPoU
      * @returns {*} promise
      */
-    arm.getGuidedClient=function(clientPoU){
+    arm.pGetGuidedClient=function(clientPoU){
         var collectionName;
 
         // Find collection where to do the looking up
@@ -186,7 +187,7 @@ var createArm=function(){
             if(err) deferred.reject(err);
             else{
                 if (!pou) deferred.resolve(null);
-                else arm.getClient({_id: pou.clientId}).then(function (client) {
+                else arm.pGetClient({_id: pou.clientId}).then(function (client) {
                     deferred.resolve(client);
                 }, function (err) {
                     deferred.reject(err);
@@ -203,7 +204,7 @@ var createArm=function(){
      * @param _id
      * @returns {*} promise
      */
-    arm.getClientAllPoU=function(_id){
+    arm.pGetClientAllPoU=function(_id){
         return Q.all(
             // Connect to all three databases
             [
@@ -245,7 +246,7 @@ var createArm=function(){
      * @param client
      * @returns {*} promise
      */
-    arm.getClientContext=function(client){
+    arm.pGetClientContext=function(client){
         return Q({client:client, plan:arm.planInfo(client.provision.planName)});
     };
 
@@ -255,12 +256,12 @@ var createArm=function(){
      * @param clientPoU
      * @returns {*} promise
      */
-    arm.getGuidedClientContext=function(clientPoU){
+    arm.pGetGuidedClientContext=function(clientPoU){
 
-        return arm.getGuidedClient(clientPoU).
+        return arm.pGetGuidedClient(clientPoU).
             then(function(client){
                 if(!client) return null;
-                else return arm.getClientContext(client);
+                else return arm.pGetClientContext(client);
             });
     };
 
@@ -269,26 +270,26 @@ var createArm=function(){
      * @param query may contain a point of usage or a legacyClientId object
      * @returns {*} promise
      */
-    arm.findClient=function(query){
-        if(query.hasOwnProperty("legacyClientId")) return arm.getClient(query);
-        else return arm.getGuidedClient(query);
+    arm.pFindClient=function(query){
+        if(query.hasOwnProperty("legacyClientId")) return arm.pGetClient(query);
+        else return arm.pGetGuidedClient(query);
     };
 
     /** 
         Returns promise to be resolved with true if the recharge was executed, false
         if it was not executed. Rejected if the recharge was not found.
 
-        buyRecharge(clientId, rechargeName) --> doRecharge(client, recharge) --> validate; addRechargeToCreditPool(); writePurchaseEvent
+        buyRecharge(clientId, rechargeName) --> pDoRecharge(client, recharge) --> validate; addRechargeToCreditPool(); writePurchaseEvent
     */
-    arm.buyRecharge=function(clientContext, serviceName, rechargeName, eventDate){
+    arm.pBuyRecharge=function(clientContext, serviceName, rechargeName, eventDate){
 
-        // Find the recharge object to pass to doRecharge()
+        // Find the recharge object to pass to pDoRecharge()
         var services=clientContext.plan.services;
         for(var i=0; i<services.length; i++){
             if(services[i].name==serviceName){
                 for(var j=0; j<(services[i].recharges.length||0); j++){
                     if(services[i].recharges[j].name==rechargeName){
-                        return doRecharge(clientContext.client, services[i].recharges[j], eventDate);
+                        return pDoRecharge(clientContext.client, services[i].recharges[j], eventDate);
                     }
                 }
             }
@@ -296,7 +297,7 @@ var createArm=function(){
 
         // No recharge found
         return Q.reject(new Error("No recharge found for "+serviceName+" with name "+rechargeName));
-    }
+    };
 
     /**
      * Returns and object with the credit for the specified service.
@@ -307,7 +308,7 @@ var createArm=function(){
      * show credit to the user or in management applications. Use 'true' in CreditControl
      * @returns {*}
      */
-    arm.getCredit=function(clientContext, service, eventDate, isOnlineSession){
+    arm.getCreditFromClientContext=function(clientContext, service, eventDate, isOnlineSession){
 
         if(!service) throw new Error("arm.getCredit: service is empty");
 
@@ -387,7 +388,7 @@ var createArm=function(){
      * @param seconds
      * @param tag
      */
-    arm.discountCredit=function(clientContext, service, bytes, seconds, tag){
+    arm.discountCreditFromClientContext=function(clientContext, service, bytes, seconds, tag){
         var toDiscount;
 
         getTargetCreditPools(clientContext, service, tag).forEach(function(creditPool){
@@ -423,59 +424,40 @@ var createArm=function(){
     };
 
     /**
-     * Creates or updates the client recurring credits
+     *  Creates or updates the client recurring credits
      * @param clientContext
      * @param eventDate
-     * @eventDate
+     * @returns {*}
      */
-    arm.updateRecurringCredits=function(clientContext, eventDate){
+    arm.pUpdateRecurringCreditsFromClientContext=function(clientContext, eventDate){
 
         if(!eventDate) eventDate=new Date();
 
-        var i;
-        var creditPools;
         var creditPool;
-        var currentTime=eventDate.getTime();
+        var rechargeNeeded;
+        var pRecharges=[];
 
         if(clientContext.plan && clientContext.plan.services) clientContext.plan.services.forEach(function(service){
             if(service.recharges) service.recharges.forEach(function(recharge){
                 if(recharge.creationType===3){
-                    creditPool=null;
-                    // Create creditPools array if it does not exist
-                    if(!clientContext.client.credit) clientContext.client.credit={_version: 0, creditPools: []};
-                    if(!clientContext.client.credit.creditPools) clientContext.client.credit.creditPools=[];
-                    // Found recurring recharge
-                    creditPools=clientContext.client.credit.creditPools;
-                    for(i=0; i<creditPools.length; i++){
-                        if(creditPools[i].poolName==recharge.creditPool){
-                            // Found credit pool for the recurring recharge
-                            creditPool=creditPools[i];
-                            if(creditPool.expirationDate && creditPool.expirationDate.getTime()<currentTime){
-                                // Credit expired. Do refill
-                                creditPool.bytes=recharge.bytes;
-                                creditPool.seconds=recharge.seconds;
-                                creditPool.expirationDate=getNextExpirationDate(eventDate, recharge.validity, clientContext.client.provision.billingDay);
-                                clientContext.client.creditsDirty=true;
-                            }
+                    rechargeNeeded=false;
+
+                    // Check if recharge needed
+                    for(var i=0; i<recharge.resources.length; i++) {
+                        creditPool=getPoolWithName(clientContext.client, recharge.resources[i].creditPool);
+
+                        if(!creditPool || (creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime())){
+                            rechargeNeeded=true;
                             break;
                         }
                     }
-                    if(creditPool==null){
-                        // No credit pool. Create one
-                        creditPool={
-                            poolName: recharge.creditPool,
-                            mayUnderflow: recharge.mayUnderflow,
-                            bytes: recharge.bytes,
-                            seconds: recharge.seconds,
-                            expirationDate: getNextExpirationDate(eventDate, recharge.validity, clientContext.client.provision.billingDay),
-                            calendarTags: recharge.calendarTags
-                        };
-                        creditPools.push(creditPool);
-                        clientContext.client.creditsDirty=true;
-                    }
+
+                    if(rechargeNeeded) pRecharges.push(pDoRecharge(clientContext.client, recharge));
                 }
             });
         });
+
+        if(pRecharges.length==0) return Q(false); else return Q.all(pRecharges);
     };
 
     /**
@@ -483,7 +465,7 @@ var createArm=function(){
      * @param clientContext
      * @param eventDate
      */
-    arm.cleanupCredits=function(clientContext, eventDate){
+    arm.cleanupCreditsFromClientContext=function(clientContext, eventDate){
 
         if(!eventDate) eventDate=new Date();
         var currentTime=eventDate.getTime();
@@ -500,13 +482,14 @@ var createArm=function(){
 
 
     /*
+    * Returns a promise that will be resolved to true if a new recharge was performed, and false if
+    * no recharge was performed.
+
     * Checks the ccElements with no credit and whether there is a per-use recharge for the 
     * service and, in this case, performs the recharge(s)
     * 
-    * Returns a promise that will be resolved to true if a new recharge was performed, and false if
-    * no recharge was performed
     */
-    arm.updatePerUseCredits=function(clientContext, ccElements, sessionId){
+    arm.pUpdatePerUseCreditsFromClientContext=function(clientContext, ccElements, sessionId){
 
         var rechargePromises=[];
 
@@ -520,7 +503,7 @@ var createArm=function(){
                         // Find a per-use recharge
                         if(service.recharges) service.recharges.forEach(function(recharge){
                             if(recharge.creationType==2){
-                                rechargePromises.push(doRecharge(clientContext.client, recharge));
+                                rechargePromises.push(pDoRecharge(clientContext.client, recharge));
                             }
                         })
                     }
@@ -576,7 +559,7 @@ var createArm=function(){
      * that particular pool as the date of the end of the current timeFrame. Since expiration date is set
      * to the minimum among all credit pools, expiration will be at most the date of the next timeframe
      */
-    arm.executeCCRequest=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
+    arm.pExecuteCCRequest=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
 
         if(!ccElements) throw new Error("executeCCRequest: empty ccElements");
         if(!eventDate) eventDate=new Date();
@@ -590,28 +573,30 @@ var createArm=function(){
                 // Do discount
                 if(ccElement.service){
                     brokenCCElements.forEach(function(brokenCCElement){
-                        arm.discountCredit(clientContext, ccElement.service, (brokenCCElement["used"]||{}).bytesDown, (brokenCCElement["used"]||{}).seconds, brokenCCElement.tag);
+                        arm.discountCreditFromClientContext(clientContext, ccElement.service, (brokenCCElement["used"]||{}).bytesDown, (brokenCCElement["used"]||{}).seconds, brokenCCElement.tag);
                     });
                 } else throw new Error("Service not found for event "+JSON.stringify(ccElement));
             });
         }
 
         // Update recurrent credits and do cleanup
-        arm.updateRecurringCredits(clientContext, eventDate);
-        arm.cleanupCredits(clientContext, eventDate);
+        return arm.pUpdateRecurringCreditsFromClientContext(clientContext, eventDate).
+           then(function(recurringRechargeDone){
+           if(recurringRechargeDone) clientContext.client.creditsDirty=true;
+        }).then(function(){
+            arm.cleanupCreditsFromClientContext(clientContext, eventDate);
 
-        // Decorate with credits granted
-        if(ccRequestType==arm.INITIAL_REQUEST || ccRequestType==arm.UPDATE_REQUEST){
-            ccElements.forEach(function(ccElement){
-                // Decorate with service if not done yet
-                if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
-                if(ccElement.service) ccElement.granted=arm.getCredit(clientContext, ccElement.service, eventDate, true);
-                else throw new Error("Service not found for event "+JSON.stringify(ccElement));
-            });
-        }
+            // Decorate with credits granted
+            if(ccRequestType==arm.INITIAL_REQUEST || ccRequestType==arm.UPDATE_REQUEST){
+                ccElements.forEach(function(ccElement){
+                    // Decorate with service if not done yet
+                    if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
+                    if(ccElement.service) ccElement.granted=arm.getCreditFromClientContext(clientContext, ccElement.service, eventDate, true);
+                });
+            }
 
-        // WriteEvent and update credits
-        return arm.writeCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
+            // WriteEvent and update credits
+            return arm.pWriteCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
             catch(function(err){
                 if(logger.isErrorEnabled) logger.error("Could not write ccEvent due to %s", err.message);
             }).
@@ -630,8 +615,10 @@ var createArm=function(){
                 if(updateResult==null) return null;
 
                 // Check that one item was written. Otherwise fail due to concurrent modification
-                if(updateResult.result["n"]==1) return null; else throw new Error("Concurrent modification error");
+                if(updateResult.modifiedCount==1) return null; else throw new Error("Concurrent modification error");
             });
+
+        });
     };
 
     /**
@@ -668,7 +655,7 @@ var createArm=function(){
      *          fua: <>
      *     }
      */
-    arm.writeCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
+    arm.pWriteCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
         if(!eventDate) eventDate=new Date();
 
         // Cleanup all service data attached to the credit element
@@ -761,23 +748,24 @@ var createArm=function(){
     ////////////////////////////////////////////////////////////////////////////
 
     /* 
-        Returns promise resoved to true after executing the recharge, performing validation, recharge and writing of the event.
-        If the recharge was not autorized, the promise resolves to false
+        Returns promise resolved to true after executing the recharge, performing validation, recharge and writing of the event.
+        If the recharge was not authorized, the promise resolves to false
     */
-    function doRecharge(client, recharge, eventDate){
+    function pDoRecharge(client, recharge, eventDate){
         var authPromise;
+        var rechargeDone;
 
-        if(recharge.preauthValidator){
+        if(recharge.preAuthValidator){
             // TODO: add price
             // TODO: add timeout
             authPromise=Q.ninvoke(request, "post",
-                {url: recharge.preauthValidator, json: {lcid: client.provision.legacyClientId} });
+                {url: recharge.preAuthValidator, json: {lcid: client.provision.legacyClientId} });
         } else authPromise=Q(null);
 
         return authPromise.then(function(){
-            addRechargeToCreditPool(client, recharge, eventDate);
+            rechargeDone=addRechargeToCreditPool(client, recharge, eventDate);
             // TODO: write event
-            return true;
+            return rechargeDone;
         }, function(error){
             // Authorization error
             // TODO: treat error?
@@ -786,53 +774,78 @@ var createArm=function(){
     }
 
     /* Updates the specified credit elements of a client with the also specified recharge,
-    * adding seconds, bytes and 
+    * adding seconds, bytes
+    *
+    * Returns whether there was a recharge done or not
     */
     function addRechargeToCreditPool(client, recharge, eventDate){
 
+        var rechargeDone=false;
+
         // Just in case
         if(!client.credit) client.credit={_version: 1, creditPools: []};
+        if(!client.credit.creditPools) client.credit.creditPools=[];
 
         if(!eventDate) eventDate=new Date();
 
-        // Find the creditPool to recharge
-        var poolIndex=-1;
-        var creditPools=client.credit.creditPools;
-        for(var i=0; i<creditPools.length; i++){
-            if(creditPools[i].poolName==recharge.creditPool){
-                poolIndex=i;
-                break;
+        for(var r=0; r<recharge.resources.length; r++) {
+            // Find the creditPool to recharge
+            var poolIndex=-1;
+            var resource;
+            var creditPools=client.credit.creditPools;
+            for(var i=0; i<creditPools.length; i++){
+                if(creditPools[i].poolName==recharge.resources[r].creditPool){
+                    poolIndex=i;
+                    break;
+                }
             }
-        };
 
-        // If was expired, remove
-        if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<eventDate.getTime()){
-            creditPools.splice(poolIndex, 1);
-            poolIndex=-1;
+            // If was expired, remove
+            if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<eventDate.getTime()){
+                creditPools.splice(poolIndex, 1);
+                poolIndex=-1;
+
+                // Recharge not done yet, but dirty
+                rechargeDone=true;
+            }
+
+            resource=recharge.resources[r];
+
+            // If no previous credit pool, create one
+            if(poolIndex=-1){
+                client.credit.creditPools.push({
+                    poolName: resource.creditPool,
+                    seconds: resource.seconds,
+                    bytes: resource.bytes,
+                    expirationDate: getNextExpirationDate(null, eventDate, resource.validity, client.provision.billingDay),
+                    mayUnderflow: resource.mayUnderflow,
+                    calendarTags: resource.calendarTags
+                });
+                rechargeDone=true;
+            }else {
+                // Add to old non expired recharge
+                var creditPool=creditPools[poolIndex];
+
+                // Check if the recurring recharge is not expired
+                if(recharge.creationType==3 && creditPool.expirationDate && creditPool.expirationDate.getTime()>eventDate.getTime()){
+                    // No need to recharge
+                } else {
+                    if (creditPool.bytes && resource.bytes) creditPool.bytes += recharge.resources[r].bytes;
+                    // If recharge specifies now no control for bytes, set it!
+                    if (!recharge.resources[r].bytes) creditPool.bytes = null;
+                    if (creditPool.seconds && resource.seconds) creditPool.seconds += resource.seconds;
+                    // If recharge specifies now no control for seconds, set it!
+                    if (!resource.seconds) creditPool.seconds = null;
+                    creditPool.expirationDate = getNextExpirationDate(creditPool.expirationDate, eventDate, resource.validity, client.provision.billingDay);
+                    creditPool.mayUnderflow = resource.mayUnderflow;
+                    creditPool.calendarTags = resource.calendarTags;
+
+                    rechargeDone = true;
+                }
+            }
         }
 
-        // If no previous credit pool, create one
-        if(poolIndex=-1){
-            client.credit.creditPools.push({
-                poolName: recharge.creditPool, 
-                seconds: recharge.seconds, 
-                bytes: recharge.bytes,
-                expirationDate: getNextExpirationDate(eventDate, recharge.validity, client.billingDay),
-                mayUnderflow: recharge.mayUnderflow
-            }) 
-        }else {
-            // Add to old non expired recharge
-            // TODO: additive validities
-            var creditPool=creditPools[poolIndex];
-            if(creditPool.bytes && recharge.bytes) creditPool.bytes+=recharge.bytes;
-            // If recharge specifies now no control for bytes, set it!
-            if(!recharge.bytes) creditPool.bytes=null;
-            if(creditPool.seconds && recharge.seconds) creditPool.seconds+=recharge.seconds;
-            // If recharge specifies now no control for seconds, set it!
-            if(!recharge.seconds) creditPool.seconds=null;
-            creditPool.expirationDate=getNextExpirationDate(eventDate, recharge.validity, client.billingDay);
-            creditPool.mayUnderflow=recharge.mayUnderflow;
-        }
+        return rechargeDone;
     }
 
     /**
@@ -844,38 +857,44 @@ var createArm=function(){
 
      * h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
      */
-     // TODO: validities with extension +h, +d, +m
-    function getNextExpirationDate(eventDate, validity, billingDay){
-        var elements=/([0-9]+)([CMDHmdh])/.exec(validity);
-        if(elements.length!=3) throw new Error("Bad validity specification "+validity);
+    function getNextExpirationDate(currentExpirationDate, eventDate, validity, billingDay){
+        var elements=/(\+*)([0-9]+)([CMDHmdh])/.exec(validity);
+        if(elements.length!=4) throw new Error("Bad validity specification "+validity);
+
+        var isIncremental=(elements[1]==='+');
+        var numberOfUnits=parseInt(elements[2]||'1');
+        var unitType=elements[3];
 
         // Copy object. Otherwise object passed would be modified
         var expDate=new Date(eventDate.getTime());
 
-        if(elements[2]=="C"){
-            if(eventDate.getDate()>=billingDay) expDate.setMonth(expDate.getMonth()+1);
+        // If specification says the current expiration date should be incremented
+        if(isIncremental && (currentExpirationDate.getTime()>eventDate.getTime())) expDate=currentExpirationDate;
+
+        if(unitType=="C"){
+            if(eventDate.getDate()>=billingDay) expDate.setMonth(expDate.getMonth()+numberOfUnits);
             expDate.setDate(billingDay);
             expDate.setHours(0, 0, 0, 0);
         }
-        if(elements[2]=="M"){
-            expDate.setMonth(expDate.getMonth()+1, 1);
+        if(unitType=="M"){
+            expDate.setMonth(expDate.getMonth()+numberOfUnits, 1);
             expDate.setHours(0, 0, 0, 0);
         }
-        else if(elements[2]=="D"){
-            expDate.setDate(expDate.getDate()+1);
+        else if(unitType=="D"){
+            expDate.setDate(expDate.getDate()+numberOfUnits);
             expDate.setHours(0, 0, 0, 0);
         }
-        else if(elements[2]=="H"){
-            expDate.setHours(expDate.getHours()+1, 0, 0, 0);
+        else if(unitType=="H"){
+            expDate.setHours(expDate.getHours()+numberOfUnits, 0, 0, 0);
         }
-        else if(elements[2]=="m"){
-            expDate.setMonth(expDate.getMonth()+1);
+        else if(unitType=="m"){
+            expDate.setMonth(expDate.getMonth()+numberOfUnits);
         }
-        else if(elements[2]=="d"){
-            expDate.setDate(eventDate.getDate()+1);
+        else if(unitType=="d"){
+            expDate.setDate(eventDate.getDate()+numberOfUnits);
         }
-        else if(elements[2]=="h"){
-            expDate.setHours(expDate.getHours()+1);
+        else if(unitType=="h"){
+            expDate.setHours(expDate.getHours()+numberOfUnits);
         }
         return expDate;
     }
@@ -1009,6 +1028,17 @@ var createArm=function(){
         // Should never be here
         return emptyTimeFrameData;
     }
+
+    function getPoolWithName(client, poolName){
+
+        if(!client.credit) return null;
+        if(!client.credit.creditPools) return null;
+
+        for(var i=0; i<client.credit.creditPools.length; i++){
+            if(client.credit.creditPools[i].poolName==poolName) return client.credit.creditPools[i];
+        }
+        return null;
+    }
     
     return arm;
 };
@@ -1093,8 +1123,8 @@ function unitTest() {
         minSecondsCredit: 0,
         expirationRandomSeconds: null});
 
-    arm.setupDatabaseConnections().then(function(){
-        return arm.reloadPlansAndCalendars();
+    arm.pSetupDatabaseConnections().then(function(){
+        return arm.pReloadPlansAndCalendars();
     }).then(function () {
         test();
     }).fail(function(err){
@@ -1107,12 +1137,12 @@ function unitTest() {
 
         var theClientContext;
 
-        arm.getGuidedClientContext({
+        arm.pGetGuidedClientContext({
             nasPort: 1006,
             nasIPAddress: "127.0.0.1"
         }).then(function (clientContext) {
             theClientContext=clientContext;
-            return arm.buyRecharge(clientContext, "lowSpeedIxD", "Daily", null);
+            return arm.pBuyRecharge(clientContext, "lowSpeedIxD", "Daily", null);
         }).then(function(rechargeDone){
             console.log("Recharge done: "+rechargeDone);
             console.log(JSON.stringify(theClientContext));

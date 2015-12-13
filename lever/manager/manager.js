@@ -190,12 +190,12 @@ mApp.post("/dyn/clients/getFullClientData", function(req, res){
     else {res.status(500).send("Error: Bad query data"); return;}
 
     var fullClientContext={};
-    arm.findClient(query).then(function(client){
+    arm.pFindClient(query).then(function(client){
         if(!client) throw new Error("Client not found");
-        return arm.getClientContext(client);
+        return arm.pGetClientContext(client);
     }).then(function(clientContext){
         fullClientContext=clientContext;
-        return arm.getClientAllPoU(clientContext.client._id);
+        return arm.pGetClientAllPoU(clientContext.client._id);
     }).then(function(pou){
         fullClientContext.pointsOfUsage=pou;
         res.json(fullClientContext);
@@ -297,7 +297,7 @@ Q.all(
         clientDB=b;
         eventDB=c;
         arm.setDatabaseConnections(configDB, clientDB, eventDB, config["databaseOptions"], config["queryOptions"]);
-        return arm.reloadPlansAndCalendars();
+        return arm.pReloadPlansAndCalendars();
     }).then(function(){
         // Start server
         mApp.listen(config["port"]);

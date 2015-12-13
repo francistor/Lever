@@ -86,7 +86,6 @@ db.userNames.insert(login1);
 db.lines.insert(line1);
 db.phones.insert(phone1);
 
-// Automated testing client 5
 // Speedy night
 var client2=
 {

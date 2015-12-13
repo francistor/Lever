@@ -92,23 +92,33 @@ var plan1001=
             [
                 {
                     name: "Monthly automatic recharge",
-                    bytes: 6*1024*1024*1024,
-                    validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
                     creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
-                    mayUnderflow: false,
-                    creditPool: "bytesRecurring"
+                    resources:
+                    [
+                        {
+                            bytes: 6*1024*1024*1024,
+                            validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
+                            mayUnderflow: false,
+                            creditPool: "bytesRecurring"
+                        }
+                    ]
                 },
                 {
                     name: "Recharge one day",
-                    bytes: 1024*1024*1024,
-                    validity: "1D",
                     creationType: 4,		// Portal
-                    mayUnderflow: false,
-                    creditPool: "bytesPurchased",
                     price:
+                        [
+                            {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
+                            {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
+                        ],
+                    resources:
                     [
-                        {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
-                        {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
+                        {
+                            bytes: 1024*1024*1024,
+                            validity: "1D",
+                            mayUnderflow: false,
+                            creditPool: "bytesPurchased"
+                        }
                     ]
                 }
             ]
@@ -125,7 +135,6 @@ var plan1001=
         }
     ]
 };
-
 
 var plan1002=
 {
@@ -150,26 +159,35 @@ var plan1002=
                 [
                     {
                         name: "SpeedyNight 20H Recurring",
-                        seconds: 20*3600,
-                        validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
                         creationType: 3,		// Recurring
-                        mayUnderflow: false,	// Postpaid
-                        creditPool: "speedyNightPool",
-                        calendarTags: ["offPeak"]
+                        resources:
+                        [
+                            {
+                                seconds: 20*3600,
+                                validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                                mayUnderflow: false,	// Postpaid
+                                creditPool: "speedyNightPool",
+                                calendarTags: ["offPeak"]
+                            }
+                        ]
                     },
                     {
                         name: "Default traffic",
-                        seconds: 0,             // Placeholder to count seconds
-                        validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
                         creationType: 3,		// Recurring
-                        mayUnderflow: true,	    // Postpaid
-                        creditPool: "defaultPool"
+                        resources:
+                        [
+                            {
+                                seconds: 0,             // Placeholder to count seconds
+                                validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                                mayUnderflow: true,	    // Postpaid
+                                creditPool: "defaultPool"
+                            }
+                        ]
                     }
                 ]
             }
         ]
 };
-
 
 var plan1003=
 {
@@ -193,23 +211,33 @@ var plan1003=
 			[
 				{
 					name: "Daily",
-					preauthValidator: "http://localhost:8888/success",
-					validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-					creationType: 2,		// Pay Per Use
-					mayUnderflow: false,
-					creditPool: "lowSpeed"
+                    creationType: 2,		// Pay Per Use
+					preAuthValidator: "http://localhost:8888/success",
+                    resources:
+                    [
+                        {
+                            validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
+                            mayUnderflow: false,
+                            creditPool: "lowSpeed"
+                        }
+                    ]
 				},
 				{
 					name: "Purchasable",
-					validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-					creationType: 4,		// Portal
-					mayUnderflow: false,
-					creditPool: "lowSpeed",
+                    creationType: 4,		// Portal
 					price:
 					[
 						{startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
 						{startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
-					]
+					],
+                    resources:
+                    [
+                        {
+                            validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
+                            mayUnderflow: false,
+                            creditPool: "lowSpeed"
+                        }
+                    ]
 				}
 			]
 		}

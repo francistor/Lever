@@ -679,7 +679,7 @@ var createPolicyServer=function(hostName){
                     minSecondsCredit: 0,
                     expirationRandomSeconds: null});
 
-                return arm.reloadPlansAndCalendars();
+                return arm.pReloadPlansAndCalendars();
 
             }).then(function(){
                 // Create management HTTP server
