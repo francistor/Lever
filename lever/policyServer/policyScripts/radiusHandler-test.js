@@ -71,6 +71,7 @@ var accountingRequestHandler=function(radiusServer, message){
             if(userName=="acceptUser"){
                 // Resolve with response
                 radiusServer.sendReply(message, "Accounting-Response", {"Reply-Message": "Accounting received"});
+                cdrWriter.writeCDR(message);
             } else if(userName=="errorUser"){
                 // Discard packet
                 stats.incrementServerError(message._clientName);

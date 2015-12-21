@@ -71,6 +71,7 @@ var createLogger=function(){
     };
 
     logger.updateLevelCache();
+
     return logger;
 };
 

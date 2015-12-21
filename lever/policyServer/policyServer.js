@@ -171,7 +171,7 @@ var createPolicyServer=function(hostName){
                 catch(err){
                     if(logger.isErrorEnabled){
                         logger.error("Error in diameter response callback: %s", err.message);
-                        if(logger.isVerboseEnabled) logger.verbose(err.stack);
+                        if(logger.isDebugEnabled) logger.verbose(err.stack);
                     }
                 }
             } else{
@@ -209,7 +209,7 @@ var createPolicyServer=function(hostName){
             if(logger.isErrorEnabled){
                 logger.error("Could not encode and send reply: %s", err.message);
                 logger.error("Closing connection");
-                if(logger.isVerboseEnabled) logger.verbose(err.stack);
+                if(logger.isDebugEnabled) logger.verbose(err.stack);
             }
             connection.end();
         }
@@ -259,7 +259,7 @@ var createPolicyServer=function(hostName){
                 if(logger.isErrorEnabled){
                     logger.error("Could not encode and send request: "+e.message);
                     logger.error("Closing connection");
-                    if(logger.isVerboseEnabled) logger.verbose(err.stack);
+                    if(logger.isDebugEnabled) logger.verbose(err.stack);
                 }
                 connection.end();
                 if(callback) callback(err);
@@ -424,7 +424,7 @@ var createPolicyServer=function(hostName){
                 if(logger.isErrorEnabled){
                     logger.error("Radius handler error in %s", dispatcher["Radius"][radiusMessage.code].functionName);
                     logger.error(err.message);
-                    if(logger.isVerboseEnabled) logger.verbose(err.stack);
+                    if(logger.isDebugEnabled) logger.verbose(err.stack);
                 }
             }
         }
@@ -517,8 +517,8 @@ var createPolicyServer=function(hostName){
             };
         }
         catch(err){
-            if(logger.isErrorEnabled) logger.error("Could not send radius request: %s"+err.message);
-            if(logger.isVerboseEnabled) logger.verbose(err.stack);
+            if(logger.isErrorEnabled) logger.error("Could not send radius request: %s", err.message);
+            if(logger.isDebugEnabled) logger.verbose(err.stack);
 
             radiusStats.incrementClientError(ipAddress);
             if(callback) callback(err, null);
@@ -643,7 +643,7 @@ var createPolicyServer=function(hostName){
         }
         catch(err){
             if(logger.isErrorEnabled) logger.error("Error in radius response callback: %s", err.message);
-            if(logger.isVerboseEnabled) logger.verbose(err.stack);
+            if(logger.isDebugEnabled) logger.verbose(err.stack);
         }
     };
 
@@ -726,7 +726,7 @@ var createPolicyServer=function(hostName){
                 }
             }, function (err) {
                 if(logger.isErrorEnabled) logger.error("Configuration initialization error: %s", err.message);
-                if(logger.isVerboseEnabled) logger.verbose(err.stack);
+                if(logger.isDebugEnabled) logger.verbose(err.stack);
                 if (initCallback) initCallback(err);
             }
         ).done();

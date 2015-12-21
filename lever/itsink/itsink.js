@@ -1,6 +1,7 @@
 var express=require("express");
 var bodyParser=require('body-parser');
 
+var listenPort=8888;
 process.title="itsink";
 
 // Instantiate express
@@ -20,7 +21,7 @@ mApp.get("/success", function(req, res){
 	res.json({});
 });
 
-mApp.listen(8888, function(){
-	console.log("itsink started");
+mApp.listen(listenPort, function(){
+	console.log("itsink listening in port "+listenPort);
 });
 

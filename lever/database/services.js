@@ -96,10 +96,10 @@ var plan1001=
                     resources:
                     [
                         {
+                            creditPool: "bytesRecurring",
                             bytes: 6*1024*1024*1024,
                             validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
-                            mayUnderflow: false,
-                            creditPool: "bytesRecurring"
+                            mayUnderflow: false
                         }
                     ]
                 },
@@ -114,10 +114,10 @@ var plan1001=
                     resources:
                     [
                         {
+                            creditPool: "bytesPurchased",
                             bytes: 1024*1024*1024,
                             validity: "1D",
-                            mayUnderflow: false,
-                            creditPool: "bytesPurchased"
+                            mayUnderflow: false
                         }
                     ]
                 }
@@ -163,10 +163,10 @@ var plan1002=
                         resources:
                         [
                             {
+                                creditPool: "speedyNightPool",
                                 seconds: 20*3600,
                                 validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
                                 mayUnderflow: false,	// Postpaid
-                                creditPool: "speedyNightPool",
                                 calendarTags: ["offPeak"]
                             }
                         ]
@@ -177,10 +177,11 @@ var plan1002=
                         resources:
                         [
                             {
+                                creditPool: "defaultPool",
                                 seconds: 0,             // Placeholder to count seconds
                                 validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
-                                mayUnderflow: true,	    // Postpaid
-                                creditPool: "defaultPool"
+                                mayUnderflow: true	    // Postpaid
+
                             }
                         ]
                     }
@@ -216,9 +217,9 @@ var plan1003=
                     resources:
                     [
                         {
+                            creditPool: "lowSpeed",
                             validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-                            mayUnderflow: false,
-                            creditPool: "lowSpeed"
+                            mayUnderflow: false
                         }
                     ]
 				},
@@ -233,9 +234,9 @@ var plan1003=
                     resources:
                     [
                         {
+                            creditPool: "lowSpeed",
                             validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-                            mayUnderflow: false,
-                            creditPool: "lowSpeed"
+                            mayUnderflow: false
                         }
                     ]
 				}

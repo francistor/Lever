@@ -1,1 +1,0 @@
-Configuración en database. Usar "fromDatabase.sh" para obtener versión actualizada

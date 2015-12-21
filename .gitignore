@@ -4,6 +4,7 @@ nohup.out
 *~
 .idea/
 out.txt
+testFinished.txt
 node_modules/
 bower_components/
 **/log/**
