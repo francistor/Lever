@@ -75,7 +75,7 @@ function unitTest(){
             arm.pGetGuidedClientContext(testItem.clientPoU).then(function(clientContext){
                 if(!clientContext) throw new Error("Client not found");
                 if(!clientContext["plan"]) throw new Error("Plan not found");
-                arm.pBuyRecharge(clientContext, testItem.serviceName, testItem.rechargeName, testItem.date).then(function(/*isDone*/){
+                arm.pBuyRecharge(clientContext, testItem.rechargeName, testItem.date).then(function(/*isDone*/){
                     if(testItem._check_creditPoolsAfter) checkCreditPools(clientContext, testItem._check_creditPoolsAfter);
                     // Next test
                     setTimeout(nextTestItem, 0);

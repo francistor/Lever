@@ -265,94 +265,83 @@ SERVICES
 -------------------------------------------------------------------------------
 -->
 
-<div class="accordion" id="servicesData">
+<div class="accordion" id="planData">
     <div class="accordion-group">
         <div class="panel panel-info">
             <div class="panel-heading">
                 <div class="accordion-heading">
                     <h4 class="panel-title">
-                    <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#servicesData" data-target="#servicesDataPanel">
+                    <a class="accordion-toggle mylink" data-toggle="collapse" data-parent="#planData" data-target="#planDataPanel">
                         Plan {{plan.description}}
                     </a>
                     </h4>
                 </div>
             </div>
-            <div id="servicesDataPanel" class="accordion-body collapse">
+            <div id="planDataPanel" class="accordion-body collapse">
                 <div class="panel-body">
                     <div class="row">
                         <div class="col-md-12">
-                            <div ng-repeat="service in plan.services">
-                                <!-- total credit -->
-                                <table class="table">
-                                    <thead>
-                                    <tr>
-                                        <th>Credits for {{service.description}}</th>
-                                        <th>Remanent Volume</th>
-                                        <th>Remanent Time</th>
-                                        <th>Expiration Date</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr ng-repeat="creditPool in client.credit.creditPools | filter: {poolName: service.creditPoolNames||[]} : inArrayComparator">
-                                        <td>
-                                            {{creditPool.poolName}}
-                                        </td>
-                                        <td>
-                                            {{creditPool.bytes|formatResource: 'GB'}}
-                                        </td>
-                                        <td>
-                                            {{creditPool.seconds|formatResource: 'H'}}
-                                        </td>
-                                        <td>
-                                            {{creditPool.expirationDate|date: 'yyyy-MM-dd HH:mm'}}
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
 
+                            <!-- Credits -->
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Credit</th>
+                                    <th>Remanent Volume</th>
+                                    <th>Remanent Time</th>
+                                    <th>Expiration Date</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <!-- TODO: Filter to show only credits that are usable in current plan -->
+                                <tr ng-repeat="creditPool in client.credit.creditPools">
+                                    <td>
+                                        {{creditPool.poolName}}
+                                    </td>
+                                    <td>
+                                        {{creditPool.bytes|formatResource: 'GB'}}
+                                    </td>
+                                    <td>
+                                        {{creditPool.seconds|formatResource: 'H'}}
+                                    </td>
+                                    <td>
+                                        {{creditPool.expirationDate|date: 'yyyy-MM-dd HH:mm'}}
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
 
-                                <!-- Recharges -->
-                                <div class="panel panel-warning" ng-if="service.recharges">
-                                    <div class="panel-heading">
-                                        <h5 class="panel-title">Recharges</h5>
-                                    </div>
-                                    <div class="panel-body">
+                            <!-- Recharges -->
+                            <table class="table" >
+                                <thead>
+                                <tr>
+                                    <th>Recharge Name</th>
+                                    <th>Volume</th>
+                                    <th>Time</th>
+                                    <th>Expiration</th>
+                                </tr>
+                                </thead>
 
-                                        <table class="table" >
-                                            <thead>
-                                            <tr>
-                                                <th>Recharge Name</th>
-                                                <th>Volume</th>
-                                                <th>Time</th>
-                                                <th>Expiration</th>
-                                            </tr>
-                                            </thead>
+                                <tr ng-repeat="recharge in plan.recharges">
+                                    <td>
+                                        {{recharge.description}}
+                                    </td>
+                                    <td>
+                                        {{recharge.bytes |formatResource:'GB'}}
+                                    </td>
+                                    <td>
+                                        {{recharge.seconds |formatResource: 'H'}}
+                                    </td>
+                                    <td>
+                                        1 month
+                                    </td>
+                                    <td>
+                                        <button type="button" ng-if="recharge.creationType==4" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i></button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
 
-                                            <tr ng-repeat="recharge in service.recharges">
-                                                <td>
-                                                    {{recharge.name}}
-                                                </td>
-                                                <td>
-                                                    {{recharge.bytes |formatResource:'GB'}}
-                                                </td>
-                                                <td>
-                                                    {{recharge.seconds |formatResource: 'H'}}
-                                                </td>
-                                                <td>
-                                                    1 month
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-
-                            </div>
                         </div>
                     </div>
                 </div>

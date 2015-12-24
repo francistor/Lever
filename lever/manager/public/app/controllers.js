@@ -353,11 +353,11 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
 
     // Initialize objects
     $scope.clientData={};
-    $scope.searchData={phone: "999999994"};
+    $scope.searchData={phone: "999999991"};
 
     $scope.inArrayComparator=function(actual, expected){
         return expected.indexOf(actual)!=-1;
-    }
+    };
 
     $scope.getFullClientContext=function(){
         $http({

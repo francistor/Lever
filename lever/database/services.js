@@ -88,40 +88,6 @@ var plan1001=
             creditPoolNames: ["bytesRecurring", "bytesPurchased"],
             sortCreditsByExpirationDate: false,      // If false, credits will be used in the order declared in "creditPoolNames"
             oocAction: 0,                            // 0: Terminate. 1: Redirect. 2: Restrict_access, 3: None
-            recharges:
-            [
-                {
-                    name: "Monthly automatic recharge",
-                    creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
-                    resources:
-                    [
-                        {
-                            creditPool: "bytesRecurring",
-                            bytes: 6*1024*1024*1024,
-                            validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
-                            mayUnderflow: false
-                        }
-                    ]
-                },
-                {
-                    name: "Recharge one day",
-                    creationType: 4,		// Portal
-                    price:
-                        [
-                            {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
-                            {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
-                        ],
-                    resources:
-                    [
-                        {
-                            creditPool: "bytesPurchased",
-                            bytes: 1024*1024*1024,
-                            validity: "1D",
-                            mayUnderflow: false
-                        }
-                    ]
-                }
-            ]
         },
         {
             name: "FUPLow",
@@ -133,6 +99,42 @@ var plan1001=
             roamingAreas: null,
             preAuthorized: false
         }
+    ],
+    recharges:
+    [
+        {
+            name: "Monthly automatic recharge",
+            description: "Monthly automatic recharge",
+            creationType: 3,		// 1: initial, 2: per_use, 3: recurring, 4: portal, 5: external
+            resources:
+            [
+                {
+                    creditPool: "bytesRecurring",
+                    bytes: 6*1024*1024*1024,
+                    validity: "1M", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle, C: until the end of the billing cycle
+                    mayUnderflow: false
+                }
+            ]
+        },
+        {
+            name: "Recharge one day",
+            description: "Recharge one day",
+            creationType: 4,		// Portal
+            price:
+            [
+                {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
+                {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
+            ],
+            resources:
+            [
+                {
+                    creditPool: "bytesPurchased",
+                    bytes: 1024*1024*1024,
+                    validity: "1D",
+                    mayUnderflow: false
+                }
+            ]
+        }
     ]
 };
 
@@ -141,53 +143,54 @@ var plan1002=
     name: "1002",
     description: "20 hours free on nights and weekends. Otherwise pay per time of usage",
     services:
-        [
-            {
-                name: "speedyNight",
-                description: "Speedy Night and Weekend",
-                serviceId: 1,
-                ratingGroup: 2,
-                subscribable: false,
-                autoActivated: true,
-                roamingAreas: null,
-                preAuthorized: true,
-                calendarName: "speedyNight",
-                creditPoolNames: ["speedyNightPool", "defaultPool"],
-                oocAction: 3,                           // 0: Terminate. 1: Redirect. 2: Restrict_access. 3: Nothing
-                sortCreditsByExpirationDate: false,     // If false, credits will be used in the order declared in "creditPoolNames"
-                recharges:
-                [
-                    {
-                        name: "SpeedyNight 20H Recurring",
-                        creationType: 3,		// Recurring
-                        resources:
-                        [
-                            {
-                                creditPool: "speedyNightPool",
-                                seconds: 20*3600,
-                                validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
-                                mayUnderflow: false,	// Postpaid
-                                calendarTags: ["offPeak"]
-                            }
-                        ]
-                    },
-                    {
-                        name: "Default traffic",
-                        creationType: 3,		// Recurring
-                        resources:
-                        [
-                            {
-                                creditPool: "defaultPool",
-                                seconds: 0,             // Placeholder to count seconds
-                                validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
-                                mayUnderflow: true	    // Postpaid
-
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
+    [
+        {
+            name: "speedyNight",
+            description: "Speedy Night and Weekend",
+            serviceId: 1,
+            ratingGroup: 2,
+            subscribable: false,
+            autoActivated: true,
+            roamingAreas: null,
+            preAuthorized: true,
+            calendarName: "speedyNight",
+            creditPoolNames: ["speedyNightPool", "defaultPool"],
+            oocAction: 3,                           // 0: Terminate. 1: Redirect. 2: Restrict_access. 3: Nothing
+            sortCreditsByExpirationDate: false,     // If false, credits will be used in the order declared in "creditPoolNames"
+        }
+    ],
+    recharges:
+    [
+        {
+            name: "SpeedyNight 20H Recurring",
+            description: "SpeedyNight 20H Recurring",
+            creationType: 3,		// Recurring
+            resources:
+            [
+                {
+                    creditPool: "speedyNightPool",
+                    seconds: 20*3600,
+                    validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                    mayUnderflow: false,	// Postpaid
+                    calendarTags: ["offPeak"]
+                }
+            ]
+        },
+        {
+            name: "Default traffic",
+            description: "Default traffic",
+            creationType: 3,		// Recurring
+            resources:
+            [
+                {
+                    creditPool: "defaultPool",
+                    seconds: 0,             // Placeholder to count seconds
+                    validity: "1C", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until next billing cycle
+                    mayUnderflow: true	    // Postpaid
+                }
+            ]
+        }
+    ]
 };
 
 var plan1003=
@@ -197,52 +200,76 @@ var plan1003=
 	services:
 	[
 		{
-			name: "lowSpeedIxD",
-			description: "Low speed IxD",
+			name: "lowSpeed",
+			description: "Low speed",
 			serviceId: 0,
-			ratingGroup: 102,
+			ratingGroup: 0,
 			subscribable: false,
 			autoActivated: true,
 			roamingAreas: null,
             preAuthorized: true,
             creditPoolNames: ["lowSpeed"],
             sortCreditsByExpirationDate: true,      // If false, credits will be used in the order declared in "creditPoolNames"
-            oocAction: 1,                           // 0: Terminate. 1: Redirect. 2: Restrict_access
-			recharges: 
-			[
-				{
-					name: "Daily",
-                    creationType: 2,		// Pay Per Use
-					preAuthValidator: "http://localhost:8888/success",
-                    resources:
-                    [
-                        {
-                            creditPool: "lowSpeed",
-                            validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-                            mayUnderflow: false
-                        }
-                    ]
-				},
-				{
-					name: "Purchasable",
-                    creationType: 4,		// Portal
-					price:
-					[
-						{startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
-						{startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
-					],
-                    resources:
-                    [
-                        {
-                            creditPool: "lowSpeed",
-                            validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
-                            mayUnderflow: false
-                        }
-                    ]
-				}
-			]
-		}
-	]
+            oocAction: 1                            // 0: Terminate. 1: Redirect. 2: Restrict_access
+		},
+        {
+            name: "highSpeed",
+            description: "High speed",
+            serviceId: 0,
+            ratingGroup: 1,
+            subscribable: false,
+            autoActivated: true,
+            roamingAreas: null,
+            preAuthorized: true,
+            creditPoolNames: ["highSpeed"],
+            sortCreditsByExpirationDate: true,      // If false, credits will be used in the order declared in "creditPoolNames"
+            oocAction: 1                            // 0: Terminate. 1: Redirect. 2: Restrict_access
+        }
+	],
+    recharges:
+    [
+        {
+            name: "Daily",
+            description: "Daily",
+            creationType: 2,		// Pay Per Use
+            preAuthURL: "http://localhost:8888/authorize/success",
+            commitURL: "http://localhost:8888/commit/success",
+            resources:
+            [
+                {
+                    creditPool: "lowSpeed",
+                    validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
+                    mayUnderflow: false
+                },
+                {
+                    creditPool: "highSpeed",
+                    bytes: 10000000,
+                    validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
+                    mayUnderflow: false
+                }
+            ]
+        },
+        {
+            name: "Turbo",
+            description: "Turbo",
+            isAvailable: function(){return true;},
+            creationType: 4,		// Portal
+            price:
+            [
+                {startDate: ISODate("2013-01-01T03:00:00Z"), endDate: ISODate("2015-07-07T03:00:00Z"), value: 17.99},
+                {startDate: ISODate("2015-07-07T03:00:00Z"), value: 19.99}
+            ],
+            resources:
+            [
+                {
+                    creditPool: "highSpeed",
+                    bytes: 10000000,
+                    validity: "1D", 		// h: hours, d: days, m: months, H until the end of $$ hours, D: until the end of $$ days, M: until the end of $$ months, C: until the end of the billing cycle
+                    mayUnderflow: false
+                }
+            ]
+        }
+    ]
 };
 
 db.plans.insert(plan1001);

@@ -36,7 +36,9 @@ var createArm=function(){
         maxSecondsCredit:null,
         minBytesCredit:0,
         minSecondsCredit:0,
-        expirationRandomSeconds: null
+        expirationRandomSeconds: null,
+        ooCQuarantineSeconds: 300,
+        itSinkTimeoutMillis: 1000
     };
 
     // Cache of configured plans
@@ -91,7 +93,13 @@ var createArm=function(){
      * Setup configuration properties
      */
     arm.setConfigProperties=function(cp){
-        configProperties=cp;
+        configProperties.maxBytesCredit=cp.maxBytesCredit||configProperties.maxBytesCredit;
+        configProperties.maxSecondsCredit=cp.maxSecondsCredit||configProperties.maxSecondsCredit;
+        configProperties.minBytesCredit=cp.minBytesCredit||configProperties.minBytesCredit;
+        configProperties.minSecondsCredit=cp.minSecondsCredit||configProperties.minSecondsCredit;
+        configProperties.expirationRandomSeconds=cp.expirationRandomSeconds||configProperties.expirationRandomSeconds;
+        configProperties.ooCQuarantineSeconds=cp.ooCQuarantineSeconds||configProperties.ooCQuarantineSeconds;
+        configProperties.itSinkTimeoutMillis=cp.itSinkTimeoutMillis||configProperties.itSinkTimeoutMillis;
     };
 
     /**
@@ -247,6 +255,16 @@ var createArm=function(){
      * @returns {*} promise
      */
     arm.pGetClientContext=function(client){
+        // Create index for pool names
+        if(!client.credit) client.credit={};
+
+        if(client.credit.creditPools){
+            client.credit.creditsIndex={};
+            client.credit.creditPools.forEach(function(creditPool){
+                client.credit.creditsIndex[creditPool.name]=creditPool;
+            });
+        }
+
         return Q({client:client, plan:arm.planInfo(client.provision.planName)});
     };
 
@@ -276,27 +294,53 @@ var createArm=function(){
     };
 
     /** 
-        Returns promise to be resolved with true if the recharge was executed, false
-        if it was not executed. Rejected if the recharge was not found.
+        Returns promise to be resolved when the recharge is executed and written to database
+
+         The promise resolves to:
+         - true if recharge authorized and performed
+         - false if the recharge was not applicable or not authorized
+         - failure in case of authorization error
 
         buyRecharge(clientId, rechargeName) --> pDoRecharge(client, recharge) --> validate; addRechargeToCreditPool(); writePurchaseEvent
     */
-    arm.pBuyRecharge=function(clientContext, serviceName, rechargeName, eventDate){
+    arm.pBuyRecharge=function(clientContext, rechargeName, eventDate){
 
         // Find the recharge object to pass to pDoRecharge()
-        var services=clientContext.plan.services;
-        for(var i=0; i<services.length; i++){
-            if(services[i].name==serviceName){
-                for(var j=0; j<(services[i].recharges.length||0); j++){
-                    if(services[i].recharges[j].name==rechargeName){
-                        return pDoRecharge(clientContext.client, services[i].recharges[j], eventDate);
+        var recharges=clientContext.plan.recharges||[];
+        for(var i=0; i<recharges.length; i++){
+            if(recharges[i].name==rechargeName) return pDoRecharge(clientContext.client, recharges[i], eventDate).then(function(rechargeDone){
+
+               if(!rechargeDone) return false;
+
+                // Update client credits in database
+               return Q.ninvoke(clientDB.collection("clients"), "updateOne",
+                    {"_id": clientContext.client._id, "credit._version": clientContext.client.credit._version},
+                    {$set: {"credit": {_version: clientContext.client.credit._version+1, creditPools: clientContext.client.credit.creditPools}}}, writeOptions).
+                    then(function(updateResult){
+                    // Commit to itSink
+                    if(updateResult.modifiedCount==1){
+                        if((clientContext.client.credit||{}).commitRequests) for(var k=0; k<clientContext.client.credit.commitRequests.length; k++){
+                            if(logger.isDebugEnabled) logger.debug("Invoking commit for %s", clientContext.client.provision.legacyClientId);
+                            request.post(clientContext.client.credit.commitRequests[k], function(error, response, body){
+                                // Commit response received
+                                if(!error){
+                                    if(logger.isVerboseEnabled) logger.verbose("Purchase commited with result code %d", response.statusCode);
+                                } else {
+                                    if(logger.isErrorEnabled) logger.error("Could not commit purchase for %d due to %s", clientContext.client._id, error.message);
+                                }
+                            });
+                        }
+                        return true;
+                    } else{
+                        if(logger.isErrorEnabled) logger.error("Concurrent modification exception for %d", clientContext.client._id);
+                        throw new Error("Concurrent modification exception");
                     }
-                }
-            }
+                });
+            });
         }
 
         // No recharge found
-        return Q.reject(new Error("No recharge found for "+serviceName+" with name "+rechargeName));
+        return Q.reject(new Error("No recharge with name "+rechargeName));
     };
 
     /**
@@ -338,6 +382,9 @@ var createArm=function(){
 
         // Add credit by iterating through the credit pools
         getTargetCreditPools(clientContext, service, timeFrameData.tag).forEach(function(creditPool){
+            // Skip expired pools
+            if(creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime()) return;
+
             // null values will remain unmodified (they mean unlimited credit)
             if(typeof(creditPool.bytes)=='undefined'||creditPool.mayUnderflow) creditGranted.bytes=null; else if(creditPool.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=creditPool.bytes;
             if(typeof(creditPool.seconds)=='undefined'||creditPool.mayUnderflow) creditGranted.seconds=null; else if(creditPool.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=creditPool.seconds;
@@ -424,104 +471,6 @@ var createArm=function(){
     };
 
     /**
-     *  Creates or updates the client recurring credits
-     * @param clientContext
-     * @param eventDate
-     * @returns {*}
-     */
-    arm.pUpdateRecurringCreditsFromClientContext=function(clientContext, eventDate){
-
-        if(!eventDate) eventDate=new Date();
-
-        var creditPool;
-        var rechargeNeeded;
-        var pRecharges=[];
-
-        if(clientContext.plan && clientContext.plan.services) clientContext.plan.services.forEach(function(service){
-            if(service.recharges) service.recharges.forEach(function(recharge){
-                if(recharge.creationType===3){
-                    rechargeNeeded=false;
-
-                    // Check if recharge needed
-                    for(var i=0; i<recharge.resources.length; i++) {
-                        creditPool=getPoolWithName(clientContext.client, recharge.resources[i].creditPool);
-
-                        if(!creditPool || (creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime())){
-                            rechargeNeeded=true;
-                            break;
-                        }
-                    }
-
-                    if(rechargeNeeded) pRecharges.push(pDoRecharge(clientContext.client, recharge));
-                }
-            });
-        });
-
-        if(pRecharges.length==0) return Q(false); else return Q.all(pRecharges);
-    };
-
-    /**
-     * Deletes expired
-     * @param clientContext
-     * @param eventDate
-     */
-    arm.cleanupCreditsFromClientContext=function(clientContext, eventDate){
-
-        if(!eventDate) eventDate=new Date();
-        var currentTime=eventDate.getTime();
-
-        // Loop backwards, because we are modifying the array while iterating through it, and array
-        // is re-indexed when removing an element
-        var creditPools=(clientContext.client.credit||{}).creditPools;
-        if(creditPools) for(var i=0; i<creditPools.length; i++){
-            if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<currentTime){
-                creditPools.splice(i--, 1);
-            }
-        }
-    };
-
-
-    /*
-    * Returns a promise that will be resolved to true if a new recharge was performed, and false if
-    * no recharge was performed.
-
-    * Checks the ccElements with no credit and whether there is a per-use recharge for the 
-    * service and, in this case, performs the recharge(s)
-    * 
-    */
-    arm.pUpdatePerUseCreditsFromClientContext=function(clientContext, ccElements, sessionId){
-
-        var rechargePromises=[];
-
-        ccElements.forEach(function(ccElement){
-
-            // Check if the credit is exhausted
-            if(ccElement.granted && ccElement.granted.bytes==0 && ccElement.granted.seconds==0){
-                // Check if there is a per-use recharge
-                if(clientContext.plan && clientContext.plan.services) clientContext.plan.services.forEach(function(service){
-                    if(ccElement.service===service.name){
-                        // Find a per-use recharge
-                        if(service.recharges) service.recharges.forEach(function(recharge){
-                            if(recharge.creationType==2){
-                                rechargePromises.push(pDoRecharge(clientContext.client, recharge));
-                            }
-                        })
-                    }
-                })
-            }
-        });
-
-        // Resolve to true if any of the recharges was performed
-        return Q.all(rechargePromises).then(function(results){
-            for(var i=0; i<results.length; i++){
-                if(results[i]) return true;
-            }
-            return false;
-        });
-    }
-
-
-    /**
      * Returns promise to be solved after having written the event and having updated the credit.
      * for the client. The passed ccElements are decorated with the "granted" units 
      *
@@ -579,45 +528,81 @@ var createArm=function(){
             });
         }
 
+        var perUseRecharges=[];
+        var perUseRechargeNamesPushed=[];
+
         // Update recurrent credits and do cleanup
-        return arm.pUpdateRecurringCreditsFromClientContext(clientContext, eventDate).
-           then(function(recurringRechargeDone){
-           if(recurringRechargeDone) clientContext.client.creditsDirty=true;
-        }).then(function(){
-            arm.cleanupCreditsFromClientContext(clientContext, eventDate);
+        return pUpdateRecurringCreditsFromClientContext(clientContext, eventDate).
+           then(function(rechargesStatus){  // Array of promises snapshots. Could get final status using [i].state === "fulfilled" || "rejected"
+           /*
+           if(rechargesStatus.length>0){
+               clientContext.client.creditsDirty=true;
+           }
+           */
+        }).then(function() {
+            cleanupCreditsFromClientContext(clientContext, eventDate);
 
             // Decorate with credits granted
-            if(ccRequestType==arm.INITIAL_REQUEST || ccRequestType==arm.UPDATE_REQUEST){
-                ccElements.forEach(function(ccElement){
+            if (ccRequestType == arm.INITIAL_REQUEST || ccRequestType == arm.UPDATE_REQUEST) {
+                ccElements.forEach(function (ccElement) {
                     // Decorate with service if not done yet
-                    if(!ccElement.service) ccElement.service=guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
-                    if(ccElement.service) ccElement.granted=arm.getCreditFromClientContext(clientContext, ccElement.service, eventDate, true);
+                    if (!ccElement.service) ccElement.service = guideService(clientContext, ccElement.serviceId, ccElement.ratingGroup);
+                    if (ccElement.service) ccElement.granted = arm.getCreditFromClientContext(clientContext, ccElement.service, eventDate, true);
+
+                    // Fill promises for per-use credits
+                    // Each update will perform authorization/update of commit URL (if applicable), writing of event, update of credit elements
+                    if (ccElement.granted.bytes == 0 || ccElement.granted.seconds == 0) perUseRecharges.push(pUpdatePerUseCredit(clientContext, ccElement.service, perUseRechargeNamesPushed, eventDate));
                 });
             }
 
+            // Settled promise is never rejected
+            if(perUseRecharges.length==0) return Q(null); else return Q.allSettled(perUseRecharges);
+
+        }).then(function(/*perUseRechargesSnapshots[], not used*/){
+
+            // Re-evaluate credits for which there might be per-use purchases here (granted was 0)
+            ccElements.forEach(function (ccElement) {
+                if(ccElement.granted) if (ccElement.granted.bytes == 0 || ccElement.granted.seconds == 0) ccElement.granted=arm.getCreditFromClientContext(clientContext, ccElement.service, eventDate, true);
+            });
+
             // WriteEvent and update credits
-            return arm.pWriteCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
+            return pWriteCCEvent(clientContext, ccRequestType, ccElements, sessionId, eventDate).
             catch(function(err){
                 if(logger.isErrorEnabled) logger.error("Could not write ccEvent due to %s", err.message);
             }).
             then(function(){
                 // Update client credits
                 if(clientContext.client.creditsDirty) {
+                    // Clean client object
+                    delete clientContext.client.creditsDirty;
+                    if(clientContext.client.credit.creditsIndex) delete clientContext.client.credit.creditsIndex;
+
+                    // Write to database
                     return Q.ninvoke(clientDB.collection("clients"), "updateOne",
                         {"_id": clientContext.client._id, "credit._version": clientContext.client.credit._version},
                         {$set: {"credit": {_version: clientContext.client.credit._version+1, creditPools: clientContext.client.credit.creditPools}}},
-                        writeOptions);
+                        writeOptions).
+                    then(function(updateResult){
+                        // Commit to itSink
+                        if(updateResult.modifiedCount==1){
+                            if((clientContext.client.credit||{}).commitRequests) for(var k=0; k<clientContext.client.credit.commitRequests.length; k++){
+                                if(logger.isDebugEnabled) logger.debug("Invoking commit for %s", clientContext.client.provision.legacyClientId);
+                                request.post(clientContext.client.credit.commitRequests[k], function(error, response){
+                                    // Commit response received
+                                    if(!error){
+                                        if(logger.isVerboseEnabled) logger.verbose("Purchase commited with result code %d", response.statusCode);
+                                    } else {
+                                        if(logger.isErrorEnabled) logger.error("Could not commit purchase for %d due to %s", clientContext.client._id, error.message);
+                                    }
+                                });
+                            }
+                        } else{
+                            if(logger.isErrorEnabled) logger.error("Concurrent modification exception for %d", clientContext.client._id);
+                            throw new Error("Concurrent modification exception");
+                        }
+                    });
                 }
-                else return null;
-            }).
-            then(function(updateResult){
-                // Credit was not written because it was not dirty
-                if(updateResult==null) return null;
-
-                // Check that one item was written. Otherwise fail due to concurrent modification
-                if(updateResult.modifiedCount==1) return null; else throw new Error("Concurrent modification error");
             });
-
         });
     };
 
@@ -632,7 +617,7 @@ var createArm=function(){
      * @param eventDate
      *
      * CCEvent={
-     *  clientContext: <>,
+     *  clientId: <>,
      *  ccRequestType: <>,
      *  sessionId: <>,
      *  eventDate: <>,
@@ -655,27 +640,21 @@ var createArm=function(){
      *          fua: <>
      *     }
      */
-    arm.pWriteCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
-        if(!eventDate) eventDate=new Date();
+    arm.pWriteCCEvent=pWriteCCEvent;
 
-        // Cleanup all service data attached to the credit element
-        ccElements.forEach(function (ccElement) {
-            if (ccElement.service) {
-                ccElement.serviceName = ccElement.service.name;
-                delete ccElement.service;
-            }
-        });
-
-        var event={
-            clientId: clientContext.client._id,
-            eventDate: eventDate,
-            sessionId: sessionId,
-            ccRequestType: ccRequestType,
-            ccElements: ccElements
-        };
-
-        return Q.ninvoke(eventDB.collection("ccEvents"), "insertOne", event, writeOptions);
-    };
+    /**
+     * Writes a recharge event
+     *
+     * PurchaseEvent={
+     *  clientId: <>,
+     *  eventDate: <>,
+     *  rechargeType: <>,
+     *  rechargeName: <>,
+     *  planName: <>,
+     *  price: <>
+     * }
+     */
+    arm.pWriteRechargeEvent=pWriteRechargeEvent;
 
     /**
      * Returns an array of events, each one spanning only one calendar item
@@ -747,40 +726,176 @@ var createArm=function(){
     // Supporting functions
     ////////////////////////////////////////////////////////////////////////////
 
+    var pWriteCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
+        if(!eventDate) eventDate=new Date();
+
+        // Cleanup all service data attached to the credit element
+        ccElements.forEach(function (ccElement) {
+            if (ccElement.service) {
+                ccElement.serviceName = ccElement.service.name;
+                delete ccElement.service;
+            }
+        });
+
+        var event={
+            clientId: clientContext.client._id,
+            eventDate: eventDate,
+            sessionId: sessionId,
+            ccRequestType: ccRequestType,
+            ccElements: ccElements
+        };
+
+        return Q.ninvoke(eventDB.collection("ccEvents"), "insertOne", event, writeOptions);
+    };
+
+    var pWriteRechargeEvent=function(client, recharge, eventDate) {
+        if (!eventDate) eventDate = new Date();
+        var event = {
+            clientId: client._id,
+            eventDate: eventDate,
+            rechargeType: recharge.creationType,
+            rechargeName: recharge.name,
+            planName: client.planName
+        };
+
+        return Q.ninvoke(eventDB.collection("rechargeEvents"), "insertOne", event, writeOptions);
+    };
+
+    /**
+     *  Creates or updates the client recurring credits. Returns promise with array of results
+     * @param clientContext
+     * @param eventDate
+     * @returns {*}
+     */
+    function pUpdateRecurringCreditsFromClientContext(clientContext, eventDate){
+
+        if(!eventDate) eventDate=new Date();
+
+        var creditPool;
+        var rechargeNeeded;
+        var rechargeNamesPushed=[];
+        var pRecharges=[];
+
+        if(clientContext.plan) (clientContext.plan.recharges||[]).forEach(function(recharge){
+            if(recharge.creationType==3){
+                rechargeNeeded=false;
+                // Check if recharge needed: at least one of the resources of the pool is expired
+                for(var i=0; i<recharge.resources.length; i++) {
+                    creditPool=getPoolWithName(clientContext.client, recharge.resources[i].creditPool);
+
+                    if(!creditPool || (creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime())){
+                        rechargeNeeded=true;
+                        break;
+                    }
+                }
+
+                // Add to recharges to be done if not already pushed
+                if(rechargeNeeded && rechargeNamesPushed.indexOf(recharge.name)==-1){
+                    pRecharges.push(pDoRecharge(clientContext.client, recharge));
+                    rechargeNamesPushed.push(recharge.name);
+                }
+            }
+        });
+
+        if(pRecharges.length==0) return Q([]); else return Q.allSettled(pRecharges);
+    };
+
+    /**
+     * Returns promise to be solved when per-use credits are updated. Only one
+     * per-use recharge per service is performed.
+     *
+     * The promise resolves to (pDoRecharge):
+     * - true if recharge authorized and performed
+     * - false if the recharge was not applicable or not authorized
+     * - failure in case of authorization error
+
+     * @param clientContext
+     * @param service
+     * @param rechargeNamesAlreadyUpdated
+     * @param eventDate
+     */
+    function pUpdatePerUseCredit(clientContext, service, rechargeNamesAlreadyUpdated, eventDate){
+        var recharges=clientContext.plan.recharges||[];
+
+        if(!rechargeNamesAlreadyUpdated) rechargeNamesAlreadyUpdated=[];
+
+        // Look for per-use recharge
+        for(var i=0; i<recharges.length; i++){
+            if(recharges[i].creationType==2){
+                // Check if recharge may replenish credit for the service
+                for(var j=0; j<recharges[i].resources.length; j++){
+                    if((service.creditPoolNames||[]).indexOf(recharges[i].resources[j].creditPool)!=-1){
+                        // Execute recharge only if not already done
+                        if(rechargeNamesAlreadyUpdated.indexOf(recharges[i].name)==-1){
+                            rechargeNamesAlreadyUpdated.push(recharges[i].name);
+                            return pDoRecharge(clientContext.client, recharges[i], eventDate);
+                        }
+                    }
+                }
+            }
+        }
+
+        return Q(false);
+    }
+
     /* 
-        Returns promise resolved to true after executing the recharge, performing validation, recharge and writing of the event.
-        If the recharge was not authorized, the promise resolves to false
+        Returns promise resolved after authorizing (if applicable) and updating the client credits.
+        The promise resolves to:
+            - true if recharge authorized and performed
+            - false if the recharge was not applicable or not authorized
+            - failure in case of authorization error
+
+        May update the client.creditsDirty object
     */
     function pDoRecharge(client, recharge, eventDate){
         var authPromise;
-        var rechargeDone;
 
-        if(recharge.preAuthValidator){
+        // Ensure sanity
+        if(!eventDate) eventDate=new Date();
+        if(!client.credit) client.credit={};
+
+        if(recharge.preAuthURL){
             // TODO: add price
             // TODO: add timeout
             authPromise=Q.ninvoke(request, "post",
-                {url: recharge.preAuthValidator, json: {lcid: client.provision.legacyClientId} });
+                {url: recharge.preAuthURL, timeout: configProperties.itSinkTimeoutMillis, json: {lcid: client.provision.legacyClientId} });
+            if(logger.isDebugEnabled) logger.debug("Invoking authorization for %s", client.provision.legacyClientId);
         } else authPromise=Q(null);
 
-        return authPromise.then(function(){
-            rechargeDone=addRechargeToCreditPool(client, recharge, eventDate);
-            // TODO: write event
-            return rechargeDone;
+        return authPromise.then(function(authResult){
+            if(authResult) if(logger.isVerboseEnabled) logger.verbose("Purchase authorization with result code %d", response.statusCode);
+            if(authResult==null || authResult[0].statusCode==200){
+                addRechargeToCreditPool(client, recharge, eventDate);
+                // Recharge event is written asynchronously
+                pWriteRechargeEvent(client, recharge, eventDate).catch(function(error){
+                    if(logger.isErrorEnabled) logger.error("Could not write recharge event ");
+                }).done();
+                // Set commit URL to be invoked later
+                if(recharge.commitURL){
+                    if(!client.credit.commitRequests) client.credit.commitRequests=[];
+                    client.credit.commitRequests.push({url: recharge.commitURL, timeout: configProperties.itSinkTimeoutMillis, json: {lcid: client.provision.legacyClientId} });
+                }
+                return true;
+            } else{
+                // Authorization denied. Set quarantine
+                if(!client.credit) client.credit={};
+                client.credit.oocQuarantineDate=new Date(eventDate.getTime()+1000*(configProperties.ooCQuarantineSeconds||300));
+                return false;
+            }
         }, function(error){
-            // Authorization error
-            // TODO: treat error?
-            return false;
+            // Authorization error. Set quarantine
+            if(logger.isErrorEnabled) logger.error("Purchase authorization error %s", error.message);
+            if(!client.credit) client.credit={};
+            client.credit.oocQuarantineDate=new Date(eventDate.getTime()+1000*(configProperties.ooCQuarantineSeconds||300));
+            throw new Error("Could not perform recharge: "+error.message);
         });
     }
 
-    /* Updates the specified credit elements of a client with the also specified recharge,
+    /*
+    * Updates the specified credit elements of a client with the also specified recharge,
     * adding seconds, bytes
-    *
-    * Returns whether there was a recharge done or not
     */
     function addRechargeToCreditPool(client, recharge, eventDate){
-
-        var rechargeDone=false;
 
         // Just in case
         if(!client.credit) client.credit={_version: 1, creditPools: []};
@@ -804,9 +919,7 @@ var createArm=function(){
             if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<eventDate.getTime()){
                 creditPools.splice(poolIndex, 1);
                 poolIndex=-1;
-
-                // Recharge not done yet, but dirty
-                rechargeDone=true;
+                client.creditsDirty=true;
             }
 
             resource=recharge.resources[r];
@@ -821,7 +934,7 @@ var createArm=function(){
                     mayUnderflow: resource.mayUnderflow,
                     calendarTags: resource.calendarTags
                 });
-                rechargeDone=true;
+                client.creditsDirty=true;
             }else {
                 // Add to old non expired recharge
                 var creditPool=creditPools[poolIndex];
@@ -839,13 +952,26 @@ var createArm=function(){
                     creditPool.expirationDate = getNextExpirationDate(creditPool.expirationDate, eventDate, resource.validity, client.provision.billingDay);
                     creditPool.mayUnderflow = resource.mayUnderflow;
                     creditPool.calendarTags = resource.calendarTags;
-
-                    rechargeDone = true;
+                    client.creditsDirty=true;
                 }
             }
         }
+    }
 
-        return rechargeDone;
+    function cleanupCreditsFromClientContext(clientContext, eventDate){
+
+        if(!eventDate) eventDate=new Date();
+        var currentTime=eventDate.getTime();
+
+        // Loop backwards, because we are modifying the array while iterating through it, and array
+        // is re-indexed when removing an element
+        var creditPools=(clientContext.client.credit||{}).creditPools;
+        if(creditPools) for(var i=0; i<creditPools.length; i++){
+            if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<currentTime){
+                creditPools.splice(i--, 1);
+                clientContext.client.creditsDirty=true;
+            }
+        }
     }
 
     /**
@@ -1131,23 +1257,25 @@ function unitTest() {
         console.log("Initialization error due to " + err);
     });
 
-
     function test() {
         console.log("testing...");
 
         var theClientContext;
+        var ccElements=[{serviceId: 0, ratingGroup: 103, used: {bytesDown: 0, bytesUp: 0, seconds: 0}}];
 
         arm.pGetGuidedClientContext({
-            nasPort: 1006,
+            nasPort: 1003,
             nasIPAddress: "127.0.0.1"
         }).then(function (clientContext) {
             theClientContext=clientContext;
-            return arm.pBuyRecharge(clientContext, "lowSpeedIxD", "Daily", null);
+            //return arm.pBuyRecharge(clientContext, "Daily", null);
+            return arm.pExecuteCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements, "1-1", null);
         }).then(function(rechargeDone){
-            console.log("Recharge done: "+rechargeDone);
-            console.log(JSON.stringify(theClientContext));
+            // console.log("Recharge done: "+rechargeDone);
+            console.log(JSON.stringify(ccElements, null, 2));
         }, function(error){
-            console.log(error.message);
+            console.log("Error in unit test: "+error.message);
+            console.log(error.stack);
         }).done();
     }
 }

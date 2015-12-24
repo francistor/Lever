@@ -156,10 +156,10 @@ var login3={
 
 var line3={
     clientId: ObjectId("000000000000000000000003"),
-    nasPort: 1006,
+    nasPort: 1003,
     nasIPAddress: "127.0.0.1",
-    ipv4Address: "192.168.1.6",
-    ipv6DelegatedPrefix: "2001:1006::/56"
+    ipv4Address: "192.168.1.3",
+    ipv6DelegatedPrefix: "2001:1003::/56"
 };
 
 var phone3={

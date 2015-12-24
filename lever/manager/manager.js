@@ -200,7 +200,7 @@ mApp.post("/dyn/clients/getFullClientData", function(req, res){
         fullClientContext.pointsOfUsage=pou;
         res.json(fullClientContext);
     }).fail(function(err){
-        res.status(500).send("Error: " +  err.message);
+        res.status(500).send("Error: " + err.message);
     });
 });
 

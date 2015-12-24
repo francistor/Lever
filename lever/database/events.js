@@ -10,6 +10,7 @@ var clientDb=connect(leverClientDatabase.substring(10));
 var serviceDb=connect(leverConfigDatabase.substring(10));
 
 db.ccEvents.drop();
+db.rechargeEvents.drop();
 db.captureEvents.drop();
 
 // Add capture event

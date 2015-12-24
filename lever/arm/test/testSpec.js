@@ -8,6 +8,7 @@ var client1PurchasedExpDate=new Date("2015-06-28T22:00:00Z");
 var client1SessionDate=new Date("2015-06-15T15:00:00Z");
 var client1Phone="999999991";
 
+var client2Line={nasPort: 1002, nasIPAddress: "127.0.0.1"};
 var client2Session1Date=new Date("2015-12-15T13:00:00Z");
 var client2Session1ExpDate=new Date("2015-12-15T19:00:00Z");
 var client2Session2Date=new Date("2015-12-15T17:00:00Z");
@@ -16,13 +17,18 @@ var client2Session3Date=new Date("2015-12-19T21:00:00Z");
 var client2Session3ExpDate=new Date("2015-12-21T06:00:00Z");
 var client2SpeedyNightCreditExpDate=new Date("2015-12-31T23:00:00Z");
 var client2DefaultExpDate=new Date("2015-12-31T23:00:00Z");
-var client2Line={nasPort: 1002, nasIPAddress: "127.0.0.1"};
 
-var client3PurchaseDate=new Date("2016-07-20T08:00:00Z");
-var client3PurchaseExpirationDate=new Date("2016-07-20T22:00:00Z"); // Next day GMT+2
 var client3Login={userName: "test-ixd@test"};
+var client3Session1Date=new Date("2016-07-20T08:00:00Z");
+var client3Session1ExpDate=new Date("2016-07-20T22:00:00Z");
+var client3Session2Date=new Date("2016-07-20T12:00:00Z");
+var client3PerUse1PurchaseExpirationDate=new Date("2016-07-20T22:00:00Z"); // Next day GMT+2
+var client3PurchaseDate=new Date("2016-07-20T16:00:00Z");
+var client3PurchaseExpirationDate=new Date("2016-07-20T22:00:00Z"); // Next day GMT+2
+
 
 var testItems=[
+    /*
     // FUP
     // Client initially has 5GB in recurring credit and 1GB in purchased credit
     // All credit is consumed. In the first UPDATE, 5,5GB (in two ccElements) and thus 0,5GB is granted
@@ -190,19 +196,106 @@ var testItems=[
             {poolName: "defaultPool", seconds: -3600*(3+31), expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
+    */
+
+    // IxD
+    // Client initially has no credit
+    // First session of duration 1h and 5MB. Remanent credit is
+    //      - Pool lowSpeed: until the end of the day
+    //      - Pool highSpeed: until the end of the day, 5MB
+    // Second session with interim for the remanent 5MB and end of session with additional 2MB
+    //      An implicit purchase is done at the first interim
+
+    // First session
+    {
+        execute: true,
+        type: "CCR",
+        subtype: "INITIAL",
+        sessionId: "session-client3-1",
+        description: "Initial CCR for session 1 client 3. IxD plan",
+        clientPoU: client3Login,
+        date: new Date(client3Session1Date.getTime()),
+        ccElements:[
+            {ratingGroup: 0, serviceId: 0, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 0. Granted until end of the day"}},
+            {ratingGroup: 1, serviceId: 0, _check_resultGranted:{ bytes: 10000000, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 1. Granted 10MB until end of the day"}}
+        ]
+    },
+    {
+        execute: true,
+        type: "CCR",
+        subtype: "TERMINATE",
+        sessionId: "session-client3-1",
+        description: "Termination CCR for session 1 client 3. IxD plan",
+        clientPoU: client3Login,
+        date: new Date(client2Session3Date.getTime()+1*1000*3600),
+        ccElements:[
+            {ratingGroup: 0, serviceId: 0, used:{bytesDown: 0, seconds: 3600}},
+            {ratingGroup: 1, serviceId: 0, used:{bytesDown: 5000000, seconds: 3600}}
+        ],
+        _check_creditPoolsAfter:[
+            {poolName: "lowSpeed", expirationDate: client3Session1ExpDate, description: "lowSpeed pool."},
+            {poolName: "highSpeed", bytes: 5000000, expirationDate: client3Session1ExpDate, description: "highSpeed pool."}
+        ]
+    },
+
+    // Second session
+    {
+        execute: true,
+        type: "CCR",
+        subtype: "INITIAL",
+        sessionId: "session-client3-2",
+        description: "Initial CCR for session 2 client 3. IxD plan",
+        clientPoU: client3Login,
+        date: new Date(client3Session2Date.getTime()),
+        ccElements:[
+            {ratingGroup: 0, serviceId: 0, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 0. Granted until end of the day"}},
+            {ratingGroup: 1, serviceId: 0, _check_resultGranted:{ bytes: 5000000, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 1. Granted remaining 5MB until end of the day"}}
+        ]
+    },
+    {
+        execute: true,
+        type: "CCR",
+        subtype: "UPDATE",
+        sessionId: "session-client3-2",
+        description: "Update CCR for session 2 client 3. IxD plan",
+        clientPoU: client3Login,
+        date: new Date(client3Session2Date.getTime()+1*1000*3600),
+        ccElements:[
+            {ratingGroup: 0, serviceId: 0, used:{bytesDown: 0, seconds: 3600}, _check_resultGranted:{ bytes: null, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 0. Granted until end of the day"}},
+            {ratingGroup: 1, serviceId: 0, used:{bytesDown: 5000010, seconds: 3600}, _check_resultGranted:{ bytes: 10000000, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 1. Purchase of 10MB done"}}
+        ]
+    },
+    {
+        execute: true,
+        type: "CCR",
+        subtype: "TERMINATE",
+        sessionId: "session-client3-1",
+        description: "Termination CCR for session 2 client 3. IxD plan",
+        clientPoU: client3Login,
+        date: new Date(client3Session2Date.getTime()+2*1000*3600),
+        ccElements:[
+            {ratingGroup: 0, serviceId: 0, used:{bytesDown: 0, seconds: 3600}},
+            {ratingGroup: 1, serviceId: 0, used:{bytesDown: 2000000, seconds: 3600}}
+        ],
+        _check_creditPoolsAfter:[
+            {poolName: "lowSpeed", expirationDate: client3Session1ExpDate, description: "lowSpeed pool. Until the end of the day"},
+            {poolName: "highSpeed", bytes: 8000000, expirationDate: client3Session1ExpDate, description: "highSpeed pool. Remaining 8MB."}
+        ]
+    }
+
+    /*
     {
         execute: true,
         type: "BuyRecharge",
         description: "Buy recharge",
         clientPoU: client3Login,
-        serviceName: "lowSpeedIxD",
-        rechargeName: "Daily",
+        rechargeName: "Turbo",
         date: new Date(client3PurchaseDate.getTime()),
         _check_creditPoolsAfter:[
-            {poolName: "lowSpeed", expirationDate: client3PurchaseExpirationDate, description: "LowSpeed pool update."}
+            {poolName: "highSpeed", bytes: 10000000, expirationDate: client3PurchaseExpirationDate, description: "highSpeed pool update."}
         ]
     }
-
+    */
 ];
 
 exports.testItems=testItems;

@@ -10,15 +10,24 @@ var mApp=express();
 // Middleware for JSON
 mApp.use(bodyParser.json());
 
-mApp.post("/success", function(req, res){
-	console.log("Calling success method");
-	console.log(req.body);
+mApp.post("/authorize/success", function(req, res){
+	console.log("[AUTH SUCCESS] "+JSON.stringify(req.body));
 	res.json({});
 });
 
-mApp.get("/success", function(req, res){
-	console.log("Calling success method");
+mApp.post("/authorize/failure", function(req, res){
+	console.log("[AUTH FAILURE] "+JSON.stringify(req.body));
+	res.status(500).end();
+});
+
+mApp.post("/commit/success", function(req, res){
+	console.log("[COMMIT SUCCESS] "+JSON.stringify(req.body));
 	res.json({});
+});
+
+mApp.post("/commit/failure", function(req, res){
+	console.log("[COMMIT FAILURE] "+JSON.stringify(req.body));
+	res.status(500).end();
 });
 
 mApp.listen(listenPort, function(){
