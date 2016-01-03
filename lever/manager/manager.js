@@ -1,6 +1,5 @@
 // Diameter Manager Web Application
 
-
 // URI conventions
 // /dyn                         --> access to database
 // /dyn/node/:<nodename>        --> specific for a node
@@ -16,7 +15,8 @@ var request=require('request');
 var MongoClient=require("mongodb").MongoClient;
 var ObjectID=require('mongodb').ObjectID;
 var bodyParser=require('body-parser');
-var arm=require("arm").arm;
+//var arm=require("arm").arm;
+var arm=require("../arm/arm").arm;
 
 process.title="lever-manager";
 
@@ -27,6 +27,8 @@ var eventDB;
 
 // Configuration
 var requestTimeout=1000;
+
+// Validations
 var phoneRegEx=/[0-9]{9,11}/;
 var lineRegEx=/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{1,10}/;
 var userNameRegEx=/.+@.+/;
@@ -59,24 +61,29 @@ mApp.get("/", function(req,res){
 // Database middleware
 // Just checks that configDB will not throw error when invoked
 mApp.use("/dyn", function (req, res, next){
-    if(!configDB) res.status(500).send("Error: Configuration database connection closed");
-    else if(!clientDB) res.status(500).send("Error: Client database connection closed");
-    else if(!eventDB) res.status(500).send("Error: Event database connection closed");
+    if(!configDB){res.status(500).send("Configuration database connection closed"); logger.error("[/dyn middleware] Connection to configuration database is closed");}
+    else if(!clientDB) {res.status(500).send("Client database connection closed"); logger.error("[/dyn middleware] Connection to configuration database is closed");}
+    else if(!eventDB) {res.status(500).send("Event database connection closed"); logger.error("[/dyn middleware] Connection to configuration database is closed");}
     else next();
 });
 
 // Node middleware. Operations that are node specific. Passes the node config in req.serverConfig
 mApp.use("/dyn/node/:hostName/", function (req, res, next){
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/node/:hostName middleware] Getting node configuration for "+req.params.hostName);
+
     var hostName=req.params.hostName;
-    if(logger.isDebugEnabled) logger.debug("Hostname middleware. Getting node configuration for "+req.params.hostName);
     configDB.collection("nodes").findOne({hostName: req.params.hostName}, {}, config["queryOptions"], function(err, item){
         if(err){
-            logger.error("Node middleware: "+err.message);
+            logger.error("[/dyn/node/:hostName middleware] %s", err.message);
             res.status(500).send(err.message);
         } else {
-            if (!item) res.status(500).send("HostName " + hostName + " not found");
+            if (!item){
+                if(logger.isWarnEnabled) logger.warn("[/dyn/node/:hostName middleware] %s", err.message);
+                res.status(500).send("HostName " + hostName + " not found");
+            }
             else {
-                if(logger.isDebugEnabled) logger.debug("Hostname middleware. Got node configuration for "+req.params.hostName);
+                if(logger.isDebugEnabled) logger.debug("[/dyn/node/:hostName middleware] Got node configuration for "+req.params.hostName);
                 req.serverConfig = item;
                 next();
             }
@@ -86,21 +93,24 @@ mApp.use("/dyn/node/:hostName/", function (req, res, next){
 
 // Node proxy. Just forwards the request to the specified node
 mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
+
     var command=req.params.command;
     var nodeManagement=req.serverConfig.management;
-    if(logger.isDebugEnabled) logger.debug("Node proxy middleware. Requesting "+"http://"+nodeManagement.IPAddress+":"+nodeManagement.httpPort+"/agent/"+command);
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/node/:hostName/agent/:command middleware] Requesting http://"+nodeManagement.IPAddress+":"+nodeManagement.httpPort+"/agent/"+command);
     request({
             url: "http://"+nodeManagement.IPAddress+":"+nodeManagement.httpPort+"/agent/"+command,
             timeout: requestTimeout
         },
         function(err, response, body){
             if (!err && response.statusCode==200) {
+                if(logger.isDebugEnabled) logger.debug("[/dyn/node/:hostName/agent/:command middleware] Command %s executed in %s", command, nodeManagement.IPAddress);
                 res.json(JSON.parse(body));
             } else if(err){
-                logger.error("Node proxy middleware. Could not get: "+command+" from server. "+err.message);
-                res.status(500).send("Could not get "+command+" from server. "+err.message);
+                logger.error("[/dyn/node/:hostName/agent/:command middleware] Could not execute %s in server %s due to %s", command, nodeManagement.IPAddress, err.message);
+                res.status(500).send("Could not execute "+command+" in node. "+err.message);
             } else {
-                logger.error("Node proxy middleware. Got status: "+response.statusCode);
+                logger.error("[/dyn/node/:hostName/agent/:command middleware] Got error status: "+response.statusCode);
                 res.status(500).send("Status: "+response.statusCode);
             }
         });
@@ -108,7 +118,9 @@ mApp.use("/dyn/node/:hostName/agent/:command", function(req, res, next){
 
 // Get list of node names in Array
 mApp.get("/dyn/config/nodeList", function(req, res){
-    if(logger.isDebugEnabled) logger.debug("Getting nodes list");
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/config/nodeList] Getting nodes list");
+
     configDB.collection("nodes").find({}, {}, config["queryOptions"]).toArray(function(err, docs){
         if(!err){
             var nodeList=[];
@@ -124,22 +136,30 @@ mApp.get("/dyn/config/nodeList", function(req, res){
 
 // Reads basic node configuration
 mApp.get("/dyn/node/:hostName/nodeConfiguration", function(req, res) {
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/node/:hostName/nodeConfiguration] Getting node configuration for %s", req.params.hostName);
+
     res.json(req.serverConfig);
 });
 
 // Updates node configuration (_id based)
 mApp.post("/dyn/config/nodeConfiguration", function(req, res){
-    req.body._id=ObjectID.createFromHexString(req.body._id);
-    if(logger.isDebugEnabled) logger.debug("Updating node configuration for "+JSON.stringify(req.body._id));
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/config/nodeConfiguration] Updating node configuration for %s", req.body._id);
+
+    var _id=ObjectID.createFromHexString(req.body._id);
+    req.body._version++;
+    req.body._id=_id;
+
     configDB.collection("nodes").updateOne({"_id": _id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
         if(!err && result.modifiedCount===1){
-            logger.info("Updated node configuration");
+            if(logger.isInfoEnabled) logger.info("[/dyn/config/nodeConfiguration] Updated node configuration");
             res.json({});
         } else if(!err && result.modifiedCount===0){
-            logger.error("Error updating node configuration: Data was modified by another user");
-            res.status(500).send("Configuration modified by another user");
+            logger.error("[/dyn/config/nodeConfiguration] Error updating node configuration: Data was modified by another user");
+            res.status(500).send("Error updating node configuration: Data was modified by another user");
         } else{
-            logger.error("Error updating node configuration: "+(err==null?"":err.message));
+            logger.error("[/dyn/config/nodeConfiguration] Error updating node configuration: %s", (err==null?"":err.message));
             res.status(500).send((err||{}).message);
         }
     });
@@ -147,47 +167,105 @@ mApp.post("/dyn/config/nodeConfiguration", function(req, res){
 
 // Reads diameter dictionary
 mApp.get("/dyn/config/diameterDictionary", function(req, res){
-    if(logger.isDebugEnabled) logger.debug("Getting Diameter dictionary");
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/config/diameterDictionary] Getting Diameter dictionary");
+
     configDB.collection("diameterDictionary").findOne({}, {}, config["queryOptions"], function(err, item){
         if(!err){
-            if(item) res.json(item); else res.status(500).send("Error: dictionary not found");
+            if(item) res.json(item);
+            else res.status(500).send("Error: dictionary not found");
         }
         else{
-            logger.error("Error getting Diameter dictionary: "+err.message);
+            logger.error("[/dyn/config/diameterDictionary] Error getting Diameter dictionary: "+err.message);
             res.status(500).send(err.message);
         }
     });
 });
 
 // Updates diameter dictionary
-mApp.post("/dyn/config/diameterDictionary", function(req, res){
+mApp.post("/dyn/config/updateDiameterDictionary", function(req, res){
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/config/diameterDictionary] Updating Diameter dictionary for "+JSON.stringify(req.body._id));
+
     var _id=ObjectID.createFromHexString(req.body._id);
-    if(logger.isDebugEnabled) logger.debug("Updating Diameter dictionary for "+JSON.stringify(req.body._id));
+    req.body._version++;
+    req.body._id=_id;
+
     configDB.collection("diameterDictionary").updateOne({"_id": _id, "_version": req.body._version-1}, req.body, config["queryOptions"], function(err, result){
         if(!err && result.modifiedCount===1){
-            logger.info("Updated diameter dictionary");
+            logger.info("[/dyn/config/diameterDictionary] Updated diameter dictionary");
             res.json({});
         }
         else if(!err && result.modifiedCount===0){
-            logger.error("Error updating diameter dictionary: Data was modified by another user");
+            logger.error("[/dyn/config/diameterDictionary] Error updating diameter dictionary: Data was modified by another user");
             res.status(500).send("Dictionary modified by another user");
         }
         else{
-            logger.error("Error updating diameter dictionary: "+(err==null?"":err.message));
+            logger.error("[/dyn/config/diameterDictionary] Error updating diameter dictionary: %s", (err==null?"":err.message));
             res.status(500).send((err||{}).message);
         }
     });
 });
 
+/**
+ * Creates a new client in the database
+ */
+mApp.post("/dyn/clients/createClient", function(req, res){
+
+    if(logger.isDebugEnabled) logger.debug("[/dyn/clients/createClient] Creating client %s", JSON.stringify(req.body));
+
+    arm.pCreateClient(req.body).
+        then(function(){
+            if(logger.isInfoEnabled) logger.info("[/dyn/clients/createClient] Client created %s", JSON.stringify(req.body));
+            res.json({});
+        }, function(error){
+            if(logger.isErrorEnabled) logger.info("[/dyn/clients/createClient] Could not create client: %s", error.message);
+            res.status(500).send(error.message);
+        });
+});
+
+mApp.post("/dyn/clients/deleteClient", function(req, res){
+
+    if(logger.isDebugEnabled) logger.info("[/dyn/clients/deleteClient] Deleting client and points of usage with _id: %s", req.body._id);
+
+    arm.pDeleteClient(req.body._id).
+        then(function(result){
+            if(result){
+                res.json({});
+                if(logger.isInfoEnabled) logger.info("[/dyn/clients/deleteClient] Deleted client and points of usage with _id: %s", req.body._id);
+            }
+            else{
+                if(logger.isDebugEnabled) logger.info("[/dyn/clients/deleteClient] Not found client with _id: %s", req.body._id);
+                res.status(500).send("Client not found");
+            }
+        }, function(error){
+            res.status(500).send(error.message);
+            if(logger.isErrorEnabled) logger.error("[/dyn/clients/deleteClient] Could not delete client: %s", error.message);
+        });
+});
+
+/**
+ * Retrieves the client data given a point of usage
+ * json body includes
+ *  - searchField: phone|userName|line
+ *  - phone|userName|nasPort&nasIPAddress
+ */
 mApp.post("/dyn/clients/getFullClientData", function(req, res){
-    var query;
+
+    if(logger.isDebugEnabled) logger.info("[/dyn/clients/getFullClientData] Getting client data %s", JSON.stringify(req.body));
 
     // Get the client context
+    var query;
     var searchField=req.body.searchField;
     if(searchField=="phone"){ query={phone: req.body.phone};}
     else if(searchField=="userName"){ query={userName: req.body.userName};}
     else if(searchField=="line"){ query={nasPort: parseInt(req.body.nasPort), nasIPAddress:req.body.nasIPAddress};}
-    else {res.status(500).send("Error: Bad query data"); return;}
+    else if(searchField=="legacyClientId"){query={"provision.legacyClientId": req.body.legacyClientId}}
+    else {
+        if(logger.isErrorEnabled) logger.info("[/dyn/clients/getFullClientData] Bad query %s", JSON.stringify(req.body));
+        res.status(500).send("Bad query");
+        return;
+    }
 
     var fullClientContext={};
     arm.pFindClient(query).then(function(client){
@@ -200,89 +278,97 @@ mApp.post("/dyn/clients/getFullClientData", function(req, res){
         fullClientContext.pointsOfUsage=pou;
         res.json(fullClientContext);
     }).fail(function(err){
+        if(logger.isErrorEnabled) logger.info("[/dyn/clients/getFullClientData] Could not get client data due to: %s", err.message);
         res.status(500).send("Error: " + err.message);
     });
 });
 
-
+/**
+ * Updates the client provision data
+ * body must include the client _id field and a "provision" object
+ */
 mApp.post("/dyn/clients/updateClientProvisionData", function(req, res) {
-    var _id = ObjectID.createFromHexString(req.body._id);
-    if (logger.isDebugEnabled) logger.debug("Updating Client provision data: " + JSON.stringify(req.body));
-    clientDB.collection("clients").updateOne({
-        "_id": _id,
-        "provision._version": req.body.provision._version - 1
-    }, {$set:{provision: req.body.provision}}, config["queryOptions"], function (err, result) {
-        if (!err && result.modifiedCount === 1) {
-            logger.info("Updated client");
+
+    if (logger.isDebugEnabled) logger.debug("[/dyn/clients/updateClientProvisionData] Updating Client provision data: %s", JSON.stringify(req.body));
+
+    arm.pUpdateClientProvisionData(req.body).
+        then(function(){
+            if(logger.isInfoEnabled) logger.info("[/dyn/clients/updateClientProvisionData] Updated Client provision data: %s", JSON.stringify(req.body));
             res.json({});
-        }
-        else if (!err && result.modifiedCount === 0) {
-            logger.error("Error updating client provision data: Data was modified by another user");
-            res.status(500).send("Client provision data modified by another user");
-        }
-        else {
-            logger.error("Error updating client: "+(err==null?"":err.message));
-            res.status(500).send((err||{}).message);
-        }
-    });
+        }, function(error){
+            if(logger.isErrorEnabled) logger.error("[/dyn/clients/updateClientProvisionData] Could not update client data: %s", error.message);
+            res.status(500).send(error.message);
+        });
 });
 
 mApp.post("/dyn/clients/addPoU", function(req, res){
-    var clientId = ObjectID.createFromHexString(req.body.clientId);
-    if(logger.isDebugEnabled) logger.debug("Adding point of usage: " + JSON.stringify(req.body));
 
-    var collectionName;
-    // Find collection where to do the looking up
-    if(req.body.pouType=="phone") collectionName="phones"; else if(req.body.pouType=="userName") collectionName="userNames"; else if(req.body.pouType=="line") collectionName="lines";
-    else {res.status(500).send("Bad Point of usage"); return;}
+    if(logger.isDebugEnabled) logger.debug("[/dyn/clients/addPoU] Adding point of usage: %s", JSON.stringify(req.body));
 
-    // Check validity
-    var pouDocument;
-    if(collectionName=="phones"){
-        if(!phoneRegEx.test(req.body.pouValue)){
-            res.status(500).send("Bad phone"); return;
-        }
-        pouDocument={clientId: clientId, phone: req.body.pouValue};
-    } else if(collectionName=="userNames"){
-        if(!userNameRegEx.test(req.body.pouValue)){
-            res.status(500).send("Bad username"); return;
-        }
-        pouDocument={clientId: clientId, userName: req.body.pouValue};
-    } else if(collectionName=="lines"){
+    // Cook point of usage to delete
+    var pointOfUsage;
+    if(req.body.pouType=="phone") pointOfUsage={phone: req.body.pouValue};
+    if(req.body.pouType=="userName") pointOfUsage={userName: req.body.pouValue};
+    if(req.body.pouType=="line"){
         if(!lineRegEx.test(req.body.pouValue)){
-            res.status(500).send("Bad line"); return;
+            if(logger.isErrorEnabled) logger.error("[/dyn/clients/addPoU] Bad line: %s", JSON.stringify(req.body));
+            res.status(500).send("Bad line");
+            return;
         }
         var lineComponents=req.body.pouValue.split(":");
-        pouDocument={clientId: clientId, nasPort: lineComponents[1], nasIPAddress: lineComponents[0]};
+        pointOfUsage={nasPort: lineComponents[1], nasIPAddress: lineComponents[0]};
     }
 
-    // Do insertion
-    clientDB.collection(collectionName).insert(pouDocument, null, function(err, result){
-        if(!err){
-            res.json();
-            logger.info("Added point of usage "+ JSON.stringify(req.body));
-        }
-        else res.status(500).send(err.message);
-    });
+    // Invoke addition
+    arm.pAddPoU(req.body.clientId, pointOfUsage).
+        then(function(){
+            if(logger.isInfoEnabled) logger.info("[/dyn/clients/addPoU] Added point of usage: %s", JSON.stringify(req.body));
+            res.json({});
+        }, function(error){
+            if(logger.isInfoEnabled) logger.info("[/dyn/clients/addPoU] Could not add point of usage: %s", error.message);
+            res.status(500).send(error.message);
+        });
 });
 
 mApp.post("/dyn/clients/deletePoU", function(req, res){
-    if (logger.isDebugEnabled) logger.debug("Deleting point of usage: " + JSON.stringify(req.body));
+    if (logger.isDebugEnabled) logger.debug("[/dyn/clients/deletePoU] Deleting point of usage: %s", JSON.stringify(req.body));
 
-    var collectionName;
-    // Find collection where to do the looking up
-    if(req.body.pouType=="phone") collectionName="phones"; else if(req.body.pouType=="userName") collectionName="userNames"; else if(req.body.pouType=="line") collectionName="lines";
-    else {res.status(500).send("Bad Point of usage"); return;}
+    // Invoke deletion
+    arm.pDeletePoU(req.body.pou).
+        then(function(){
+            if(logger.isInfoEnabled) logger.info("[/dyn/clients/deletePoU] Deleted point of usage: %s", JSON.stringify(req.body));
+            res.json({});
+        }, function(error){
+            if(logger.isErrorEnabled) logger.error("[/dyn/clients/deletePoU] Could not delete point of usage: %s", error.message);
+            res.status(500).send(error.message);
+        });
+});
 
-    // Do deletion
-    clientDB.collection(collectionName).deleteOne({_id: ObjectID.createFromHexString(req.body.pou._id)}, null, function(err, result){
-        if(!err){
-            res.json();
-            logger.info("Deleted point of usage "+ JSON.stringify(req.body));
-        }
-        else res.status(500).send(err.message);
-    });
+mApp.post("/dyn/clients/buyRecharge", function(req, res){
+    if (logger.isDebugEnabled) logger.debug("[/dyn/clients/buyRecharge] Buying recharge: %s", JSON.stringify(req.body));
 
+    // Invoke deletion
+    arm.pFindClientContext({_id: req.body.clientId}).
+        then(function(clientContext){
+            if(!clientContext){
+                if(logger.isErrorEnabled) logger.error("[/dyn/clients/buyRecharge] Client not found: %s", JSON.stringify(req.body.clientId));
+                res.status(500).send("Client not found");
+            } else {
+                return arm.pBuyRecharge(clientContext, req.body.rechargeName).
+                    then(function(rechargeDone){
+                        if(rechargeDone){
+                            if(logger.isInfoEnabled) logger.error("[/dyn/clients/buyRecharge] Recharge performed: %s", JSON.stringify(req.body));
+                            res.json({});
+                        } else {
+                            if(logger.isInfoEnabled) logger.error("[/dyn/clients/buyRecharge] Recharge not authorized: %s", JSON.stringify(req.body));
+                            res.status(401).send("Not authorized");
+                        }
+                    });
+            }
+        }, function(error){
+            if(logger.isErrorEnabled) logger.error("[/dyn/clients/buyRecharge] Could not buy recharge: %s", error.message);
+            res.status(500).send(error.message);
+        });
 });
 
 // Initialization
@@ -301,11 +387,5 @@ Q.all(
     }).then(function(){
         // Start server
         mApp.listen(config["port"]);
-        logger.info("PolicyServer manager listening on port "+config["port"]);
+        logger.info("[Init] PolicyServer manager listening on port "+config["port"]);
     }).done();
-
-
-
-
-
-

@@ -9,6 +9,12 @@ var fs=require("fs");
 var Q=require("q");
 var request=require('request');
 var MongoClient=require("mongodb").MongoClient;
+var ObjectID=require('mongodb').ObjectID;
+
+var phoneRegEx=/[0-9]{9,11}/;
+var nasIPAddressRegEx=/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/;
+var nasPortRegEx=/[0-9]{1,10}/;
+var userNameRegEx=/.+@.+/;
 
 var createArm=function(){
 
@@ -155,11 +161,13 @@ var createArm=function(){
      *
      * Resolves to null if not found
      *
-     * @param clientData object containing _id:<value> or legacyClientId:<value>
+     * @param clientData object containing _id or provision.legacyClientId
      * @returns {*} promise
      */
     arm.pGetClient=function(clientData){
         var deferred= Q.defer();
+
+        if(clientData._id && typeof(clientData._id)=="string") clientData._id=ObjectID.createFromHexString(clientData._id);
 
         // Find client
         clientDB.collection("clients").findOne(clientData, {}, queryOptions, function(err, client){
@@ -251,21 +259,15 @@ var createArm=function(){
     /**
      * Returns a promise to be resolved with a client context object, which contains a "client"
      * attribute and a "plan" attribute
-     * @param client
+     * @param clientData, containing and _id or legacyClientId attribute
      * @returns {*} promise
      */
-    arm.pGetClientContext=function(client){
-        // Create index for pool names
-        if(!client.credit) client.credit={};
+    arm.pGetClientContext=function(clientData){
 
-        if(client.credit.creditPools){
-            client.credit.creditsIndex={};
-            client.credit.creditPools.forEach(function(creditPool){
-                client.credit.creditsIndex[creditPool.name]=creditPool;
+        return arm.pGetClient(clientData).
+            then(function(client){
+                return buildClientContext(client);
             });
-        }
-
-        return Q({client:client, plan:arm.planInfo(client.provision.planName)});
     };
 
     /**
@@ -278,19 +280,142 @@ var createArm=function(){
 
         return arm.pGetGuidedClient(clientPoU).
             then(function(client){
-                if(!client) return null;
-                else return arm.pGetClientContext(client);
+                return buildClientContext(client);
             });
     };
 
     /** Returns promise to be resolved with the client object
      *
-     * @param query may contain a point of usage or a legacyClientId object
+     * @param query may contain a point of usage or an attribute of the client object
      * @returns {*} promise
      */
     arm.pFindClient=function(query){
-        if(query.hasOwnProperty("legacyClientId")) return arm.pGetClient(query);
-        else return arm.pGetGuidedClient(query);
+        if(query.hasOwnProperty("phone") || query.hasOwnProperty("nasIPAddress") || query.hasOwnProperty("userName")) return arm.pGetGuidedClient(query);
+        else return arm.pGetClient(query);
+    };
+
+    /** Returns promise to be resolved with the clientContext object
+     *
+     * @param query may contain a point of usage or an attribute of the client object
+     * @returns {*} promise
+     */
+    arm.pFindClientContext=function(query){
+        if(query.hasOwnProperty("phone") || query.hasOwnProperty("nasIPAddress") || query.hasOwnProperty("userName")) return arm.pGetGuidedClientContext(query);
+        else return arm.pGetClientContext(query);
+    };
+
+    /**
+     * Creates a new client given the provision data only.
+     * Returns a promise to be solved to true if the client was created
+     *
+     * @param clientProvisionData
+     */
+    arm.pCreateClient=function(clientProvisionData){
+        // Make sure there is nothing but the provision property
+        for(var propertyName in clientProvisionData) if(client.hasOwnProperty(propertyName) && propertyName!="provision") delete clientProvisionData[propertyName];
+
+        clientProvisionData.provision._version=1;
+
+        return clientDB.collection("clients").insertOne(clientProvisionData, writeOptions).then(function(result){
+            if(result.insertedCount==1) return true;
+            else throw new Error("Client was not created");
+        });
+    };
+
+
+    /**
+     * Deletes the client with the specified id
+     * Returns a promise to be solved to true when the client is deleted, false if the client is not found
+     * @param clientId
+     */
+    arm.pDeleteClient=function(clientId){
+        var _id;
+        if(typeof(clientId)=="string") _id=ObjectID.createFromHexString(clientId); else _id=clientId;
+
+        return clientDB.collection("lines").deleteMany({clientId: _id}).
+            then(function(){
+                return clientDB.collection("userNames").deleteMany({clientId: _id});
+            }).
+            then(function(){
+                return clientDB.collection("phones").deleteMany({clientId: _id});
+            }).
+            then(function(){
+                return clientDB.collection("clients").deleteOne({_id: _id});
+            }).
+            then(function(result){
+                return result.deletedCount == 1;
+            });
+    };
+
+    /**
+     * Returns a promise solved when the specified point of usage is added to the specified clientId
+     *
+     * @param clientId
+     * @param pointOfUsage
+     * @returns {*}
+     */
+    arm.pAddPoU=function(clientId, pointOfUsage){
+
+        var _id;
+        if(!clientId) throw new Error("clientId not specified");
+        if(typeof(clientId)=="string") _id=ObjectID.createFromHexString(clientId); else _id=clientId;
+
+        var pouDocument={clientId: _id};
+        var pouCollection;
+
+        if(pointOfUsage.hasOwnProperty("phone")){
+            if(!phoneRegEx.test(pointOfUsage.phone)) return Q.reject(new Error("Bad phone"));
+            pouCollection="phones";
+            pouDocument.phone=pointOfUsage.phone;
+        } else if(pointOfUsage.hasOwnProperty("userName")){
+            if(!userNameRegEx.test(pointOfUsage.userName)) return Q.reject(new Error("Bad userName"));
+            pouCollection="userNames";
+            pouDocument.userName=pointOfUsage.userName;
+        } else if(pointOfUsage.hasOwnProperty("nasIPAddress")){
+            if(!nasIPAddressRegEx.test(pointOfUsage.nasIPAddress)) return Q.reject(new Error("Bad NAS-IP-Address"));
+            if(!nasPortRegEx.test(pointOfUsage.nasPort)) return Q.reject(new Error("Bad NAS-Port"));
+            pouCollection="lines";
+            pouDocument.nasIPAddress=pointOfUsage.nasIPAddress;
+            pouDocument.nasPort=pointOfUsage.nasPort;
+        } else throw new Error(new Error("Bad point of usage"));
+
+        return clientDB.collection(pouCollection).insertOne(pouDocument, writeOptions);
+    };
+
+    /**
+     * Returns a promise solved when the point of usage is deleted
+     */
+    arm.pDeletePoU=function(pointOfUsage){
+
+        if(typeof(pointOfUsage._id)=="string") pointOfUsage._id=ObjectID.createFromHexString(pointOfUsage._id);
+        if(typeof(pointOfUsage.clientId)=="string") pointOfUsage.clientId=ObjectID.createFromHexString(pointOfUsage.clientId);
+
+        if(pointOfUsage.hasOwnProperty("phone")){
+            return clientDB.collection("phones").deleteMany(pointOfUsage, writeOptions);
+        } else if(pointOfUsage.hasOwnProperty("userName")){
+            return clientDB.collection("userNames").deleteMany(pointOfUsage, writeOptions);
+        } else if(pointOfUsage.hasOwnProperty("nasIPAddress")){
+            return clientDB.collection("lines").deleteMany(pointOfUsage, writeOptions);
+        } else throw new Error(new Error("Bad point of usage"));
+    };
+
+    /**
+     * Returns a promise to be solved when the provision data is updated. Fails if the client is not updated,
+     * probably because of a concurrent modification.
+     *
+     * @param clientProvisionData
+     */
+    arm.pUpdateClientProvisionData=function(clientProvisionData){
+
+        if(typeof(clientProvisionData._id)=="string") clientProvisionData._id=ObjectID.createFromHexString(clientProvisionData._id);
+        clientProvisionData.provision._version++;
+
+        return clientDB.collection("clients").updateOne(
+            {_id: clientProvisionData._id, "provision._version": clientProvisionData.provision._version-1},
+            {$set: {provision: clientProvisionData.provision}}
+        ).then(function(result){
+            if(result.modifiedCount!=1) throw new Error("Client was not updated. Data was modified by another user");
+        });
     };
 
     /** 
@@ -299,7 +424,7 @@ var createArm=function(){
          The promise resolves to:
          - true if recharge authorized and performed
          - false if the recharge was not applicable or not authorized
-         - failure in case of authorization error
+         - failure in case of error
 
         buyRecharge(clientId, rechargeName) --> pDoRecharge(client, recharge) --> validate; addRechargeToCreditPool(); writePurchaseEvent
     */
@@ -321,7 +446,7 @@ var createArm=function(){
                     if(updateResult.modifiedCount==1){
                         if((clientContext.client.credit||{}).commitRequests) for(var k=0; k<clientContext.client.credit.commitRequests.length; k++){
                             if(logger.isDebugEnabled) logger.debug("Invoking commit for %s", clientContext.client.provision.legacyClientId);
-                            request.post(clientContext.client.credit.commitRequests[k], function(error, response, body){
+                            request.post(clientContext.client.credit.commitRequests[k], function(error, response /* ,body*/){
                                 // Commit response received
                                 if(!error){
                                     if(logger.isVerboseEnabled) logger.verbose("Purchase commited with result code %d", response.statusCode);
@@ -383,15 +508,15 @@ var createArm=function(){
         // Add credit by iterating through the credit pools
         getTargetCreditPools(clientContext, service, timeFrameData.tag).forEach(function(creditPool){
             // Skip expired pools
-            if(creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime()) return;
+            if(creditPool.expirationDate && creditPool.expirationDate.getTime()<=eventDate.getTime()) return;
 
             // null values will remain unmodified (they mean unlimited credit)
-            if(typeof(creditPool.bytes)=='undefined'||creditPool.mayUnderflow) creditGranted.bytes=null; else if(creditPool.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=creditPool.bytes;
-            if(typeof(creditPool.seconds)=='undefined'||creditPool.mayUnderflow) creditGranted.seconds=null; else if(creditPool.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=creditPool.seconds;
+            if(typeof(creditPool.bytes)!='number'||creditPool.mayUnderflow) creditGranted.bytes=null; else if(creditPool.bytes!=null && creditGranted.bytes!=null) creditGranted.bytes+=creditPool.bytes;
+            if(typeof(creditPool.seconds)!='number'||creditPool.mayUnderflow) creditGranted.seconds=null; else if(creditPool.seconds!=null && creditGranted.seconds!=null) creditGranted.seconds+=creditPool.seconds;
 
             // IMPORTANT: Expiration date is set to minimum value among all credits
             if(!creditGranted.expirationDate) creditGranted.expirationDate=creditPool.expirationDate;
-            else if(creditPool.expirationDate && creditPool.expirationDate.getTime()<creditGranted.expirationDate.getTime()) creditGranted.expirationDate=creditPool.expirationDate;
+            else if(creditPool.expirationDate && creditPool.expirationDate.getTime()<=creditGranted.expirationDate.getTime()) creditGranted.expirationDate=creditPool.expirationDate;
         });
 
         // If any resource is zero, should be returned as zero
@@ -442,7 +567,7 @@ var createArm=function(){
             // All credits are here valid (i.e. before expiration date)
 
             // Discount the bytes
-            if(!(typeof(creditPool.bytes)=='undefined') && bytes){
+            if(!(typeof(creditPool.bytes)!='number') && bytes){
                 clientContext.client.creditsDirty=true;
                 if(creditPool.mayUnderflow) {
                     creditPool.bytes-=bytes;
@@ -455,7 +580,7 @@ var createArm=function(){
                 }
             }
             // Discount the seconds
-            if(!(typeof(creditPool.seconds)=='undefined') && seconds){
+            if(!(typeof(creditPool.seconds)!='number') && seconds){
                 clientContext.client.creditsDirty=true;
                 if(creditPool.mayUnderflow) {
                     creditPool.seconds-=seconds;
@@ -533,7 +658,7 @@ var createArm=function(){
 
         // Update recurrent credits and do cleanup
         return pUpdateRecurringCreditsFromClientContext(clientContext, eventDate).
-           then(function(rechargesStatus){  // Array of promises snapshots. Could get final status using [i].state === "fulfilled" || "rejected"
+           then(function(/*perUseRechargesSnapshots[], not used*/){  // Array of promises snapshots. Could get final status using [i].state === "fulfilled" || "rejected"
            /*
            if(rechargesStatus.length>0){
                clientContext.client.creditsDirty=true;
@@ -558,7 +683,7 @@ var createArm=function(){
             // Settled promise is never rejected
             if(perUseRecharges.length==0) return Q(null); else return Q.allSettled(perUseRecharges);
 
-        }).then(function(/*perUseRechargesSnapshots[], not used*/){
+        }).then(function(/*perUseRechargesSnapshots[], not used*/){ // Array of promises snapshots. Could get final status using [i].state === "fulfilled" || "rejected"
 
             // Re-evaluate credits for which there might be per-use purchases here (granted was 0)
             ccElements.forEach(function (ccElement) {
@@ -575,13 +700,13 @@ var createArm=function(){
                 if(clientContext.client.creditsDirty) {
                     // Clean client object
                     delete clientContext.client.creditsDirty;
-                    if(clientContext.client.credit.creditsIndex) delete clientContext.client.credit.creditsIndex;
 
-                    // Write to database
+                    // Write to database. If credit._version is not in database, will look correctly for "undefined"
+                    var currentCreditVersion=clientContext.client.credit._version;
+                    if(currentCreditVersion) clientContext.client.credit._version++; else clientContext.client.credit._version=1;
                     return Q.ninvoke(clientDB.collection("clients"), "updateOne",
-                        {"_id": clientContext.client._id, "credit._version": clientContext.client.credit._version},
-                        {$set: {"credit": {_version: clientContext.client.credit._version+1, creditPools: clientContext.client.credit.creditPools}}},
-                        writeOptions).
+                        {"_id": clientContext.client._id, "credit._version": currentCreditVersion},
+                        {$set: {"credit": clientContext.client.credit}}, writeOptions).
                     then(function(updateResult){
                         // Commit to itSink
                         if(updateResult.modifiedCount==1){
@@ -590,7 +715,7 @@ var createArm=function(){
                                 request.post(clientContext.client.credit.commitRequests[k], function(error, response){
                                     // Commit response received
                                     if(!error){
-                                        if(logger.isVerboseEnabled) logger.verbose("Purchase commited with result code %d", response.statusCode);
+                                        if(logger.isVerboseEnabled) logger.verbose("Purchase committed with result code %d", response.statusCode);
                                     } else {
                                         if(logger.isErrorEnabled) logger.error("Could not commit purchase for %d due to %s", clientContext.client._id, error.message);
                                     }
@@ -726,6 +851,15 @@ var createArm=function(){
     // Supporting functions
     ////////////////////////////////////////////////////////////////////////////
 
+    function buildClientContext(client){
+
+        if(!client) return null;
+
+        if(!client.credit) client.credit={creditPools:[]};
+
+        return {client:client, plan:arm.planInfo(client.provision.planName)};
+    }
+
     var pWriteCCEvent=function(clientContext, ccRequestType, ccElements, sessionId, eventDate){
         if(!eventDate) eventDate=new Date();
 
@@ -755,7 +889,7 @@ var createArm=function(){
             eventDate: eventDate,
             rechargeType: recharge.creationType,
             rechargeName: recharge.name,
-            planName: client.planName
+            planName: client.provision.planName
         };
 
         return Q.ninvoke(eventDB.collection("rechargeEvents"), "insertOne", event, writeOptions);
@@ -783,7 +917,7 @@ var createArm=function(){
                 for(var i=0; i<recharge.resources.length; i++) {
                     creditPool=getPoolWithName(clientContext.client, recharge.resources[i].creditPool);
 
-                    if(!creditPool || (creditPool.expirationDate && creditPool.expirationDate.getTime()<eventDate.getTime())){
+                    if(!creditPool || (creditPool.expirationDate && creditPool.expirationDate.getTime()<=eventDate.getTime())){
                         rechargeNeeded=true;
                         break;
                     }
@@ -791,14 +925,14 @@ var createArm=function(){
 
                 // Add to recharges to be done if not already pushed
                 if(rechargeNeeded && rechargeNamesPushed.indexOf(recharge.name)==-1){
-                    pRecharges.push(pDoRecharge(clientContext.client, recharge));
+                    pRecharges.push(pDoRecharge(clientContext.client, recharge, eventDate));
                     rechargeNamesPushed.push(recharge.name);
                 }
             }
         });
 
         if(pRecharges.length==0) return Q([]); else return Q.allSettled(pRecharges);
-    };
+    }
 
     /**
      * Returns promise to be solved when per-use credits are updated. Only one
@@ -815,6 +949,7 @@ var createArm=function(){
      * @param eventDate
      */
     function pUpdatePerUseCredit(clientContext, service, rechargeNamesAlreadyUpdated, eventDate){
+
         var recharges=clientContext.plan.recharges||[];
 
         if(!rechargeNamesAlreadyUpdated) rechargeNamesAlreadyUpdated=[];
@@ -822,6 +957,12 @@ var createArm=function(){
         // Look for per-use recharge
         for(var i=0; i<recharges.length; i++){
             if(recharges[i].creationType==2){
+                // Skip if oocQuarantineDate
+                if(clientContext.client.credit && clientContext.client.credit.oocQuarantineDate && clientContext.client.credit.oocQuarantineDate.getTime()>eventDate.getTime()){
+                    if(logger.isDebugEnabled) logger.debug("Skipping per-use recharge due to oocQuarantine for clientId %s", clientContext.client._id);
+                    return Q(false);
+                }
+
                 // Check if recharge may replenish credit for the service
                 for(var j=0; j<recharges[i].resources.length; j++){
                     if((service.creditPoolNames||[]).indexOf(recharges[i].resources[j].creditPool)!=-1){
@@ -848,15 +989,15 @@ var createArm=function(){
         May update the client.creditsDirty object
     */
     function pDoRecharge(client, recharge, eventDate){
+
         var authPromise;
 
         // Ensure sanity
         if(!eventDate) eventDate=new Date();
-        if(!client.credit) client.credit={};
+        if(!client.credit) client.credit={creditPools:[]};
 
         if(recharge.preAuthURL){
             // TODO: add price
-            // TODO: add timeout
             authPromise=Q.ninvoke(request, "post",
                 {url: recharge.preAuthURL, timeout: configProperties.itSinkTimeoutMillis, json: {lcid: client.provision.legacyClientId} });
             if(logger.isDebugEnabled) logger.debug("Invoking authorization for %s", client.provision.legacyClientId);
@@ -867,7 +1008,7 @@ var createArm=function(){
             if(authResult==null || authResult[0].statusCode==200){
                 addRechargeToCreditPool(client, recharge, eventDate);
                 // Recharge event is written asynchronously
-                pWriteRechargeEvent(client, recharge, eventDate).catch(function(error){
+                pWriteRechargeEvent(client, recharge, eventDate).catch(function(/*error*/){
                     if(logger.isErrorEnabled) logger.error("Could not write recharge event ");
                 }).done();
                 // Set commit URL to be invoked later
@@ -878,14 +1019,14 @@ var createArm=function(){
                 return true;
             } else{
                 // Authorization denied. Set quarantine
-                if(!client.credit) client.credit={};
+                if(!client.credit) client.credit={creditPools:[]};
                 client.credit.oocQuarantineDate=new Date(eventDate.getTime()+1000*(configProperties.ooCQuarantineSeconds||300));
                 return false;
             }
         }, function(error){
             // Authorization error. Set quarantine
             if(logger.isErrorEnabled) logger.error("Purchase authorization error %s", error.message);
-            if(!client.credit) client.credit={};
+            if(!client.credit) client.credit={creditPools:[]};
             client.credit.oocQuarantineDate=new Date(eventDate.getTime()+1000*(configProperties.ooCQuarantineSeconds||300));
             throw new Error("Could not perform recharge: "+error.message);
         });
@@ -898,7 +1039,7 @@ var createArm=function(){
     function addRechargeToCreditPool(client, recharge, eventDate){
 
         // Just in case
-        if(!client.credit) client.credit={_version: 1, creditPools: []};
+        if(!client.credit) client.credit={creditPools: []};
         if(!client.credit.creditPools) client.credit.creditPools=[];
 
         if(!eventDate) eventDate=new Date();
@@ -916,7 +1057,7 @@ var createArm=function(){
             }
 
             // If was expired, remove
-            if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<eventDate.getTime()){
+            if(poolIndex!=-1 && creditPools[poolIndex].expirationDate && creditPools[poolIndex].expirationDate.getTime()<=eventDate.getTime()){
                 creditPools.splice(poolIndex, 1);
                 poolIndex=-1;
                 client.creditsDirty=true;
@@ -925,7 +1066,7 @@ var createArm=function(){
             resource=recharge.resources[r];
 
             // If no previous credit pool, create one
-            if(poolIndex=-1){
+            if(poolIndex==-1){
                 client.credit.creditPools.push({
                     poolName: resource.creditPool,
                     seconds: resource.seconds,
@@ -943,12 +1084,14 @@ var createArm=function(){
                 if(recharge.creationType==3 && creditPool.expirationDate && creditPool.expirationDate.getTime()>eventDate.getTime()){
                     // No need to recharge
                 } else {
-                    if (creditPool.bytes && resource.bytes) creditPool.bytes += recharge.resources[r].bytes;
+                    if ((creditPool.bytes||creditPool.bytes===0) && resource.bytes) creditPool.bytes += recharge.resources[r].bytes;
                     // If recharge specifies now no control for bytes, set it!
-                    if (!recharge.resources[r].bytes) creditPool.bytes = null;
-                    if (creditPool.seconds && resource.seconds) creditPool.seconds += resource.seconds;
+                    if (!recharge.resources[r].bytes) delete creditPool.bytes;
+
+                    if ((creditPool.seconds||creditPool.seconds===0) && resource.seconds) creditPool.seconds += resource.seconds;
                     // If recharge specifies now no control for seconds, set it!
-                    if (!resource.seconds) creditPool.seconds = null;
+                    if (!resource.seconds) delete creditPool.seconds;
+
                     creditPool.expirationDate = getNextExpirationDate(creditPool.expirationDate, eventDate, resource.validity, client.provision.billingDay);
                     creditPool.mayUnderflow = resource.mayUnderflow;
                     creditPool.calendarTags = resource.calendarTags;
@@ -967,7 +1110,7 @@ var createArm=function(){
         // is re-indexed when removing an element
         var creditPools=(clientContext.client.credit||{}).creditPools;
         if(creditPools) for(var i=0; i<creditPools.length; i++){
-            if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<currentTime){
+            if(creditPools[i].expirationDate && creditPools[i].expirationDate.getTime()<=currentTime){
                 creditPools.splice(i--, 1);
                 clientContext.client.creditsDirty=true;
             }
@@ -976,6 +1119,7 @@ var createArm=function(){
 
     /**
      * Returns the expiration date given the current date and a validity in (M)onths, (D)ays or (H)ours
+     * @param currentExpirationDate
      * @param eventDate
      * @param validity
      * @param billingDay
@@ -1045,7 +1189,7 @@ var createArm=function(){
             }
         }
 
-        if(service) return service; else throw new Error("No service found for serviceId "+serviceId+"and rating group "+ratingGroup);
+        if(service) return service; else throw new Error("No service found for serviceId "+serviceId+" and rating group "+ratingGroup);
     }
 
     /**
@@ -1053,7 +1197,7 @@ var createArm=function(){
      * @param clientContext
      * @param service
      * @param tag
-     * @return [*] array of credit pools
+     * @return {*} array of credit pools
      */
     function getTargetCreditPools(clientContext, service, tag){
 
@@ -1261,13 +1405,14 @@ function unitTest() {
         console.log("testing...");
 
         var theClientContext;
-        var ccElements=[{serviceId: 0, ratingGroup: 103, used: {bytesDown: 0, bytesUp: 0, seconds: 0}}];
+        var ccElements=[{serviceId: 0, ratingGroup: 1, used: {bytesDown: 0, bytesUp: 0, seconds: 0}}];
 
         arm.pGetGuidedClientContext({
             nasPort: 1003,
             nasIPAddress: "127.0.0.1"
         }).then(function (clientContext) {
             theClientContext=clientContext;
+            console.log(JSON.stringify(clientContext, null, 2));
             //return arm.pBuyRecharge(clientContext, "Daily", null);
             return arm.pExecuteCCRequest(clientContext, arm.UPDATE_REQUEST, ccElements, "1-1", null);
         }).then(function(rechargeDone){

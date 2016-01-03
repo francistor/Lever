@@ -6,129 +6,123 @@
     <li><a data-target="#realmroute" href="" role="tab" data-toggle="tab" >Realm Route Table</a></li>
     <li><a data-target="#radius" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Radius Configuration</a></li>
     <li><a data-target="#radiusclients" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Radius Clients</a></li>
+    <li><a data-target="#radiusproxy" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Proxy Servers</a></li>
+    <li><a data-target="#radiusproxygroups" href="" role="tab" data-toggle="tab" style="cursor: pointer;">Proxy Groups</a></li>
 </ul>
 
 <br>
 
 <!-- Tab panes -->
 <div class="tab-content">
+
 <!-- Basic Diameter Configuration -->
 <div class="tab-pane active" id="basic">
     <form name="diameterConfigForm" role="form">
         <div class="row">
-            <div class="col-md-12">
-                <div class="col-md-6">
-                    <div class="form-group" ng-class="{'has-error': diameterConfigForm.diameterHost.$invalid}">
-                        <label>Diameter Host Name:</label>
-                        <input name="diameterHost" type="text" class="form-control" ng-model="nodeConfig.diameter.diameterHost" ng-pattern="/.{3,}/">
-                        <p class="help-block">Required field</p>
-                    </div>
-                    <div class="form-group" ng-class="{'has-error': diameterConfigForm.realm.$invalid}">
-                        <label>Diameter Realm:</label>
-                        <input name="diameterRealm" type="text" class="form-control" ng-model="nodeConfig.diameter.diameterRealm">
-                    </div>
-                    <div class="form-group" ng-class="diameterConfigForm.IPAddress.$invalid ? 'has-error': '' ">
-                        <label>Listen Address:</label>
-                        <input name="IPAddress" class="form-control" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/" ng-model="nodeConfig.diameter.IPAddress">
-                    </div>
-                    <div class="form-group" ng-class="{'has-error': diameterConfigForm.port.$invalid}">
-                        <label>Listen Port:</label>
-                        <input name="port" class="form-control" ng-model="nodeConfig.diameter.port" ng-pattern="/[0-9]{4,5}/">
-                    </div>
-                    <div class="form-group">
-                        <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
-                            <i class="fa fa-check">
-                            </i>
-                        </button>
-                    </div>
+            <div class="col-md-6">
+                <div class="form-group" ng-class="{'has-error': diameterConfigForm.diameterHost.$invalid}">
+                    <label>Diameter Host Name:</label>
+                    <input name="diameterHost" type="text" class="form-control" ng-model="nodeConfig.diameter.diameterHost" ng-pattern="/.{3,}/">
+                    <p class="help-block">Required field</p>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group" ng-class="{'has-error': diameterConfigForm.interval.$invalid}">
-                        <label>Connection interval:</label>
-                        <input name="interval" class="form-control" ng-model="nodeConfig.diameter.connectionInterval" ng-pattern="/[0-9]{1,9}/">
-                        <p class="help-block">In milliseconds. Interval to try reconnect to peers</p>
-                    </div>
-                    <div class="form-group"  ng-class="{'has-error': diameterConfigForm.vendorId.$invalid}">
-                        <label>Vendor Id:</label>
-                        <input name="vendorId" class="form-control" ng-model="nodeConfig.diameter.vendorId" ng-pattern="/[0-9]{1,9}/">
-                    </div>
-                    <div class="form-group"  ng-class="{'has-error': diameterConfigForm.productName.$invalid}">
-                        <label>Product Name:</label>
-                        <input name="productName" type="text" class="form-control" ng-model="nodeConfig.diameter.productName">
-                    </div>
-                    <div class="form-group"  ng-class="{'has-error': diameterConfigForm.firmwareRevision.$invalid}">
-                        <label>Firmware Revision:</label>
-                        <input name="firmwareRevision" type="number" class="form-control" ng-model="nodeConfig.diameter.firmwareRevision" ng-pattern="/[0-9]{1,9}/">
-                    </div>
+                <div class="form-group" ng-class="{'has-error': diameterConfigForm.realm.$invalid}">
+                    <label>Diameter Realm:</label>
+                    <input name="diameterRealm" type="text" class="form-control" ng-model="nodeConfig.diameter.diameterRealm">
+                </div>
+                <div class="form-group" ng-class="diameterConfigForm.IPAddress.$invalid ? 'has-error': '' ">
+                    <label>Listen Address:</label>
+                    <input name="IPAddress" class="form-control" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/" ng-model="nodeConfig.diameter.IPAddress">
+                </div>
+                <div class="form-group" ng-class="{'has-error': diameterConfigForm.port.$invalid}">
+                    <label>Listen Port:</label>
+                    <input name="port" class="form-control" ng-model="nodeConfig.diameter.port" ng-pattern="/[0-9]{4,5}/">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
+                        <i class="fa fa-check">
+                        </i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group" ng-class="{'has-error': diameterConfigForm.interval.$invalid}">
+                    <label>Connection interval:</label>
+                    <input name="interval" class="form-control" ng-model="nodeConfig.diameter.connectionInterval" ng-pattern="/[0-9]{1,9}/">
+                    <p class="help-block">In milliseconds. Interval to try reconnect to peers</p>
+                </div>
+                <div class="form-group"  ng-class="{'has-error': diameterConfigForm.vendorId.$invalid}">
+                    <label>Vendor Id:</label>
+                    <input name="vendorId" class="form-control" ng-model="nodeConfig.diameter.vendorId" ng-pattern="/[0-9]{1,9}/">
+                </div>
+                <div class="form-group"  ng-class="{'has-error': diameterConfigForm.productName.$invalid}">
+                    <label>Product Name:</label>
+                    <input name="productName" type="text" class="form-control" ng-model="nodeConfig.diameter.productName">
+                </div>
+                <div class="form-group"  ng-class="{'has-error': diameterConfigForm.firmwareRevision.$invalid}">
+                    <label>Firmware Revision:</label>
+                    <input name="firmwareRevision" type="number" class="form-control" ng-model="nodeConfig.diameter.firmwareRevision" ng-pattern="/[0-9]{1,9}/">
                 </div>
             </div>
         </div>
     </form>
 </div>
 
-<!-- Diameter peers Peers -->
+<!-- Diameter Peers -->
 <div class="tab-pane" id="peers">
-    <div class="accordion" id="peerList">
-        <div class="accordion-group">
-            <div class="panel panel-default" ng-repeat="peer in nodeConfig.diameter['peers']">
-                <div class="panel-heading">
-                    <div class="accordion-heading">
-                        <h4 class="panel-title">
-                            <a class="accordion-toggle mylink" data-toggle="collapse"
-                               data-parent="#peerList" data-target="#peer_{{$index}}">
-                                {{peer.name}}  </a>
-                        </h4>
-                    </div>
-                </div>
-                <div class="accordion-body collapse" id="peer_{{$index}}">
-                    <div class="row">
-                        <form name="peersConfigForm{{$index}}" role="form">
-                            <div class="col-md-12">
-                                <div class="panel-body">
-                                    <div class="accordion-inner">
-                                        <div class="col-md-6">
-                                            <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.name.$invalid}">
-                                                <label>Name:</label>
-                                                <input name="name" class="form-control" ng-model="peer.name" ng-pattern="/.{3,}/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.diameterHost.$invalid}">
-                                                <label>Diameter Host Name:</label>
-                                                <input name="diameterHost" class="form-control" ng-model="peer.diameterHost" ng-pattern="/.{3,}/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.watchdogInterval.$invalid}">
-                                                <label>Watchdog interval:</label>
-                                                <input name="watchdogInterval" class="form-control" ng-model="peer.watchdogInterval" ng-pattern="/[0-9]*/">
-                                                <p class="help-block">Milliseconds</p>
-                                            </div>
-                                            <button type="button" ng-click="deletePeer($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group" ng-class="{'has-error': peersConfigForm{{$index}}.IPAddress.$invalid}">
-                                                <label>IP Address:</label>
-                                                <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{3,5}){0,1}$/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Connection Policy:</label>
-                                                <select class="form-control" ng-model="peer.connectionPolicy">
-                                                    <option value="passive">Accept connection from this peer</option>
-                                                    <option value="active">Initiate connection to this peer</option>
-                                                </select>
-                                            </div>
 
-                                        </div>
-                                    </div>
+    <div class="panel-group" id="diameterpeerspanel" role="tablist" aria-multiselectable="true">
+        <!-- Proxy Server -->
+        <div class="panel panel-default" ng-repeat="peer in nodeConfig.diameter['peers']">
+            <div class="panel-heading" role="tab" id="peer_heading_{{$index}}">
+                <h4 class="panel-title">
+                    <a class="mylink" role="button" data-toggle="collapse" data-parent="#diameterpeerspanel" data-target="#peer_{{$index}}" aria-expanded="true" aria-controls="#peer_{{$index}}">
+                        {{peer.name}}
+                    </a>
+                </h4>
+            </div>
+            <div id="peer_{{$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="peer_heading_{{$index}}">
+                <div class="panel-body">
+                    <ng-form name="peer_form" role="form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group" ng-class="{'has-error': peer_form.name.$invalid}">
+                                    <label>Name:</label>
+                                    <input name="name" class="form-control" ng-model="peer.name" ng-pattern="/.{3,}/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': peer_form.diameterHost.$invalid}">
+                                    <label>Diameter Host Name:</label>
+                                    <input name="diameterHost" class="form-control" ng-model="peer.diameterHost" ng-pattern="/.{3,}/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': peer_form.watchdogInterval.$invalid}">
+                                    <label>Watchdog interval:</label>
+                                    <input name="watchdogInterval" class="form-control" ng-model="peer.watchdogInterval" ng-pattern="/[0-9]*/">
+                                    <p class="help-block">Milliseconds</p>
+                                </div>
+                                <button type="button" ng-click="deletePeer($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group" ng-class="{'has-error': peer_form.IPAddress.$invalid}">
+                                    <label>IP Address:</label>
+                                    <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr[:port]" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{3,5}){0,1}$/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <div class="form-group">
+                                    <label>Connection Policy:</label>
+                                    <select class="form-control" ng-model="peer.connectionPolicy">
+                                        <option value="passive">Accept connection from this peer</option>
+                                        <option value="active">Initiate connection to this peer</option>
+                                    </select>
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </ng-form>
                 </div>
-                <br/>
             </div>
         </div>
     </div>
+
     <div class="form-group">
         <button type="button" class="btn btn-success" ng-click="addPeer()"> New Peer
             <i class="fa fa-plus">
@@ -142,61 +136,53 @@
 </div>
 
 <div class="tab-pane" id="realmroute">
-    <div class="accordion" id="routeList">
-        <div class="accordion-group">
-            <div class="panel panel-default" ng-repeat="route in nodeConfig.diameter.routes">
-                <div class="panel-heading">
-                    <div class="accordion-heading">
-                        <h4 class="panel-title">
-                            <a class="accordion-toggle mylink" data-toggle="collapse"
-                               data-parent="#routeList" data-target="#route_{{$index}}">
-                                @{{route.realm}} {{route.applicationId}}  </a>
-                        </h4>
-                    </div>
-                </div>
-                <div class="accordion-body collapse" id="route_{{$index}}">
-                    <div class="row">
-                        <form name="routeForm{{$index}}" role="form">
-                            <div class="col-md-12">
-                                <div class="panel-body">
-                                    <div class="accordion-inner">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label>Realm:</label>
-                                                <input name="realm" class="form-control" ng-model="route.realm">
-                                                <p class="help-block">Required field. * means any realm</p>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Peers:</label>
-                                                <select class="form-control" multiple="multiple" ng-model="route.peers"
-                                                        ng-options="peer.diameterHost as peer.diameterHost for peer in nodeConfig.diameter['peers']">
-                                                </select>
-                                                <p class="help-block">Multiple select</p>
-                                            </div>
-                                            <button type="button" ng-click="deleteRoute($index)" class="btn btn-danger btn-sm">
-                                                Delete Route <i class="fa fa-times"></i></button>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label>Application Id:</label>
-                                                <input name="applicationId" class="form-control" ng-model="route.applicationId">
-                                                <p class="help-block">Required field. * means any application-id</p>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Peer selection: </label>
-                                                <select class="form-control" ng-model="route.policy">
-                                                    <option value="fixed">Fixed order</option>
-                                                    <option value="random">Random balancing</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+
+    <div class="panel-group" id="routesspanel" role="tablist" aria-multiselectable="true">
+        <!-- Route -->
+        <div class="panel panel-default" ng-repeat="route in nodeConfig.diameter.routes">
+            <div class="panel-heading" role="tab" id="route_heading_{{$index}}">
+                <h4 class="panel-title">
+                    <a class="mylink" role="button" data-toggle="collapse" data-parent="#routespanel" data-target="#route_{{$index}}" aria-expanded="true" aria-controls="#route_{{$index}}">
+                        @{{route.realm}} {{route.applicationId}}
+                    </a>
+                </h4>
+            </div>
+            <div id="route_{{$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="route_heading_{{$index}}">
+                <div class="panel-body">
+                    <ng-form name="route_form" role="form">
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': route_form.realm.$invalid}">
+                                <label>Realm:</label>
+                                <input name="realm" class="form-control" ng-model="route.realm" ng-pattern="/.+/">
+                                <p class="help-block">Required field. * means any realm</p>
                             </div>
-                        </form>
-                    </div>
+                            <div class="form-group">
+                                <label>Peers:</label>
+                                <select name="routePeers" class="form-control" multiple="multiple" ng-model="route.peers"
+                                        ng-options="peer.diameterHost as peer.diameterHost for peer in nodeConfig.diameter['peers']">
+                                </select>
+                                <p class="help-block">Multiple select</p>
+                            </div>
+                            <button type="button" ng-click="deleteRoute($index)" class="btn btn-danger btn-sm">
+                                Delete Route <i class="fa fa-times"></i></button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': route_form.applicationId.$invalid}">
+                                <label>Application Id:</label>
+                                <input name="applicationId" class="form-control" ng-model="route.applicationId" ng-pattern="/.+/">
+                                <p class="help-block">Required field. * means any application-id</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Peer selection: </label>
+                                <select class="form-control" ng-model="route.policy">
+                                    <option value="fixed">Fixed order</option>
+                                    <option value="random">Random balancing</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </ng-form>
                 </div>
-                <br/>
             </div>
         </div>
     </div>
@@ -212,42 +198,39 @@
     </div>
 </div>
 
-
 <div class="tab-pane" id="radius">
     <form name="radiusConfigForm" role="form">
         <div class="row">
-            <div class="col-md-12">
-                <div class="col-md-6">
-                    <div class="form-group" ng-class="{'has-error': radiusConfigForm.authPort.$invalid}">
-                        <label>Auth Port:</label>
-                        <input name="authPort" class="form-control" ng-model="nodeConfig.radius.authPort" ng-pattern="/[0-9]{4,5}/">
-                    </div>
-                    <div class="form-group" ng-class="radiusConfigForm.IPAddress.$invalid ? 'has-error': '' ">
-                        <label>Listen Address:</label>
-                        <input name="IPAddress" class="form-control" ng-pattern="/^0$|^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/"
-                               ng-model="nodeConfig.radius.IPAddress">
-                    </div>
-                    <div class="form-group">
-                        <label>Base client port:</label>
-                        <input name="baseClientPort" class="form-control" ng-pattern="/^[0-9]{4,5}$/"
-                               ng-model="nodeConfig.radius.baseClientPort">
-                    </div>
-                    <div class="form-group">
-                        <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
-                            <i class="fa fa-check">
-                            </i>
-                        </button>
-                    </div>
+            <div class="col-md-6">
+                <div class="form-group" ng-class="{'has-error': radiusConfigForm.authPort.$invalid}">
+                    <label>Auth Port:</label>
+                    <input name="authPort" class="form-control" ng-model="nodeConfig.radius.authPort" ng-pattern="/[0-9]{4,5}/">
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group" ng-class="{'has-error': radiusConfigForm.acctPort.$invalid}">
-                        <label>Acct Port:</label>
-                        <input name="acctPort" class="form-control" ng-model="nodeConfig.radius.acctPort" ng-pattern="/[0-9]{4,5}/">
-                    </div>
-                    <div class="form-group" ng-class="{'has-error': radiusConfigForm.numClientPorts.$invalid}">
-                        <label>Number of client ports:</label>
-                        <input name="numClientPorts" class="form-control" ng-model="nodeConfig.radius.numClientPorts" ng-pattern="/.+/">
-                    </div>
+                <div class="form-group" ng-class="{'has-error': radiusConfigForm.IPAddress.$invalid}">
+                    <label>Listen Address:</label>
+                    <input name="IPAddress" class="form-control" ng-pattern="/^0$|^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/"
+                           ng-model="nodeConfig.radius.IPAddress">
+                </div>
+                <div class="form-group" ng-class="{'has-error': radiusConfigForm.baseClientPort.$invalid}">
+                    <label>Base client port:</label>
+                    <input name="baseClientPort" class="form-control" ng-pattern="/^[0-9]{4,5}$/"
+                           ng-model="nodeConfig.radius.baseClientPort">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
+                        <i class="fa fa-check">
+                        </i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group" ng-class="{'has-error': radiusConfigForm.acctPort.$invalid}">
+                    <label>Acct Port:</label>
+                    <input name="acctPort" class="form-control" ng-model="nodeConfig.radius.acctPort" ng-pattern="/[0-9]{4,5}/">
+                </div>
+                <div class="form-group" ng-class="{'has-error': radiusConfigForm.numClientPorts.$invalid}">
+                    <label>Number of client ports:</label>
+                    <input name="numClientPorts" class="form-control" ng-model="nodeConfig.radius.numClientPorts" ng-pattern="/.+/">
                 </div>
             </div>
         </div>
@@ -255,59 +238,54 @@
 </div>
 
 <div class="tab-pane" id="radiusclients">
-    <div class="accordion" id="radiusClientList">
-        <div class="accordion-group">
-            <div class="panel panel-default" ng-repeat="client in nodeConfig.radius['clients']">
-                <div class="panel-heading">
-                    <div class="accordion-heading">
-                        <h4 class="panel-title">
-                            <a class="accordion-toggle mylink" data-toggle="collapse"
-                               data-parent="#radiusClientList" data-target="#client_{{$index}}">
-                                {{client.name}}  </a>
-                        </h4>
-                    </div>
-                </div>
-                <div class="accordion-body collapse" id="client_{{$index}}">
-                    <div class="row">
-                        <form name="radiusClientsForm{{$index}}" role="form">
-                            <div class="col-md-12">
-                                <div class="panel-body">
-                                    <div class="accordion-inner">
-                                        <div class="col-md-6">
-                                            <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.name.$invalid}">
-                                                <label>Name:</label>
-                                                <input name="name" class="form-control" ng-model="client.name" ng-pattern="/.{3,}/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.IPAddress.$invalid}">
-                                                <label>IP Address:</label>
-                                                <input name="IPAddress" class="form-control" ng-model="peer.IPAddress" placeholder="IPAddr" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <button type="button" ng-click="deleteClient($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.secret.$invalid}">
-                                                <label>Secret:</label>
-                                                <input name="secret" class="form-control" ng-model="client.secret" ng-pattern="/.{3,}/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                            <div class="form-group" ng-class="{'has-error': radiusClientsForm{{$index}}.class.$invalid}">
-                                                <label>Class:</label>
-                                                <input name="class" class="form-control" ng-model="client.class" ng-pattern="/.{3,}/">
-                                                <p class="help-block">Required field</p>
-                                            </div>
-                                        </div>
-                                    </div>
+
+    <div class="panel-group" id="radiusclientspanel" role="tablist" aria-multiselectable="true">
+        <!-- Proxy Server -->
+        <div class="panel panel-default" ng-repeat="radiusclient in nodeConfig.radius['clients']">
+            <div class="panel-heading" role="tab" id="radiusclient_heading_{{$index}}">
+                <h4 class="panel-title">
+                    <a class="mylink" role="button" data-toggle="collapse" data-parent="#radiusclientspanel" data-target="#radiusclient_{{$index}}" aria-expanded="true" aria-controls="#radiusclient_{{$index}}">
+                        {{radiusclient.name}}
+                    </a>
+                </h4>
+            </div>
+            <div id="radiusclient_{{$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="radiusclient_heading_{{$index}}">
+                <div class="panel-body">
+                    <ng-form name="radiusclient_form" role="form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group" ng-class="{'has-error': radiusclient_form.name.$invalid}">
+                                    <label>Name:</label>
+                                    <input name="name" class="form-control" ng-model="radiusclient.name" ng-pattern="/.{3,}/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': radiusclient_form.IPAddress.$invalid}">
+                                    <label>IP Address:</label>
+                                    <input name="IPAddress" class="form-control" ng-model="radiusclient.IPAddress" placeholder="IPAddr" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <button type="button" ng-click="deleteClient($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group" ng-class="{'has-error': radiusclient_form.secret.$invalid}">
+                                    <label>Secret:</label>
+                                    <input name="secret" class="form-control" ng-model="radiusclient.secret" ng-pattern="/.{3,}/">
+                                    <p class="help-block">Required field</p>
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': radiusclient_form.class.$invalid}">
+                                    <label>Class:</label>
+                                    <input name="class" class="form-control" ng-model="radiusclient.class" ng-pattern="/.{3,}/">
+                                    <p class="help-block">Required field</p>
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </ng-form>
                 </div>
-                <br/>
             </div>
         </div>
+        <br>
     </div>
+
     <div class="form-group">
         <button type="button" class="btn btn-success" ng-click="addClient()"> New Radius Client
             <i class="fa fa-plus">
@@ -319,6 +297,150 @@
         </button>
     </div>
 </div>
+
+<div class="tab-pane" id="radiusproxy">
+
+    <div class="panel-group" id="radiusserverspanelgroup" role="tablist" aria-multiselectable="true">
+        <!-- Proxy Server -->
+        <div class="panel panel-default" ng-repeat="server in nodeConfig.radius.servers">
+            <div class="panel-heading" role="tab" id="proxy_heading_{{$index}}">
+                <h4 class="panel-title">
+                    <a class="mylink" role="button" data-toggle="collapse" data-parent="#radiusserverspanelgroup" data-target="#proxy_{{$index}}" aria-expanded="true" aria-controls="#proxy_{{$index}}">
+                        {{server.name}}
+                    </a>
+                </h4>
+            </div>
+            <div id="proxy_{{$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="proxy_heading_{{$index}}">
+                <div class="panel-body">
+                    <ng-form name="proxy_form" role="form">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group" ng-class="{'has-error': proxy_form.name.$invalid}">
+                                    <label>Name:</label>
+                                    <input name="name" class="form-control" ng-model="server.name" ng-pattern="/^.{4,}$/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.authPort.$invalid}">
+                                    <label>Auth port:</label>
+                                    <input name="authPort" class="form-control" ng-model="server.ports['Access-Request']" ng-pattern="/^[0-9]{1,5}$/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.timeout.$invalid}">
+                                    <label>Timeout:</label>
+                                    <input name="timeout" class="form-control" ng-model="server.timeoutMillis" ng-pattern="/^[0-9]{1,6}$/">
+                                    <p class="help-block">in milliseconds</p>
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.errorThreshold.$invalid}">
+                                    <label>Error threshold:</label>
+                                    <input name="errorThreshold" class="form-control" ng-model="server.errorThreshold" ng-pattern="/^[0-9]{1,2}$/">
+                                    <p class="help-block">to mark as unavailable</p>
+                                </div>
+                                <button type="button" ng-click="deleteProxy($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group" ng-class="{'has-error': proxy_form.IPAddress.$invalid}">
+                                    <label>IP Address:</label>
+                                    <input name="IPAddress" class="form-control" ng-model="server.IPAddress" ng-pattern="/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{3,5}){0,1}$/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.acctPort.$invalid}">
+                                    <label>Acct port:</label>
+                                    <input name="acctPort" class="form-control" ng-model="server.ports['Accounting-Request']" ng-pattern="/^[0-9]{1,5}$/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.tries.$invalid}">
+                                    <label>Tries:</label>
+                                    <input name="tries" class="form-control" ng-model="server.tries" ng-pattern="/^[0-9]{1,2}$/">
+                                    <p class="help-block">including the first one</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group" ng-class="{'has-error': proxy_form.secret.$invalid}">
+                                    <label>Secret:</label>
+                                    <input name="secret" class="form-control" ng-model="server.secret" ng-pattern="/.+/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.coaPort.$invalid}">
+                                    <label>CoA port:</label>
+                                    <input name="coaPort" class="form-control" ng-model="server.ports['CoA-Request']" ng-pattern="/^[0-9]{1,5}$/">
+                                </div>
+                                <div class="form-group" ng-class="{'has-error': proxy_form.quarantineTime.$invalid}">
+                                    <label>Quarantine time:</label>
+                                    <input name="quarantineTime" class="form-control" ng-model="server.quarantineTimeMillis" ng-pattern="/^[0-9]{1,5}$/">
+                                    <p class="help-block">in milliseconds</p>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <button type="button" class="btn btn-success" ng-click="addProxy()"> New Proxy Server
+            <i class="fa fa-plus">
+            </i>
+        </button>
+        <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
+            <i class="fa fa-check">
+            </i>
+        </button>
+    </div>
+</div>
+
+    <div class="tab-pane" id="radiusproxygroups">
+
+        <div class="panel-group" id="rspg" role="tablist" aria-multiselectable="true">
+            <!-- Proxy Server -->
+            <div class="panel panel-default" ng-repeat="group in nodeConfig.radius.serverGroups">
+                <div class="panel-heading" role="tab" id="proxygroup_heading_{{$index}}">
+                    <h4 class="panel-title">
+                        <a class="mylink" role="button" data-toggle="collapse" data-parent="#rspg" data-target="#proxygroup_{{$index}}" aria-expanded="true" aria-controls="#proxygroup_{{$index}}">
+                            {{group.name}}
+                        </a>
+                    </h4>
+                </div>
+                <div id="proxygroup_{{$index}}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="proxygroup_heading_{{$index}}">
+                    <div class="panel-body">
+                        <ng-form name="proxygroup_form" role="form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Group name:</label>
+                                        <input name="groupname" class="form-control" ng-model="group.name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Peers:</label>
+                                        <select class="form-control" multiple="multiple" ng-model="group.servers"
+                                                ng-options="server.name as server.name for server in nodeConfig.radius['servers']">
+                                        </select>
+                                        <p class="help-block">Multiple select</p>
+                                    </div>
+                                    <button type="button" ng-click="deleteProxyGroup($index)" class="btn btn-danger btn-sm">
+                                        Delete Group <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Server selection: </label>
+                                        <select class="form-control" ng-model="group.policy">
+                                            <option value="fixed">Fixed order</option>
+                                            <option value="random">Random balancing</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="button" class="btn btn-success" ng-click="addProxyGroup()"> New Proxy Group
+                <i class="fa fa-plus">
+                </i>
+            </button>
+            <button type="button" class="btn btn-primary" ng-click="updateNodeConfig()">Submit changes
+                <i class="fa fa-check">
+                </i>
+            </button>
+        </div>
+    </div>
 
 </div>
 

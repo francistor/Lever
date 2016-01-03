@@ -28,7 +28,7 @@ var client3PurchaseExpirationDate=new Date("2016-07-20T22:00:00Z"); // Next day 
 
 
 var testItems=[
-    /*
+
     // FUP
     // Client initially has 5GB in recurring credit and 1GB in purchased credit
     // All credit is consumed. In the first UPDATE, 5,5GB (in two ccElements) and thus 0,5GB is granted
@@ -196,7 +196,6 @@ var testItems=[
             {poolName: "defaultPool", seconds: -3600*(3+31), expirationDate: client2DefaultExpDate, description: "Default pool."}
         ]
     },
-    */
 
     // IxD
     // Client initially has no credit
@@ -206,7 +205,7 @@ var testItems=[
     // Second session with interim for the remanent 5MB and end of session with additional 2MB
     //      An implicit purchase is done at the first interim
 
-    // First session
+    // First session. Automatic purchases done
     {
         execute: true,
         type: "CCR",
@@ -220,6 +219,7 @@ var testItems=[
             {ratingGroup: 1, serviceId: 0, _check_resultGranted:{ bytes: 10000000, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 1. Granted 10MB until end of the day"}}
         ]
     },
+    // Termination of first session. 5MB out of 10MB high speed used
     {
         execute: true,
         type: "CCR",
@@ -227,7 +227,7 @@ var testItems=[
         sessionId: "session-client3-1",
         description: "Termination CCR for session 1 client 3. IxD plan",
         clientPoU: client3Login,
-        date: new Date(client2Session3Date.getTime()+1*1000*3600),
+        date: new Date(client3Session1Date.getTime()+1*1000*3600),
         ccElements:[
             {ratingGroup: 0, serviceId: 0, used:{bytesDown: 0, seconds: 3600}},
             {ratingGroup: 1, serviceId: 0, used:{bytesDown: 5000000, seconds: 3600}}
@@ -237,8 +237,7 @@ var testItems=[
             {poolName: "highSpeed", bytes: 5000000, expirationDate: client3Session1ExpDate, description: "highSpeed pool."}
         ]
     },
-
-    // Second session
+    // Second session. Credit returns the remaining 5MB
     {
         execute: true,
         type: "CCR",
@@ -252,6 +251,7 @@ var testItems=[
             {ratingGroup: 1, serviceId: 0, _check_resultGranted:{ bytes: 5000000, seconds: null, expirationDate: client3Session1ExpDate, fui: false, fua: 0, description: "Rating group 1. Granted remaining 5MB until end of the day"}}
         ]
     },
+    // Third session. Bytes are exceeded and new purchase is done
     {
         execute: true,
         type: "CCR",
@@ -281,9 +281,7 @@ var testItems=[
             {poolName: "lowSpeed", expirationDate: client3Session1ExpDate, description: "lowSpeed pool. Until the end of the day"},
             {poolName: "highSpeed", bytes: 8000000, expirationDate: client3Session1ExpDate, description: "highSpeed pool. Remaining 8MB."}
         ]
-    }
-
-    /*
+    },
     {
         execute: true,
         type: "BuyRecharge",
@@ -292,10 +290,9 @@ var testItems=[
         rechargeName: "Turbo",
         date: new Date(client3PurchaseDate.getTime()),
         _check_creditPoolsAfter:[
-            {poolName: "highSpeed", bytes: 10000000, expirationDate: client3PurchaseExpirationDate, description: "highSpeed pool update."}
+            {poolName: "highSpeed", bytes: 18000000, expirationDate: client3PurchaseExpirationDate, description: "highSpeed pool update."}
         ]
     }
-    */
 ];
 
 exports.testItems=testItems;

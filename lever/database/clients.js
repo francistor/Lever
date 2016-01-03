@@ -7,7 +7,6 @@ print("----------------------------------");
 
 var db=connect(leverClientDatabase.substring(10));
 db.clients.drop();
-db.clients.createIndex({clientId: 1});
 db.clients.createIndex({"provision.legacyClientId": 1}, {unique: true});
 
 db.lines.drop();

@@ -22,16 +22,18 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
 		$scope.nodeConfig={};
 
         // Get diameterConfig
-        $http({
-            method  : 'GET',
-            url     : "/dyn/node/"+$routeParams.hostName+"/nodeConfiguration",
-            timeout: requestTimeout
-        }).success(function(data){
-            $scope.nodeConfig=data;
-        }).error(function(data, status, headers, config, statusText){
-            // Shows inline error message
-            niceAlert.error(data);
-        });
+        $scope.getNodeConfig=function(){
+            $http({
+                method  : 'GET',
+                url     : "/dyn/node/"+$routeParams.hostName+"/nodeConfiguration",
+                timeout: requestTimeout
+            }).success(function(data){
+                $scope.nodeConfig=data;
+            }).error(function(data){
+                // Shows inline error message
+                niceAlert.error(data);
+            });
+        };
 
 		// Deletes the peer with the specified index
 		$scope.deletePeer=function(index){
@@ -40,7 +42,7 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
 		
 		// Adds a new, empty peer
 		$scope.addPeer=function(){
-			var peers=$scope.nodeConfig.diameterConfig["peers"];
+			var peers=$scope.nodeConfig.diameter["peers"];
 			if(peers) peers.push({"name":"New_peer", "diameterHost":"-"});
 		};
 
@@ -58,8 +60,6 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
         $scope.updateNodeConfig=function(){
             if(!$scope.nodeConfig) return;
 
-            // Update version of diameter config
-            $scope.nodeConfig["_version"]++;
             // Post update
             $http({
                 method  : 'POST',
@@ -68,7 +68,8 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
                 timeout: requestTimeout
             }).success(function(data){
                 niceAlert.info("Configuration updated.");
-            }).error(function(data, status, headers, config, statusText){
+                $scope.getNodeConfig();
+            }).error(function(data){
                 // Shows inline error message
                 niceAlert.error(data);
             });
@@ -84,10 +85,34 @@ managerControllers.controller("NodeConfigController", ['$scope', '$http', '$rout
             var clients=$scope.nodeConfig.radius["clients"];
             if(clients) clients.push({"name":"New_Client", "IPAddress":"127.0.0.1", "secret":"secret", "class": ""});
         };
+
+        // Adds a new, empty proxy server
+        $scope.addProxy=function(){
+            var servers=$scope.nodeConfig.radius["servers"];
+            if(servers) servers.push({"name": "New_Proxy_Server", "IPAddress": "a", ports:{}});
+        };
+
+        // Deletes the proxy server
+        $scope.deleteProxy=function(index){
+            $scope.nodeConfig.radius["servers"].splice(index, 1);
+        };
+
+        // Adds a new, empty proxy server group
+        $scope.addProxyGroup=function(){
+            var serverGroups=$scope.nodeConfig.radius["serverGroups"];
+            if(serverGroups) serverGroups.push({"name": "New_Group", servers:[], policy: "fixed"});
+        };
+
+        // Deletes the proxy server group
+        $scope.deleteProxyGroup=function(index){
+            $scope.nodeConfig.radius["serverGroups"].splice(index, 1);
+        };
+
+        $scope.getNodeConfig();
 	}]);
 
 // Diameter Dictionary
-managerControllers.controller("DiameterDictionaryController", ['$scope', '$http', 'niceAlert', function($scope, $http, $niceAlert){
+managerControllers.controller("DiameterDictionaryController", ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
     $scope.diameterDictionary={};
     $scope.vendors=[];
@@ -101,22 +126,57 @@ managerControllers.controller("DiameterDictionaryController", ['$scope', '$http'
         {name: 'Grouped', type:'Grouped'}
     ];
 
-    $http({
-        method  : 'GET',
-        url     : "/dyn/config/diameterDictionary",
-        timeout: requestTimeout
-    }).success(function(data){
-        // Add default vendor
-        data.vendor["0"]="Standard";
-        // Add rest of vendors
-        for (vendor in data.vendor) {
-            if (data.vendor.hasOwnProperty(vendor)) $scope.vendors.push(vendor);
-        }
-        $scope.diameterDictionary = data;
-    }).error(function(data, status, headers, config, statusText){
-        // Shows inline error message
-        niceAlert.error(data);
-    });
+    $scope.getDiameterDictionary=function() {
+        $http({
+            method: 'GET',
+            url: "/dyn/config/diameterDictionary",
+            timeout: requestTimeout
+        }).success(function (data) {
+            // Add default vendor
+            data.vendor["0"] = "Standard";
+            // Add rest of vendors
+            for (vendor in data.vendor) {
+                if (data.vendor.hasOwnProperty(vendor)) $scope.vendors.push(vendor);
+            }
+            $scope.diameterDictionary = data;
+        }).error(function (data, status, headers, config, statusText) {
+            // Shows inline error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.updateDiameterDictionary=function(){
+        // Make sure the dictionary exists, otherwise might be overwriten with nothing
+        if($scope.diameterDictionary) $http({
+            method  : 'POST',
+            url     : "/dyn/config/updateDiameterDictionary",
+            data    : $scope.diameterDictionary,
+            timeout: requestTimeout
+        }).success(function(){
+            niceAlert.info("Done!");
+            updateDiameterDictionary();
+        }).error(function(data, status, headers, config, statusText){
+            // Shows inline error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.addAttribute=function(vendor){
+        $scope.diameterDictionary["avp"][vendor].push(
+            {
+                "code": 0,
+                "name": "new_attribute",
+                "type": 'Unsigned32'
+            }
+        );
+    };
+
+    $scope.deleteAttribute=function(vendor, index){
+        $scope.diameterDictionary["avp"][vendor].splice(index, 1);
+    };
+
+    $scope.getDiameterDictionary();
+
 }]);
 
 // Node statistics
@@ -352,18 +412,60 @@ managerControllers.controller("NodeStatsController", ['$scope', '$http', '$route
 managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert', function($scope, $http, niceAlert){
 
     // Initialize objects
-    $scope.clientData={};
+    // TODO: Remove this
     $scope.searchData={phone: "999999991"};
 
     $scope.inArrayComparator=function(actual, expected){
         return expected.indexOf(actual)!=-1;
     };
 
+    $scope.createClient=function(){
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/createClient',
+            data    : $scope.client,
+            timeout: requestTimeout
+        }).success(function(data){
+            // TODO: remove this
+            delete $scope.searchData.phone;
+            $scope.searchData.searchField="legacyClientId";
+            $scope.searchData.legacyClientId=$scope.client.provision.legacyClientId;
+            $scope.getFullClientContext();
+        }).error(function(data){
+            // Shows error message
+            niceAlert.error(data);
+        });
+    };
+
+    $scope.deleteClient=function(){
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/deleteClient',
+            data    : $scope.client,
+            timeout: requestTimeout
+        }).success(function(){
+            delete $scope.client;
+            delete $scope.pointsOfUsage;
+            delete $scope.plan;
+            niceAlert.info("Client deleted");
+        }).error(function(data){
+            // Shows error message
+            niceAlert.error(data);
+        });
+    };
+
     $scope.getFullClientContext=function(){
+        // Cleanup search field
+        var query={searchField: $scope.searchData.searchField};
+        if(query.searchField=="legacyClientId"){query.legacyClientId=$scope.searchData.legacyClientId}
+        else if(query.searchField=="line"){query.nasIPAddress=$scope.searchData.nasIPAddress; query.nasPort=$scope.searchData.nasPort;}
+        else if(query.searchField=="userName"){query.userName=$scope.searchData.userName;}
+        else if(query.searchField=="phone"){query.phone=$scope.searchData.phone;}
+
         $http({
             method  : 'POST',
             url : '/dyn/clients/getFullClientData',
-            data    : $scope.searchData,
+            data    : query,
             timeout: requestTimeout
         }).success(function(data){
             if(!data.client) niceAlert.info("Client not found");
@@ -371,17 +473,17 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
                 $scope.client=data.client;
                 $scope.pointsOfUsage=data.pointsOfUsage;
                 $scope.plan=data.plan;
-                // Iterate through services in the plan
-
             }
         }).error(function(data, status, headers, config, statusText){
             // Shows error message
             niceAlert.error(data);
+            delete $scope.client;
+            delete $scope.pointsOfUsage;
+            delete $scope.plan;
         });
     };
 
     $scope.updateClient=function(){
-        $scope.client.provision["_version"]++;
         $http({
             method  : 'POST',
             url : '/dyn/clients/updateClientProvisionData',
@@ -389,13 +491,16 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
             timeout: requestTimeout
         }).success(function(data){
             niceAlert.info("Client updated.");
-        }).error(function(data, status, headers, config, statusText){
+            $scope.searchData.searchField="legacyClientId";
+            $scope.searchData.legacyClientId=$scope.client.provision.legacyClientId;
+            $scope.getFullClientContext();
+        }).error(function(data){
             // Shows error message
             niceAlert.error(data);
         });
     };
 
-    $scope.addPoU=function(pou){
+    $scope.addPoU=function(){
         $http({
             method  : 'POST',
             url : '/dyn/clients/addPoU',
@@ -405,7 +510,7 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
             niceAlert.info("Point of usage added.");
             $scope.pouType=null; $scope.pouValue=null;
             $scope.getFullClientContext();
-        }).error(function(data, status, headers, config, statusText){
+        }).error(function(data){
             // Shows error message
             niceAlert.error(data);
         });
@@ -420,14 +525,26 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
         }).success(function(data){
             niceAlert.info("Point of usage deleted.");
             $scope.getFullClientContext();
-        }).error(function(data, status, headers, config, statusText){
+        }).error(function(data){
             // Shows error message
             niceAlert.error(data);
         });
     };
 
-    $scope.getServiceCredit=function(serviceName){
-
+    $scope.buyRecharge=function(rechargeName){
+        $http({
+            method  : 'POST',
+            url : '/dyn/clients/buyRecharge',
+            data    : {clientId: $scope.client._id, rechargeName:rechargeName},
+            timeout: requestTimeout
+        }).success(function(data){
+            niceAlert.info("Recharge done");
+            $scope.getFullClientContext();
+        }).error(function(data, status){
+            // Shows error message
+            if(status==401) niceAlert.error("Not authorized");
+            else niceAlert.error(data);
+        });
     };
 
 }]);

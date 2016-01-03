@@ -33,13 +33,13 @@ SEARCH DATA
                         <label for="userNameText">User name: </label>
                         <input type="text" id="userNameText" name="userNameText" class="form-control" ng-model="searchData.userName" ng-pattern="/.+/">
                     </div>
-                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasPortText.$invalid}"ng-if="searchData.searchField=='line'">
+                    <div class="form-group" ng-class="{'has-error': clientSearchForm.nasPortText.$invalid}" ng-if="searchData.searchField=='line'">
                         <label for="nasPortText">NAS-Port: </label>
                         <input type="text" id="nasPortText" name="nasPortText" class="form-control" ng-model="searchData.nasPort" ng-pattern="/^[0-9]{1,10}$/">
                     </div>
                     <div class="form-group" ng-class="{'has-error': clientSearchForm.nasIPAddressText.$invalid}" ng-if="searchData.searchField=='line'">
                         <label for="nasIPAddressText">NAS-IP-Address: </label>
-                        <input type="text" id="nasIPAddressText" name="nasIPAddressText" class="form-control" ng-model="searchData.nasIPAddress"  ng-pattern="/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
+                        <input type="text" id="nasIPAddressText" name="nasIPAddressText" class="form-control" ng-model="searchData.nasIPAddress" ng-pattern="/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/">
                     </div>
                     <div class="form-group" ng-class="{'has-error': clientSearchForm.legacyClientIdText.$invalid}" ng-if="searchData.searchField=='legacyClientId'">
                         <label for="legacyClientIdText">IT Identifier: </label>
@@ -96,11 +96,6 @@ CLIENT DATA
                                             <option value="2">Blocked</option>
                                         </select>
                                     </div>
-                                    <button type="button" id="clientUpdate" class="btn btn-warning" ng-click="updateClient()">
-                                        Update
-                                        <i class="fa fa-check">
-                                        </i>
-                                    </button>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
@@ -125,6 +120,23 @@ CLIENT DATA
                                         <label for="billingDay">Billing day: </label>
                                         <input type="number" id="billingDay" class="form-control" ng-model="client.provision.billingDay">
                                     </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <button type="button" id="clientUpdate" class="btn btn-default" ng-click="updateClient()">
+                                        Update
+                                        <i class="fa fa-check">
+                                        </i>
+                                    </button>
+                                    <button type="button" id="createClient" class="btn btn-info" ng-click="createClient()">
+                                        New Client
+                                        <i class="fa fa-plus">
+                                        </i>
+                                    </button>
+                                    <button ng-if="client._id" type="button" id="deleteClient" class="btn btn-primary" ng-click="deleteClient()">
+                                        Delete Client
+                                        <i class="fa fa-times">
+                                        </i>
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -245,11 +257,6 @@ POINTS OF USAGE
                                     <label for="PoUValue">Value: </label>
                                     <input type="text" id="PoUValue" class="form-control" ng-model="pouValue">
                                 </div>
-                                <button type="button" id="addPoU" class="btn btn-success" ng-click="addPoU()">
-                                    Submit
-                                    <i class="fa fa-check">
-                                    </i>
-                                </button>
                             </form>
                         </div>
                     </div>
@@ -261,7 +268,7 @@ POINTS OF USAGE
 
 <!--
 -------------------------------------------------------------------------------
-SERVICES
+PLAN
 -------------------------------------------------------------------------------
 -->
 
@@ -283,7 +290,7 @@ SERVICES
                         <div class="col-md-12">
 
                             <!-- Credits -->
-                            <table class="table">
+                            <table class="table" ng-if="client && plan && client.credit">
                                 <thead>
                                 <tr>
                                     <th>Credit</th>
@@ -312,7 +319,7 @@ SERVICES
                             </table>
 
                             <!-- Recharges -->
-                            <table class="table" >
+                            <table class="table" ng-if="client && plan && plan.recharges">
                                 <thead>
                                 <tr>
                                     <th>Recharge Name</th>
@@ -336,7 +343,7 @@ SERVICES
                                         1 month
                                     </td>
                                     <td>
-                                        <button type="button" ng-if="recharge.creationType==4" class="btn btn-success btn-circle"><i class="fa fa-shopping-cart"></i></button>
+                                        <button type="button" ng-if="recharge.creationType==4" class="btn btn-success btn-circle" ng-click="buyRecharge(recharge.name)"><i class="fa fa-shopping-cart"></i></button>
                                     </td>
                                 </tr>
                                 </tbody>
