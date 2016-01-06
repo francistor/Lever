@@ -1,0 +1,19 @@
+<br>
+<legend>Plan</legend>
+
+<form name="basic_plan_info_form">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group" ng-class="{'has-error': basic_plan_info_form.planName.$invalid}">
+                <label for="planName">Plan name:</label>
+                <input type="text" name="planName" id="planName" class="form-control" ng-model="plan.name" ng-pattern="/.{3,}/">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group" ng-class="{'has-error': basic_plan_info_form.planDescription.$invalid}">
+                <label for="planDescription">Description:</label>
+                <input type="text" name="planDescription" id="planDescription" class="form-control" ng-model="plan.description" ng-pattern="/.{3,}/">
+            </div>
+        </div>
+    </div>
+</form>

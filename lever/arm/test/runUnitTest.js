@@ -29,7 +29,7 @@ function unitTest(){
         console.log("Initialization error due to " + err);
     }).done();
 
-
+    // Calls each one of the test items
     var n=0;
     function nextTestItem() {
         // Check if we have already finished
@@ -66,8 +66,9 @@ function unitTest(){
                     if(testItem.subtype!="TERMINATE") checkGrantedResult(testItem.ccElements);
                     if(testItem._check_creditPoolsAfter) checkCreditPools(clientContext, testItem._check_creditPoolsAfter);
 
-                    // Next test
-                    setTimeout(nextTestItem, 0);
+                    if(testItem._check_ccEvents){
+                        pCheckccEvents(testItem._check_ccEvents).finally(function(){setTimeout(nextTestItem, 0);});
+                    } else setTimeout(nextTestItem, 0);
                 }).done();
 
             }).done();
@@ -120,6 +121,22 @@ function unitTest(){
             if(pGetTime(granted.expirationDate)==pGetTime(spec.expirationDate)) console.log("\t[Test][OK] "+spec.description+" Expiration Date"); else console.log("\t[Test][ERROR] "+spec.description+" ExpirationDate. value: "+(spec.expirationDate?spec.expirationDate.toISOString():"undefined")+" found: "+(granted.expirationDate?granted.expirationDate.toISOString():"undefined"));
             if((granted.fui==spec.fui)||(typeof(granted.fui)=='undefined' && typeof(spec.fui)=='undefined')) console.log("\t[Test][OK] "+spec.description+" FUI"); else console.log("\t[Test][ERROR] "+spec.description+" FUI. value: "+spec.fui+" found: "+granted.fui);
 
+        });
+    }
+
+    function pCheckccEvents(ccEvents){
+        var promises=[];
+        var eventDB=arm.getDatabaseConnections().eventDB;
+
+        for(var i=0; i<ccEvents.length; i++){
+            promises.push(eventDB.collection("ccEvents").findOne(ccEvents[i]));
+        }
+
+        return Q.allSettled(promises).then(function(snapshots){
+            for(var j=0; j<snapshots.length; j++){
+                if(snapshots[j].state=="fulfilled") console.log("\t[Test][OK] Event "+(j+1)+" found.");
+                else console.log("\t[Test][ERROR] Event "+(j+1)+" not found.");
+            }
         });
     }
 }

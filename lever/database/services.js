@@ -87,7 +87,7 @@ var plan1001=
             preAuthorized: true,
             creditPoolNames: ["bytesRecurring", "bytesPurchased"],
             sortCreditsByExpirationDate: false,      // If false, credits will be used in the order declared in "creditPoolNames"
-            oocAction: 0,                            // 0: Terminate. 1: Redirect. 2: Restrict_access, 3: None
+            oocAction: 0                             // 0: Terminate. 1: Redirect. 2: Restrict_access, 3: None
         },
         {
             name: "FUPLow",

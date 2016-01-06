@@ -47,6 +47,13 @@ var testItems=[
         ccElements:[
             // Returned all 6GB credit
             {ratingGroup: 1, serviceId: 1, _check_resultGranted:{ bytes: 6*1024*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Granted from 5GB recurring plus 1GB purchased."}}
+        ],
+        _check_ccEvents:[
+            {
+                eventDate: client1SessionDate, sessionId: "session-client1-1", ccRequestType: 1, ccElements:{
+                    $elemMatch:{ ratingGroup:1, serviceId: 1, "granted.bytes":6*1024*1024*1024}
+                }
+            }
         ]
     },
     {
@@ -62,7 +69,6 @@ var testItems=[
             // Note that first credit is discounted for all ccElements, and then credit is calculated
             {ratingGroup: 1, serviceId: 1, used: {bytesDown: 4*1024*1024*1024+512*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Consumed 4GB recurring - Granted 0.5GB purchased."}},
             {ratingGroup: 1, serviceId: 1, used: {bytesDown: 1024*1024*1024, seconds: 3600}, _check_resultGranted:{bytes: 512*1024*1024, expirationDate: client1PurchasedExpDate, fui: false, fua: 0, description: "Consumed 1GB recurring plus 0.5GB purchased - Granted 0.5GB purchased."}}
-
         ]
     },
     {

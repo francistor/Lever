@@ -20,6 +20,9 @@ managerApp.config(['$routeProvider',
       }).when('/clients', {
          templateUrl: 'partials/client.html',
          controller: 'ClientController'
+      }).when('/plans/:planName', {
+         templateUrl: 'partials/plan.html',
+         controller: 'PlanController'
       }).otherwise({
          redirectTo: '/dashboard'
       });

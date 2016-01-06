@@ -548,3 +548,9 @@ managerControllers.controller('ClientController', ['$scope', '$http', 'niceAlert
     };
 
 }]);
+
+managerControllers.controller("PlanController",  ['$scope', '$http', '$routeParams', 'niceAlert', function($scope, $http, $routeParams, niceAlert){
+
+    $scope.plan={};
+
+}]);

@@ -79,7 +79,7 @@ var createArm=function(){
     };
 
     /**
-     * Gets database connections already established from external application.
+     * Sets database connections already established from external application.
      * Normal use.
      * @param configDatabase
      * @param clientDatabase
@@ -94,6 +94,15 @@ var createArm=function(){
         queryOptions=qOptions||{};
         writeOptions=wOptions||{};
     };
+
+    /**
+     * For testing only
+     * @returns {{configDB: *, clientDB: *, eventDB: *}}
+     */
+    arm.getDatabaseConnections=function(){
+        return {configDB: configDB, clientDB: clientDB, eventDB: eventDB}
+    };
+
 
     /**
      * Setup configuration properties
