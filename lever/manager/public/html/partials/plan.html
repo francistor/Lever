@@ -1,6 +1,7 @@
 <br>
 <legend>Plan</legend>
 
+<!-- Basic info -->
 <form name="basic_plan_info_form">
     <div class="row">
         <div class="col-md-6">
@@ -17,3 +18,176 @@
         </div>
     </div>
 </form>
+
+<!-- Services -->
+<h4>Services</h4><hr>
+<div class="panel-group" id="services_panel" role="tablist" aria-multiselectable="true">
+    <!-- Service -->
+    <div class="panel panel-success">
+        <div class="panel-heading" role="tab" id="service_heading_name">
+            <h4 class="panel-title">
+                <a class="mylink" role="button" data-toggle="collapse" data-parent="#services_panel" data-target="#service_name" aria-expanded="true" aria-controls="#serivce_name">
+                    service description
+                </a>
+            </h4>
+        </div>
+        <div id="service_name" class="panel-collapse collapse" role="tabpanel" aria-labelledby="service_heading_name">
+            <div class="panel-body">
+                <ng-form name="service_form" role="form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': service_form.name.$invalid}">
+                                <label>Name:</label>
+                                <input name="name" class="form-control" ng-model="service.name" ng-pattern="/.{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="form-group" ng-class="{'has-error': service_form.serviceId.$invalid}">
+                                <label>ServiceId:</label>
+                                <input name="serviceId" class="form-control" ng-model="service.serviceId" ng-pattern="/[0-9]{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="autoActivated" ng-model="service.autoActivated"> Auto-activated
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="preauthorized" ng-model="service.preAuthorized"> Pre-authorized
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Out of credit action:</label>
+                                <select class="form-control" ng-model="service.oocAction">
+                                    <option value="0">Terminate</option>
+                                    <option value="1">Redirect to portal</option>
+                                    <option value="2">Restrict access</option>
+                                    <option value="3">No action</option>
+                                </select>
+                            </div>
+
+                            <button type="button" ng-click="deleteService($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': service_form.description.$invalid}">
+                                <label>Description:</label>
+                                <input name="description" class="form-control" ng-model="service.description" ng-pattern="/.{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="form-group" ng-class="{'has-error': service_form.ratingGroup.$invalid}">
+                                <label>RatingGroup:</label>
+                                <input name="ratingGroup" class="form-control" ng-model="service.ratingGroup" ng-pattern="/[0-9]{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="subscribable" ng-model="service.subscribable"> Subscribed by the user
+                                </label>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="sortCreditsByExpirationDate" ng-model="service.sortCreditsByExpirationDate"> Sort credits by expiry date
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Credit pool names:</label>
+                                <input name="creditPoolNames" class="form-control" ng-model="service.creditPoolNames">
+                                <p class="help-block">Comma separated values</p>
+                            </div>
+                        </div>
+                    </div>
+                </ng-form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recharges -->
+<h4>Recharges</h4><hr>
+<div class="panel-group" id="recharges_panel" role="tablist" aria-multiselectable="true">
+    <!-- Service -->
+    <div class="panel panel-info">
+        <div class="panel-heading" role="tab" id="recharge_heading_name">
+            <h4 class="panel-title">
+                <a class="mylink" role="button" data-toggle="collapse" data-parent="#recharges_panel" data-target="#recharge_name" aria-expanded="true" aria-controls="#recharge_name">
+                    recharge description
+                </a>
+            </h4>
+        </div>
+        <div id="recharge_name" class="panel-collapse collapse" role="tabpanel" aria-labelledby="recharge_heading_name">
+            <div class="panel-body">
+                <div class="row">
+                    <ng-form name="service_form" role="form">
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': recharge_form.name.$invalid}">
+                                <label>Name:</label>
+                                <input name="name" class="form-control" ng-model="recharge.name" ng-pattern="/.{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Pre-authorization URL:</label>
+                                <input name="preauthURL" class="form-control" ng-model="recharge.preauthURL">
+                            </div>
+                            <div class="form-group">
+                                <label>Creation type:</label>
+                                <select class="form-control" ng-model="service.creationType">
+                                    <option value="1">Initial</option>
+                                    <option value="2">Per use</option>
+                                    <option value="3">Recurring</option>
+                                    <option value="4">Portal</option>
+                                    <option value="5">External</option>
+                                </select>
+                            </div>
+
+                            <button type="button" ng-click="deleteRecharge($index)" class="btn btn-danger btn-sm">Delete <i class="fa fa-times"></i></button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group" ng-class="{'has-error': recharge_form.description.$invalid}">
+                                <label>Description:</label>
+                                <input name="description" class="form-control" ng-model="recharge.description" ng-pattern="/.{3,}/">
+                                <p class="help-block">Required field</p>
+                            </div>
+                            <div class="form-group">
+                                <label>Commit URL:</label>
+                                <input name="commitURL" class="form-control" ng-model="recharge.commitURL">
+                            </div>
+                        </div>
+                    </ng-form>
+                </div>
+
+                <br>
+
+                <div class="panel-group" id="resources_panel" role="tablist" aria-multiselectable="true">
+                    <div class="panel panel-warning">
+                        <div class="panel-heading" role="tab" id="resource_heading_name">
+                            <h4 class="panel-title">
+                                <a class="mylink" role="button" data-toggle="collapse" data-parent="#resources_panel" data-target="#resource_name" aria-expanded="true" aria-controls="#resource_name">
+                                    Resource
+                                </a>
+                            </h4>
+                        </div>
+                        <div id="resource_name" class="panel-collapse collapse" role="tabpanel" aria-labelledby="resource_heading_name">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <ng-form name="resource_form" role="form">
+                                        <div class="col-md-6">
+                                            <div class="form-group" ng-class="{'has-error': resource_form.creditPoolName.$invalid}">
+                                                <label>Credit pool name:</label>
+                                                <input name="creditPoolName" class="form-control" ng-model="resource.creditPoolName" ng-pattern="/.{3,}/">
+                                                <p class="help-block">Required field</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                        </div>
+                                    </ng-form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
