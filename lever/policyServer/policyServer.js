@@ -5,7 +5,7 @@
 
 var Q=require("q");
 var net=require("net");
-var dgram=require("dgram");
+var dgram=require("dgram"); 
 var radius=require("radius");
 var logger=require("./log").logger;
 var createConnection=require("./diameterConnection").createConnection;
@@ -705,16 +705,19 @@ var createPolicyServer=function(hostName){
                 // Radius
                 if (config.node.radius) {
                     // Server sockets
-                    radiusAuthSocket = dgram.createSocket("udp4");
-                    radiusAcctSocket = dgram.createSocket("udp4");
-                    radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.listenIPAddress);
-                    radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.listenIPAddress);
-                    radiusAuthSocket.on("message", onRadiusAuthRequestReceived);
-                    radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
-                    radiusAuthSocket.on("error", onRadiusSocketError);
-                    radiusAcctSocket.on("error", onRadiusSocketError);
-                    logger.info("Radius auth listening in port %s", config.node.radius.authPort);
-                    logger.info("Radius acct listening in port %s", config.node.radius.acctPort);
+					if(config.node.radius.authPort && config.node.radius.acctPort) {
+						
+						radiusAuthSocket = dgram.createSocket("udp4");
+						radiusAcctSocket = dgram.createSocket("udp4");
+						radiusAuthSocket.bind(config.node.radius.authPort, config.node.radius.listenIPAddress);
+						radiusAcctSocket.bind(config.node.radius.acctPort, config.node.radius.listenIPAddress);
+						radiusAuthSocket.on("message", onRadiusAuthRequestReceived);
+						radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
+						radiusAuthSocket.on("error", onRadiusSocketError);
+						radiusAcctSocket.on("error", onRadiusSocketError);
+						logger.info("Radius auth listening in port %s", config.node.radius.authPort);
+						logger.info("Radius acct listening in port %s", config.node.radius.acctPort);
+					}
 
                     // Client sockets
                     // TODO TODO TODO TODO: Turn this into a promise

@@ -1,10 +1,13 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 _REAL_SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
 _HOME_DIR=${_REAL_SCRIPT_DIR}/..
 
+cd ${_HOME_DIR}/../database
+
 # Synchronize database
-(cd ${_HOME_DIR}/../database && toDatabase.sh)
+(cd ${_HOME_DIR}/../database && ./toDatabase.sh)
 
 # Delete status file
 rm ${_HOME_DIR}/test/testFinished.txt > /dev/null

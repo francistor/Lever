@@ -14,11 +14,11 @@
 
       "containers":{
         "plain-properties":{
-          "path": "/code/iRestconf/restconfserver/test/plain.properties",
+          "path": "/code/gitsandbox/restconfserver/test/plain.properties",
           "format": "properties"
         },
         "plain-section-properties":{
-          "path": "/code/iRestconf/restconfserver/test/plain.section.properties",
+          "path": "/code/gitsandbox/restconfserver/test/plain.section.properties",
           "format": "section.properties"
         }
       }

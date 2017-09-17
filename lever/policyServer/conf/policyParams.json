@@ -1,0 +1,140 @@
+[
+  {
+    "_id": {
+      "$oid": "59bead420ee8ae1fd1131981"
+    },
+    "setName": "apn",
+    "key": "internet.unifon",
+    "values": {
+      "targets": [
+        "psa",
+        "spb",
+        "wap-gw"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131982"
+    },
+    "setName": "apn",
+    "key": "empresas",
+    "values": {
+      "targets": [
+        "psa",
+        "spb",
+        "rcs"
+      ]
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131983"
+    },
+    "setName": "targets",
+    "key": "psa",
+    "values": {
+      "ipAddresses": [
+        "192.168.1.101",
+        "192.168.1.102"
+      ],
+      "timeoutMs": 750,
+      "retries": 2
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131984"
+    },
+    "setName": "targets",
+    "key": "spb",
+    "values": {
+      "ipAddresses": [
+        "192.168.1.101",
+        "192.168.1.102"
+      ],
+      "timeoutMs": 750,
+      "retries": 2
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131985"
+    },
+    "setName": "targets",
+    "key": "rcs",
+    "values": {
+      "ipAddresses": [
+        "192.168.1.101"
+      ],
+      "timeoutMs": 1500,
+      "retries": 1
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131986"
+    },
+    "setName": "domain",
+    "key": "speedy",
+    "values": {
+      "provisionType": "database",
+      "doProxyAuth": true,
+      "doProxyServiceAcct": true,
+      "radiusProxyGroup": "speedy",
+      "avps": {
+        "Unisphere-Virtual-Router": "wbc2"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131987"
+    },
+    "setName": "domain",
+    "key": "arnet",
+    "values": {
+      "provisionType": "none",
+      "doProxyAuth": true,
+      "doProxyServiceAcct": true,
+      "radiusProxyGroup": "arnet",
+      "avps": {
+        "Unisphere-Virtual-Router": "arnet"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131988"
+    },
+    "setName": "service",
+    "key": "permissive",
+    "values": {
+      "avps": {
+        "Reply-Message": "Permissive service"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd1131989"
+    },
+    "setName": "service",
+    "key": "sd3M",
+    "values": {
+      "avps": {
+        "Reply-Message": "sd3M"
+      }
+    }
+  },
+  {
+    "_id": {
+      "$oid": "59bead430ee8ae1fd113198a"
+    },
+    "setName": "global",
+    "key": "global",
+    "values": {
+      "serviceOnSubscriptionNotFound": "permissive"
+    }
+  }
+]
