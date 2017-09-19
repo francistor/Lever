@@ -9,15 +9,18 @@
 const fs = require("fs");
 
 var totalThreads=1;
-var loadTemplate="loadTemplate.json"
+var totalSessions=1;
+var loadTemplate="loadTemplate.json";
+var hostName="test-client";
+var showPackets=false;
 
-var hostName;
 var argument;
-
 for(var i=2; i<process.argv.length; i++){
+
     argument=process.argv[i];
+	
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runUnitTest --hostName <hostName> [--totalThreads <number>] [--template <loadTemplate.json>]");
+        console.log("Usage: node runUnitTest [--hostName <hostName (default: \"test-client\")>] [--totalSessions <number>] [--totalThreads <number>] [--template <loadTemplate.json>] [--show]");
         process.exit(0);
     }
 
@@ -35,12 +38,16 @@ for(var i=2; i<process.argv.length; i++){
         loadTemplate=process.argv[i+1];
         console.log("Using template: "+loadTemplate);
     }
-}
-
-// Parameter checkings
-if(!hostName){
-    console.log("The '--hostName argument is required");
-    process.exit(-1);
+	
+	if(argument=="--totalSessions") if(process.argv.length>=i){
+        totalSessions=parseInt(process.argv[i+1]);
+        console.log("Using template: "+loadTemplate);
+    }
+	
+	if(argument=="--show"){
+		showPackets=true;
+		console.log("Showing packets");
+	}
 }
 
 // Create process title so that it can be stopped using pkill --signal SIGINT <process.title>
@@ -65,12 +72,12 @@ policyServer.initialize(function(err){
 
 var finishedThreads=0;
 var genPackets=0;
-var totalPackets=10;
+var totalPackets=totalSessions*4;
 var startTime=Date.now();
 
 function loadLoop(){
     var packetType = (genPackets % 4 == 0) ? "Access-Request" : "Accounting-Request";
-    console.log("Packet: " + JSON.stringify(buildPacket(radiusTemplate[genPackets % 4], parseInt(genPackets / 4))));
+    if(showPackets) console.log("%s: %s", packetType, JSON.stringify(buildPacket(radiusTemplate[genPackets % 4], parseInt(genPackets / 4))));
 
     policyServer.radius.sendServerGroupRequest(packetType, buildPacket(radiusTemplate[genPackets % 4], parseInt(genPackets / 4)), "allServers", function (err, response) {
         if (err) console.log("[ERROR] " + err.message);
@@ -83,7 +90,7 @@ function loadLoop(){
 			finishedThreads++;
 			if(finishedThreads == totalThreads){
 				var endTime=Date.now();
-				console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseInt(totalPackets/((endTime-startTime)/1000)));
+				console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat(totalPackets/((endTime-startTime)/1000)).toFixed(2));
 				process.exit(0);
 			}
         }
@@ -94,9 +101,11 @@ function loadLoop(){
 function buildPacket(template, i){
     var packet = {};
     for(property in template){
-        packet[property] = template[property].replace(/\${(.+?)}/, function(match, p1){
+		value = template[property];
+		if(typeof value == "string") value = value.replace(/\${(.+?)}/, function(match, p1){
             return eval(p1);
-        })
+        });
+		packet[property]=value;
     }
     return packet;
 }

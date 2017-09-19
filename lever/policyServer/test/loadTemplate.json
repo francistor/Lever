@@ -3,12 +3,17 @@
 		"User-Name": "User-${i}"
 	},
 	{
-		"User-Name": "User-${i}"
+		"User-Name": "User-${i}",
+		"Acct-Status-Type": "Start"
 	},
 	{
-		"User-Name": "User-${i}"
+		"User-Name": "User-${i}",
+		"Acct-Status-Type": "Interim-Update",
+		"Acct-Session-Time": 1800
 	},
 	{
-		"User-Name": "User-${i}"
+		"User-Name": "User-${i}",
+		"Acct-Status-Type": "Stop",
+		"Acct-Session-Time": 3600
 	}
 ]

@@ -22,7 +22,7 @@
         },
         "timeoutMillis": 2000,
         "tries": 1,
-        "errorThreshold": 2,
+        "errorThreshold": 20000,
         "quarantineTimeMillis": 4000
       }
     ],
