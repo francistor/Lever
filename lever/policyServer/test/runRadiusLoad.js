@@ -9,12 +9,15 @@
 const fs = require("fs");
 
 var totalThreads=1;
+var loadTemplate="loadTemplate.json"
+
 var hostName;
 var argument;
+
 for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runUnitTest --hostName <hostName> [--totalThreads <number>]");
+        console.log("Usage: node runUnitTest --hostName <hostName> [--totalThreads <number>] [--template <loadTemplate.json>]");
         process.exit(0);
     }
 
@@ -26,6 +29,11 @@ for(var i=2; i<process.argv.length; i++){
 	if(argument=="--totalThreads") if(process.argv.length>=i){
         totalThreads=parseInt(process.argv[i+1]);
         console.log("Number of threads: "+totalThreads);
+    }
+	
+	if(argument=="--loadTemplate") if(process.argv.length>=i){
+        loadTemplate=process.argv[i+1];
+        console.log("Using template: "+loadTemplate);
     }
 }
 
@@ -39,7 +47,7 @@ if(!hostName){
 process.title="policyServer-" + hostName;
 
 // Read packet template
-const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/loadTemplate.json"));
+const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/" + loadTemplate));
 
 // Start policyServer and invoke sequence of testItem on initialization
 var policyServer=require("./../policyServer").createPolicyServer(hostName);
@@ -76,6 +84,7 @@ function loadLoop(){
 			if(finishedThreads == totalThreads){
 				var endTime=Date.now();
 				console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseInt(totalPackets/((endTime-startTime)/1000)));
+				process.exit(0);
 			}
         }
     });

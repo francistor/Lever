@@ -16,7 +16,7 @@ var createAgent=function(config, diameterServer, radiusServer){
 
     // Start server
     httpServer.listen(config.node["management"]["httpPort"]);
-    logger.info("[Agent] listening on port %s", config.node["management"]["httpPort"]);
+    logger.info("%s Agent listening on port %s", config.node["hostName"], config.node["management"]["httpPort"]);
 
     httpServer.get("/agent/updateAll", function(req, res){
         logger.verbose("[Agent] Reloading configuration (/agent/updateAll)");

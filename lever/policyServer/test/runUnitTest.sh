@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 _REAL_SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
@@ -27,11 +27,11 @@ sleep 45
 echo [TEST] Tests run
 
 echo [TEST] Stopping servers and client
-# Delete test-server
+# Stop test-server
 curl --silent http://localhost:9000/agent/stop > /dev/null
-# Delete test-client
+# Stop test-client
 curl --silent http://localhost:9001/agent/stop > /dev/null
-# Delete test-metaServer
+# Stop test-metaServer
 curl --silent http://localhost:9002/agent/stop > /dev/null
 
 sleep 2

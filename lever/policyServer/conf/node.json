@@ -1,6 +1,6 @@
 {
   "_id": {
-    "$oid": "59bead420ee8ae1fd113197f"
+    "$oid": "59c11e123a4175dd45ac0d58"
   },
   "_version": 1001,
   "hostName": "load-client",
@@ -63,6 +63,6 @@
   ],
   "management": {
     "IPAddress": "localhost",
-    "httpPort": 9000
+    "httpPort": 9003
   }
 }

@@ -29,7 +29,7 @@ var createRadiusClientPorts=function(radiusServer, basePort, numPorts, listenAdd
         sockets[i].bind(basePort + i, listenAddress, function(sIndex){
             return function(err){
                 if(err){
-                    if(boundCallback) boundCallback(err);
+                    if(boundCallback) boundCallback(err, logger);
                     else throw err;
                 }
                 else socketBound(sIndex);

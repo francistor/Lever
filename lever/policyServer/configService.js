@@ -24,9 +24,9 @@ try {
     if(!dbParams["eventDatabaseURL"]) dbParams["eventDatabaseURL"]=process.env["LEVER_EVENTDATABASE_URL"];
 
     // Comment out this if operation IS allowed without database
-    if(!dbParams["configDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
-    if(!dbParams["clientDatabaseURL"]) throw Error("LEVER_CLIENTDATABASE_URL environment variable not set");
-    if(!dbParams["eventDatabaseURL"]) throw Error("LEVER_EVENTDATABASE_URL environment variable not set");
+    // if(!dbParams["configDatabaseURL"]) throw Error("LEVER_CONFIGDATABASE_URL environment variable not set");
+    // if(!dbParams["clientDatabaseURL"]) throw Error("LEVER_CLIENTDATABASE_URL environment variable not set");
+    // if(!dbParams["eventDatabaseURL"]) throw Error("LEVER_EVENTDATABASE_URL environment variable not set");
 }
 catch(err){
     if(err.code!=='ENOENT') throw err;

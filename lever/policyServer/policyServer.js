@@ -670,6 +670,7 @@ var createPolicyServer=function(hostName){
         config.initialize(hostName).then(function () {
 
                 // Initialize arm library
+				/*
                 arm.setLogger(logger);
                 arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB(), config.getDBQueryOptions(), config.getDBWriteOptions());
                 arm.setConfigProperties({
@@ -680,6 +681,7 @@ var createPolicyServer=function(hostName){
                     expirationRandomSeconds: null});
 
                 return arm.pReloadPlansAndCalendars();
+				*/
 
             }).then(function(){
                 // Create management HTTP server
@@ -691,7 +693,7 @@ var createPolicyServer=function(hostName){
                     diameterSocket = net.createServer();
                     diameterSocket.on("connection", onDiameterConnectionReceived);
                     diameterSocket.listen(config.node.diameter.port || 3868, config.node.diameter.listenAddress);
-                    logger.info("Diameter listening in port %s", config.node.diameter.port);
+                    logger.info("%s Diameter listening in port %s", hostName, config.node.diameter.port);
 
                     // Establish outgoing connections
                     manageConnections();
@@ -699,7 +701,7 @@ var createPolicyServer=function(hostName){
                     // Set timer for periodically checking connections
                     setInterval(manageConnections, config.node.diameter["connectionInterval"] || 10000);
                 } else {
-                    logger.info("Diameter server not started");
+                    logger.info("%s Diameter server not started", hostName);
                 }
 
                 // Radius
@@ -715,22 +717,23 @@ var createPolicyServer=function(hostName){
 						radiusAcctSocket.on("message", onRadiusAcctRequestReceived);
 						radiusAuthSocket.on("error", onRadiusSocketError);
 						radiusAcctSocket.on("error", onRadiusSocketError);
-						logger.info("Radius auth listening in port %s", config.node.radius.authPort);
-						logger.info("Radius acct listening in port %s", config.node.radius.acctPort);
+						logger.info("%s Radius auth listening in port %s", hostName, config.node.radius.authPort);
+						logger.info("%s Radius acct listening in port %s", hostName, config.node.radius.acctPort);
 					}
 
                     // Client sockets
                     // TODO TODO TODO TODO: Turn this into a promise
+					// initcallback is called with logger as second parameter
                     radiusClientPorts = createRadiusClientPorts(radiusServer, config.node.radius.baseClientPort, config.node.radius.numClientPorts, config.node.radius.clientIPAddress, initCallback);
                 } else {
-                    logger.info("Radius server not started");
+                    logger.info("%s Radius server not started", hostName);
                     // Startup done
-                    if (initCallback) initCallback(null);
+                    if (initCallback) initCallback(null, logger);
                 }
+				
             }, function (err) {
-                if(logger.isErrorEnabled) logger.error("Configuration initialization error: %s", err.message);
-                if(logger.isDebugEnabled) logger.verbose(err.stack);
-                if (initCallback) initCallback(err);
+                if(logger.isErrorEnabled) {logger.error("%s Configuration initialization error: %s", hostName, err.message); logger.error(err.stack);}
+                if(initCallback) initCallback(err);
             }
         ).done();
     };

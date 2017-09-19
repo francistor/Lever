@@ -22,6 +22,7 @@ var clientRealm="clientLever";
 var serverManagementPort=9000;
 var clientManagementPort=9001;
 var metaServerManagementPort=9002;
+var loadClientManagementPort=9003;
 
 // Non loopback address of this node
 ipAddress="192.168.1.33";
@@ -276,7 +277,7 @@ var loadClientNode=
 
     "management":{
         "IPAddress": "localhost",
-        "httpPort": 9000
+        "httpPort": loadClientManagementPort
     }
 };
 

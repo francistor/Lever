@@ -1,9 +1,11 @@
 var fs=require("fs");
 var request=require('request');
+var Q=require("q");
 
 var config=require("./../configService").config;
 var createMessage=require("./../message").createMessage;
 var testItems=require("./testSpec").testItems;
+var arm=require("arm").arm;
 
 var serverManagementUrl="http://localhost:9000/agent/";
 var clientManagementUrl="http://localhost:9001/agent/";
@@ -29,17 +31,34 @@ process.title="policyServer-"+hostName;
 
 // Start policyServer and invoke sequence of testItem on initialization
 var policyServer=require("./../policyServer").createPolicyServer(hostName);
-policyServer.initialize(function(err){
+policyServer.initialize(function(err, logger){
     if(err){
         console.log("Error starting server: "+err.message);
         process.exit(-1);
     }
-    else{
-       console.log("Server started");
-       // Start tests
-       nextTestItem();
+    else{		
+		// Initialize arm library
+		arm.setLogger(logger);
+		arm.setDatabaseConnections(config.getConfigDB(), config.getClientDB(), config.getEventDB(), config.getDBQueryOptions(), config.getDBWriteOptions());
+		arm.setConfigProperties({
+			maxBytesCredit: null,
+			maxSecondsCredit: null,
+			minBytesCredit: 0,
+			minSecondsCredit: 0,
+			expirationRandomSeconds: null});
+		
+		arm.pReloadPlansAndCalendars().then(function(){
+			console.log("Server started");
+			// Start tests
+			nextTestItem();
+			
+		}, function(){
+			console.log("Error initializing arm library");
+			process.exit(-1);
+		});
     }
 });
+
 
 // n: index of testItem being executed
 var n=0;

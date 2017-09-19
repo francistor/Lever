@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 _REAL_SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 _HOME_DIR=${_REAL_SCRIPT_DIR}/..
