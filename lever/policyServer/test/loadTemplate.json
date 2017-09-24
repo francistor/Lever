@@ -1,19 +1,27 @@
 [
 	{
-		"User-Name": "User-${i}"
+		"User-Name": "User-${i}",
+		"Acct-Session-Id": "acct-session-id-${i}",
+		"Calling-Station-Id": "${i / 4096}_${i % 4096}"
 	},
 	{
 		"User-Name": "User-${i}",
-		"Acct-Status-Type": "Start"
+		"Acct-Status-Type": "Start",
+		"Acct-Session-Id": "acct-session-id-${i}",
+		"Calling-Station-Id": "${i / 4096}_${i % 4096}"
 	},
 	{
 		"User-Name": "User-${i}",
 		"Acct-Status-Type": "Interim-Update",
-		"Acct-Session-Time": 1800
+		"Acct-Session-Time": 1800,
+		"Acct-Session-Id": "acct-session-id-${i}",
+		"Calling-Station-Id": "${i / 4096}_${i % 4096}"
 	},
 	{
 		"User-Name": "User-${i}",
 		"Acct-Status-Type": "Stop",
-		"Acct-Session-Time": 3600
+		"Acct-Session-Time": 3600,
+		"Acct-Session-Id": "acct-session-id-${i}",
+		"Calling-Station-Id": "${i / 4096}_${i % 4096}"
 	}
 ]
