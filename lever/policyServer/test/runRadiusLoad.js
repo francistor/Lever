@@ -1,18 +1,26 @@
 /**
  * Generates radius packets for load testing
- * Generates a sequence of Access-Request, Accounting-Start, Interim-Update and Accounting-Stop
- * Loads a packet template as loadTemplate.json in the current directory, with
+ * Generates a sequence of sessions with the contents specified in the configuration template (file
+ * in the current directory) with
  * placeholders of the form ${<expresion of i>} such as ${i % 256} (take the current iteration, n,
- and apply modulo 256)
+ * and apply modulo 256)
+ *
+ * The "PacketType" attribute is removed before sending the packet
  */
 
 const fs = require("fs");
 
+// Configuration parameters
 var totalThreads=1;
 var totalSessions=1;
 var loadTemplate="loadTemplate.json";
 var hostName="test-client";
 var showPackets=false;
+
+// Indexes
+var startTime;
+var finishedThreads = 0;
+var nextSession = 0;
 
 var argument;
 for(var i=2; i<process.argv.length; i++){
@@ -66,43 +74,60 @@ policyServer.initialize(function(err){
     else{
         console.log("[OK] Radius engine initialized");
         // Start tests
-		for(k = 0; k < totalThreads; k++) loadLoop();
+		startTime=Date.now();
+		for(k = 0; k < totalThreads; k++) threadLoop();
     }
 });
 
-var finishedThreads=0;
-var genPackets=0;
-var totalPackets=totalSessions*4;
-var startTime=Date.now();
-
-function loadLoop(){
-    var packetType = (genPackets % 4 == 0) ? "Access-Request" : "Accounting-Request";
-    if(showPackets) console.log("%s: %s", packetType, JSON.stringify(buildPacket(radiusTemplate[genPackets % 4], parseInt(genPackets / 4))));
-
-    policyServer.radius.sendServerGroupRequest(packetType, buildPacket(radiusTemplate[genPackets % 4], parseInt(genPackets / 4)), "allServers", function (err, response) {
-        if (err) console.log("[ERROR] " + err.message);
-        else{
-			// Intentionally blank for now
-        }
-        genPackets++;
-        if(genPackets<totalPackets) loadLoop();
-        else {
-			finishedThreads++;
-			if(finishedThreads == totalThreads){
-				var endTime=Date.now();
-				console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat(totalPackets/((endTime-startTime)/1000)).toFixed(2));
-				process.exit(0);
+function threadLoop(){
+	// Next thread will get the next session index
+	var thisSession = nextSession;
+	nextSession++;
+	packetLoop(thisSession, 0);
+	
+	function packetLoop(sessionIndex, packetIndex){		
+		// Build the packet to send
+		var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex);
+		var packetType = (packet["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
+		delete packet["PacketType"];
+		
+		// Debug
+		if(showPackets){
+			console.log("-----------------------------------");
+			console.log("Session: %d, Packet: %d", sessionIndex, packetIndex);
+			console.log("%s: %s", packetType, JSON.stringify(packet));
+			console.log("-----------------------------------");
+		}
+		
+		// Send radius packet
+		policyServer.radius.sendServerGroupRequest(packetType, packet, "allServers", function (err, response) {
+			if (err) console.log("[ERROR] " + err.message);
+			
+			// Continue with the rest of packet sessions (increment packet index in the same session)
+			if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
+			else {
+				// Grab another session if available
+				if(++nextSession < totalSessions) packetLoop(nextSession, 0);
+				else {
+					// All sessions finished
+					finishedThreads++;
+					if(finishedThreads == totalThreads){
+						var endTime=Date.now();
+						console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
+						process.exit(0);
+					}
+				}
 			}
-        }
-    });
+		});
+	}
 }
 
-// Replacements
+// Helper function to replace "i" in packet template
 function buildPacket(template, i){
     var packet = {};
     for(property in template){
 		value = template[property];
-		if(typeof value == "string") value = value.replace(/\${(.+?)}/, function(match, p1){
+		if(typeof value == "string") value = value.replace(/\${(.+?)}/g, function(match, p1){
             return eval(p1);
         });
 		packet[property]=value;

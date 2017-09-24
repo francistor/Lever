@@ -36,4 +36,4 @@ rm policyParams.json
 
 rm out.txt
 
-echo export done!
+echo done!
