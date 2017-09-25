@@ -82,7 +82,6 @@ policyServer.initialize(function(err){
 function threadLoop(){
 	// Next thread will get the next session index
 	var thisSession = nextSession;
-	nextSession++;
 	packetLoop(thisSession, 0);
 	
 	function packetLoop(sessionIndex, packetIndex){		
