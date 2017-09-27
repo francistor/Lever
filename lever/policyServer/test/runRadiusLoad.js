@@ -28,7 +28,7 @@ for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
 	
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runUnitTest [--hostName <hostName (default: \"test-client\")>] [--totalSessions <number>] [--totalThreads <number>] [--template <loadTemplate.json>] [--show]");
+        console.log("Usage: node runRadiusLoad.sh [--hostName <hostName (default: \"test-client\")>] [--totalSessions <number>] [--totalThreads <number>] [--template <loadTemplate.json>] [--show]");
         process.exit(0);
     }
 
@@ -75,51 +75,47 @@ policyServer.initialize(function(err){
         console.log("[OK] Radius engine initialized");
         // Start tests
 		startTime=Date.now();
-		for(k = 0; k < totalThreads; k++) threadLoop();
+		for(k = 0; k < totalThreads; k++) packetLoop(nextSession++, 0);
     }
 });
 
-function threadLoop(){
-	// Next thread will get the next session index
-	var thisSession = nextSession;
-	packetLoop(thisSession, 0);
 	
-	function packetLoop(sessionIndex, packetIndex){		
-		// Build the packet to send
-		var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex);
-		var packetType = (packet["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
-		delete packet["PacketType"];
+function packetLoop(sessionIndex, packetIndex){		
+	// Build the packet to send
+	var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex);
+	var packetType = (packet["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
+	delete packet["PacketType"];
+	
+	// Debug
+	if(showPackets){
+		console.log("-----------------------------------");
+		console.log("Session: %d, Packet: %d", sessionIndex, packetIndex);
+		console.log("%s: %s", packetType, JSON.stringify(packet));
+		console.log("-----------------------------------");
+	}
+	
+	// Send radius packet
+	policyServer.radius.sendServerGroupRequest(packetType, packet, "allServers", function (err, response) {
+		if (err) console.log("[ERROR] " + err.message);
 		
-		// Debug
-		if(showPackets){
-			console.log("-----------------------------------");
-			console.log("Session: %d, Packet: %d", sessionIndex, packetIndex);
-			console.log("%s: %s", packetType, JSON.stringify(packet));
-			console.log("-----------------------------------");
-		}
-		
-		// Send radius packet
-		policyServer.radius.sendServerGroupRequest(packetType, packet, "allServers", function (err, response) {
-			if (err) console.log("[ERROR] " + err.message);
-			
-			// Continue with the rest of packet sessions (increment packet index in the same session)
-			if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
+		// Continue with the rest of packet sessions (increment packet index in the same session)
+		if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
+		else {
+			// Grab another session if available
+			if(++nextSession < totalSessions) packetLoop(nextSession, 0);
 			else {
-				// Grab another session if available
-				if(++nextSession < totalSessions) packetLoop(nextSession, 0);
-				else {
-					// All sessions finished
-					finishedThreads++;
-					if(finishedThreads == totalThreads){
-						var endTime=Date.now();
-						console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
-						process.exit(0);
-					}
+				// All sessions finished
+				finishedThreads++;
+				if(finishedThreads == totalThreads){
+					var endTime=Date.now();
+					console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
+					process.exit(0);
 				}
 			}
-		});
-	}
+		}
+	});
 }
+
 
 // Helper function to replace "i" in packet template
 function buildPacket(template, i){
