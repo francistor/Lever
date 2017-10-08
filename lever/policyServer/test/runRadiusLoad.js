@@ -118,7 +118,7 @@ function packetLoop(sessionIndex, packetIndex){
 		}
 		
 		// Print stats
-		process.stdout.write("\rAuth sent:" + authRequests + "-> accept: " +authAccepts + "/reject: " + authRejects + "/drop: " + authDrops + " Acct sent: " + acctRequests + "-> resp: " + acctResponses + "/drop: " + acctDrops);
+		process.stdout.write("\rAuth sent :" + authRequests + "-> accept: " +authAccepts + "/reject: " + authRejects + "/drop: " + authDrops + " Acct sent: " + acctRequests + "-> resp: " + acctResponses + "/drop: " + acctDrops);
 		
 		// Continue with the rest of packet sessions (increment packet index in the same session)
 		if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
@@ -130,7 +130,7 @@ function packetLoop(sessionIndex, packetIndex){
 				finishedThreads++;
 				if(finishedThreads == totalThreads){
 					var endTime=Date.now();
-					console.log("[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
+					console.log("\n[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
 					process.exit(0);
 				}
 			}
