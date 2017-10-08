@@ -78,6 +78,9 @@ process.title="policyServer-" + hostName;
 // Read packet template
 const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/" + loadTemplate));
 
+// Build random prefix for AcctSessionId
+const sessionIdPrefix = ParseInt(Math.random()*10000);
+
 // Start policyServer and invoke sequence of testItem on initialization
 var policyServer=require("./../policyServer").createPolicyServer(hostName);
 policyServer.initialize(function(err){
@@ -100,6 +103,8 @@ function packetLoop(sessionIndex, packetIndex){
 	var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex);
 	var packetType = (packet["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
 	delete packet["PacketType"];
+	// Prepend random part to sessionId
+	if(packet["Acct-Session-Id"]) packet["Acct-Session-Id"] = sessionIdPrefix + packet["Acct-Session-Id"];
 	
 	// Debug
 	if(showPackets){
