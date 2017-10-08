@@ -79,7 +79,7 @@ process.title="policyServer-" + hostName;
 const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/" + loadTemplate));
 
 // Build random prefix for AcctSessionId
-const sessionIdPrefix = ParseInt(Math.random()*10000);
+const sessionIdPrefix = parseInt(Math.random()*10000);
 
 // Start policyServer and invoke sequence of testItem on initialization
 var policyServer=require("./../policyServer").createPolicyServer(hostName);
