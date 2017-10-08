@@ -107,7 +107,7 @@ function packetLoop(sessionIndex, packetIndex){
 	policyServer.radius.sendServerGroupRequest(packetType, packet, "allServers", function (err, response) {
 		if(packetType == "Access-Request") authRequests++; else acctRequests++;
 		if (err){
-			console.log("[ERROR] " + err.message);
+			//console.log("[ERROR] " + err.message);
 			if(packetType == "Access-Request") authDrops++; else acctDrops++;
 		} else{
 			if(packetType == "Access-Request"){
@@ -118,7 +118,7 @@ function packetLoop(sessionIndex, packetIndex){
 		}
 		
 		// Print stats
-		process.stdout.write("\rAuth " + authRequests + "->" +autAccepts + "/" + authRejects + "/" + authDrops + " Acct: " + acctRequests + "->" + acctResponses + "/" + acctDrops);
+		process.stdout.write("\rAuth sent:" + authRequests + "-> accept: " +authAccepts + "/reject: " + authRejects + "/drop: " + authDrops + " Acct sent: " + acctRequests + "-> resp: " + acctResponses + "/drop: " + acctDrops);
 		
 		// Continue with the rest of packet sessions (increment packet index in the same session)
 		if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
