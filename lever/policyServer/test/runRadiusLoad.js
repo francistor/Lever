@@ -16,6 +16,7 @@ var totalSessions=1;
 var loadTemplate="loadTemplate.json";
 var hostName="test-client";
 var showPackets=false;
+var showStats=false;
 
 // Indexes
 var startTime;
@@ -36,7 +37,7 @@ for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
 	
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runRadiusLoad.sh [--hostName <hostName (default: \"test-client\")>] [--totalSessions <number>] [--totalThreads <number>] [--template <loadTemplate.json>] [--show]");
+        console.log("Usage: node runRadiusLoad.sh [--hostName <hostName (default: \"test-client\")>] [--totalSessions <number>] [--totalThreads <number>] [--template <loadTemplate.json>] [--showPackets] [--showStats]");
         process.exit(0);
     }
 
@@ -60,9 +61,14 @@ for(var i=2; i<process.argv.length; i++){
         console.log("Using template: "+loadTemplate);
     }
 	
-	if(argument=="--show"){
+	if(argument=="--showPackets"){
 		showPackets=true;
 		console.log("Showing packets");
+	}
+	
+	if(argument=="--showStats"){
+		showStats=true;
+		console.log("Showing stats");
 	}
 }
 
@@ -118,7 +124,7 @@ function packetLoop(sessionIndex, packetIndex){
 		}
 		
 		// Print stats
-		process.stdout.write("\rAuth sent :" + authRequests + "-> accept: " +authAccepts + "/reject: " + authRejects + "/drop: " + authDrops + " Acct sent: " + acctRequests + "-> resp: " + acctResponses + "/drop: " + acctDrops);
+		if(showStats) process.stdout.write("\rAuth sent :" + authRequests + "-> accept: " +authAccepts + "/reject: " + authRejects + "/drop: " + authDrops + " Acct sent: " + acctRequests + "-> resp: " + acctResponses + "/drop: " + acctDrops);
 		
 		// Continue with the rest of packet sessions (increment packet index in the same session)
 		if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
