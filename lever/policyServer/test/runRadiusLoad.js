@@ -22,6 +22,14 @@ var startTime;
 var finishedThreads = 0;
 var nextSession = 0;
 
+var authRequests = 0;
+var authAccepts = 0;
+var authRejects = 0;
+var authDrops = 0;
+var acctRequests = 0;
+var acctResponses = 0;
+var acctDrops = 0;
+
 var argument;
 for(var i=2; i<process.argv.length; i++){
 
@@ -75,7 +83,8 @@ policyServer.initialize(function(err){
         console.log("[OK] Radius engine initialized");
         // Start tests
 		startTime=Date.now();
-		for(k = 0; k < totalThreads; k++) packetLoop(nextSession++, 0);
+		for(k = 0; k < totalThreads; k++) packetLoop(k, 0);
+		nextSession = k-1;
     }
 });
 
@@ -96,7 +105,20 @@ function packetLoop(sessionIndex, packetIndex){
 	
 	// Send radius packet
 	policyServer.radius.sendServerGroupRequest(packetType, packet, "allServers", function (err, response) {
-		if (err) console.log("[ERROR] " + err.message);
+		if(packetType == "Access-Request") authRequests++; else acctRequests++;
+		if (err){
+			console.log("[ERROR] " + err.message);
+			if(packetType == "Access-Request") authDrops++; else acctDrops++;
+		} else{
+			if(packetType == "Access-Request"){
+				if(response.code == "Access-Reject") authRejects ++;
+				else if(response.code == "Access-Accept") authAccepts ++;
+			}
+			else acctResponses++;
+		}
+		
+		// Print stats
+		process.stdout.write("\rAuth " + authRequests + "->" +autAccepts + "/" + authRejects + "/" + authDrops + " Acct: " + acctRequests + "->" + acctResponses + "/" + acctDrops);
 		
 		// Continue with the rest of packet sessions (increment packet index in the same session)
 		if(++packetIndex < radiusTemplate.length) packetLoop(sessionIndex, packetIndex);
