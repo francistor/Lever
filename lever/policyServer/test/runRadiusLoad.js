@@ -51,7 +51,7 @@ for(var i=2; i<process.argv.length; i++){
         console.log("Number of threads: "+totalThreads);
     }
 	
-	if(argument=="--loadTemplate") if(process.argv.length>=i){
+	if(argument=="--template") if(process.argv.length>=i){
         loadTemplate=process.argv[i+1];
         console.log("Using template: "+loadTemplate);
     }
@@ -92,7 +92,7 @@ policyServer.initialize(function(err){
         console.log("[OK] Radius engine initialized");
         // Start tests
 		startTime=Date.now();
-		for(k = 0; k < totalThreads; k++) packetLoop(k, 0);
+		for(k = 0; k < Math.min(totalThreads, totalSessions); k++) packetLoop(k, 0);
 		nextSession = k-1;
     }
 });
