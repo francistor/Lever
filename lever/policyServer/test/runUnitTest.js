@@ -4,19 +4,19 @@ var Q=require("q");
 
 var config=require("./../configService").config;
 var createMessage=require("./../message").createMessage;
-var testItems=require("./testSpec").testItems;
 var arm=require("arm").arm;
 
 var serverManagementUrl="http://localhost:9000/agent/";
 var clientManagementUrl="http://localhost:9001/agent/";
 var metaServerManagementUrl="http://localhost:9002/agent/";
 
+var testSpec="./testSpec";
 var hostName;
 var argument;
 for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runUnitTest [--hostName <hostName>]");
+        console.log("Usage: node runUnitTest [--hostName <hostName>] [--testSpec <filename without .js>");
         process.exit(0);
     }
 
@@ -24,7 +24,14 @@ for(var i=2; i<process.argv.length; i++){
         hostName=process.argv[i+1];
         console.log("[TEST] Host name: "+hostName);
     }
+	
+	if(argument=="--testSpec") if(process.argv.length>=i){
+        testSpec="./"+process.argv[i+1];
+        console.log("[TEST] TestSpec: "+testSpec);
+    }
 }
+
+testItems=require(testSpec).testItems;
 
 // Create process title so that it can be stopped using pkill --signal SIGINT <process.title>
 process.title="policyServer-"+hostName;
@@ -193,9 +200,12 @@ function checkStats(statsSpec, protocol){
 function checkAVPs(specs, responseAVPs){
     var responseValue;
     var specItems;
+	// For each item to check
     specs.forEach(function(spec){
+		// Properties to check are specified by using the "|" character instead of the "." character
         specItems=spec.property.split("|");
         responseValue=responseAVPs;
+		// Navigate to the value, using "|" as separator
         for(var j=0; j<specItems.length; j++){
             if(responseValue.hasOwnProperty(specItems[j])) responseValue=responseValue[specItems[j]];
             else{
@@ -204,7 +214,7 @@ function checkAVPs(specs, responseAVPs){
             }
         }
 
-        // Test
+        // Check value
         if(JSON.stringify(responseValue)==JSON.stringify(spec.value)) console.log("\t[Test][OK] "+spec.description+" "+JSON.stringify(spec.value)); else console.log("\t[Test][ERROR] "+spec.description+" "+JSON.stringify(spec.value)+" found: "+JSON.stringify(responseValue));
     });
 }
