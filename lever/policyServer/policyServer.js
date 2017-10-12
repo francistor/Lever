@@ -17,6 +17,8 @@ var createAgent=require("./agent").createAgent;
 var config=require("./configService").config;
 var arm=require("arm").arm;
 
+radius.add_dictionary(__dirname+"/radiusDict");
+
 // Singleton
 var createPolicyServer=function(hostName){
     
