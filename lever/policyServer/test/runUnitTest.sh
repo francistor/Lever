@@ -10,10 +10,10 @@ cd ${_HOME_DIR}/../database
 (cd ${_HOME_DIR}/../database && ./toDatabase.sh)
 
 # Delete status file
-rm ${_HOME_DIR}/test/testFinished.txt > /dev/null
+rm ${_HOME_DIR}/test/testFinished.txt 2> /dev/null
 
 # Delete CDR files
-rm /c/var/lever/policyServer/cdr/cdr_* > /dev/null
+rm /c/var/lever/policyServer/cdr/cdr_* 2> /dev/null
 
 # Launch server instances
 (cd  ${_HOME_DIR} && export LOG_CONFIG_FILE=test-server-logging.json && node runServer --hostName test-server > /dev/null &)

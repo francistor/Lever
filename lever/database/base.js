@@ -13,7 +13,6 @@ var metaServerName=hostname+"-metaServer";
 var metaServerNameExt="8950AAA";
 var radiusClientNameExt="radiusTool";
 var diameterClientNameExt="diameterTool";
-var loadName="load-client";
 
 var realm="lever";
 var metaRealm="metaLever";
@@ -22,7 +21,6 @@ var clientRealm="clientLever";
 var serverManagementPort=9000;
 var clientManagementPort=9001;
 var metaServerManagementPort=9002;
-var loadClientManagementPort=9003;
 
 // Non loopback address of this node
 ipAddress="192.168.1.33";
@@ -247,44 +245,9 @@ var metaServerNode=
     }
 };
 
-var loadClientNode=
-{
-    "_version": 1001,
-    "hostName": loadName,
-
-    "radius": {
-        "_version": 1001,
-        "IPAddress": 0,
-        "authPort": 0,
-        "acctPort": 0,
-
-        "servers": [
-            {"name": serverName, "IPAddress": "127.0.0.1", "secret": "secret", "class": "none", "ports": {"Access-Request": 1812, "Accounting-Request": 1813, "CoA-Request": 3799}, "timeoutMillis": 2000, "tries": 1, "errorThreshold": 2, "quarantineTimeMillis": 4000},
-        ],
-
-        "serverGroups": [
-            {"name": "allServers", "servers": [serverName], "policy": "random"}
-        ],
-
-        "baseClientPort": 40100,
-        "numClientPorts": 100
-    },
-
-    cdrChannels:[
-        {name: "file", "type": "file", "location": "/var/lever/policyServer/cdr/cdr_client_test", "extension": ".txt", "rolling": "none", "format": "livingstone", "enabled": false},
-        {name: "database", "type": "database", "location": "mongodb://eventdb.lever/leverEvents", "collection": "cdr", "filter": ["User-Name", "NAS-IP-Address", "NAS-Port"], "enabled": false}
-    ],
-
-    "management":{
-        "IPAddress": "localhost",
-        "httpPort": loadClientManagementPort
-    }
-};
-
 db.nodes.insert(serverNode);
 db.nodes.insert(clientNode);
 db.nodes.insert(metaServerNode);
-db.nodes.insert(loadClientNode);
 print("done");
 print("");
 

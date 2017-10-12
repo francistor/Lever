@@ -16,7 +16,7 @@ var argument;
 for(var i=2; i<process.argv.length; i++){
     argument=process.argv[i];
     if(argument.indexOf("help")!=-1){
-        console.log("Usage: node runUnitTest [--hostName <hostName>] [--testSpec <filename without .js>");
+        console.log("Usage: node runUnitTest [--hostName <hostName>] [--testSpec <filename without .js>]");
         process.exit(0);
     }
 
