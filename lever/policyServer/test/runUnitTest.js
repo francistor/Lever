@@ -10,7 +10,7 @@ var serverManagementUrl="http://localhost:9000/agent/";
 var clientManagementUrl="http://localhost:9001/agent/";
 var metaServerManagementUrl="http://localhost:9002/agent/";
 
-var testSpec="./testSpec";
+var testSpec="./unitTestSpec";
 var hostName;
 var argument;
 for(var i=2; i<process.argv.length; i++){
