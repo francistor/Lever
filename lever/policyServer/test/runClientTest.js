@@ -26,7 +26,7 @@ for(var i=2; i<process.argv.length; i++){
     }
 }
 
-testItems=require(testSpec).testItems;
+testItems=require("./"+testSpec).testItems;
 
 // Create process title so that it can be stopped using pkill --signal SIGINT <process.title>
 process.title="policyServer-"+hostName;
@@ -65,11 +65,17 @@ function nextTestItem(){
     }
 
     console.log("[Test] "+testItem.description);
+	
+	if(testItem.prepareFn) testItem.prepareFn();
 
     if(testItem.type=="Radius") {
         // Send radius request
         policyServer.radius.sendServerGroupRequest(testItem.code, testItem.requestAVPs, testItem.serverGroupName, function (err, response) {
-            if (err) testItem.errorFn(err); else testItem.responseFn(response);
+            if (err){
+				try {testItem.errorFn(err);} catch(e){console.log("[ERROR] %s", e.message);} 
+			} else{
+				try {testItem.responseFn(response);} catch(e){console.log("[ERROR] %s", e.message);} 
+			}
 			setTimeout(nextTestItem, 0);
         });
     } else if (testItem.type=="Diameter") {
@@ -85,8 +91,12 @@ function nextTestItem(){
 
         // Send Diameter request
         policyServer.diameter.sendRequest(null, requestMessage, 1000, function (err, response) {
-            if (err) testItem.errorFn(err);
-			else testItem.responseFn(response);
+            if (err){
+				try {testItem.errorFn(err);} catch(e){console.log("[ERROR] %s", err.message);} 
+			}
+			else {
+				try {testItem.responseFn(response);} catch(e){console.log("[ERROR] %s", err.message);}
+			}
 			setTimeout(nextTestItem, 0);
         });
     } else if(testItem.type=="Wait"){

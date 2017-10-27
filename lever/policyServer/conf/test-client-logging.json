@@ -5,11 +5,11 @@
 
     "console":{
         "type": "Console",
-        "properties": {"timestamp": true, "level": "verbose"}
+        "properties": {"timestamp": true, "level": "info"}
     },
 
     "file":{
         "type": "DailyRotateFile",
-        "properties": {"datePattern": ".yyyy-MM-dd", "timestamp": true, "level": "verbose", "filename": "log/test-client.log", "json": false}
+        "properties": {"datePattern": ".yyyy-MM-dd", "timestamp": true, "level": "info", "filename": "log/test-client.log", "json": false}
     }
 }

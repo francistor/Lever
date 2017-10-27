@@ -2,9 +2,9 @@
  * Generates radius packets for load testing
  * Generates a sequence of sessions with the contents specified in the configuration template (file
  * in the current directory) with
- * placeholders of the form ${<expresion of i>} such as ${i % 256} (take the current iteration, n,
- * and apply modulo 256)
- *
+ * placeholders of the form 
+ * 	${<expresion of i>} such as ${i % 256} (take the current iteration, i, and apply modulo 256)
+ *  ${<expression of r>} where r is a random number of 32 bits generated just once for all the run (same for all sessions)
  * The "PacketType" attribute is removed before sending the packet
  */
 
@@ -58,7 +58,7 @@ for(var i=2; i<process.argv.length; i++){
 	
 	if(argument=="--totalSessions") if(process.argv.length>=i){
         totalSessions=parseInt(process.argv[i+1]);
-        console.log("Using template: "+loadTemplate);
+        console.log("Total sessions: "+totalSessions);
     }
 	
 	if(argument=="--showPackets"){
@@ -78,8 +78,8 @@ process.title="policyServer-" + hostName;
 // Read packet template
 const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/" + loadTemplate));
 
-// Build random prefix for AcctSessionId
-const sessionIdPrefix = parseInt(Math.random()*10000);
+// Build random number
+const rnd = parseInt(Math.random()*65536);
 
 // Start policyServer and invoke sequence of testItem on initialization
 var policyServer=require("./../policyServer").createPolicyServer(hostName);
@@ -100,11 +100,8 @@ policyServer.initialize(function(err){
 	
 function packetLoop(sessionIndex, packetIndex){		
 	// Build the packet to send
-	var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex);
-	var packetType = (packet["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
-	delete packet["PacketType"];
-	// Prepend random part to sessionId
-	if(packet["Acct-Session-Id"]) packet["Acct-Session-Id"] = sessionIdPrefix + packet["Acct-Session-Id"];
+	var packet = buildPacket(radiusTemplate[packetIndex], sessionIndex, rnd);
+	var packetType=getAndDeletePacketType(packet);
 	
 	// Debug
 	if(showPackets){
@@ -150,15 +147,51 @@ function packetLoop(sessionIndex, packetIndex){
 }
 
 
-// Helper function to replace "i" in packet template
-function buildPacket(template, i){
-    var packet = {};
-    for(property in template){
-		value = template[property];
-		if(typeof value == "string") value = value.replace(/\${(.+?)}/g, function(match, p1){
-            return eval(p1);
-        });
-		packet[property]=value;
-    }
-    return packet;
+// Helper function to replace "i" and "r" in packet template
+function buildPacket(attrs, i, r){
+	if(!Array.isArray(attrs)){
+		// Template in hash format
+		var packet = {};
+		for(property in attrs){
+			value = attrs[property];
+			if(typeof value == "string") value=value.replace(/\${(.+?)}/g, function(match, p1){return eval(p1);});
+			packet[property]=value;
+		}
+	} else {
+		packet = JSON.parse(JSON.stringify(attrs));
+		// Template in array format
+		for(var ax=0; ax<packet.length; ax++){
+			var avp=packet[ax];
+			// Standard
+			if(avp.length==2 && typeof avp[1]=="string") avp[1]=avp[1].replace(/\${(.+?)}/g, function(match, p1){return eval(p1);});
+			// Vendor specific
+			if(avp.length==3){
+				for(var bx=0; bx<avp[2].length; bx++){
+					if(typeof avp[2][bx][1]=="string") avp[2][bx][1]=avp[2][bx][1].replace(/\${(.+?)}/g, function(match, p1){return eval(p1);});
+				}
+			}
+		}
+	}
+	return packet;
+}
+
+// Session template may inlcude a fake "PacketType" attribute which is retrieved (1-->Access-Request, 4-->Accounting-Request) and removed with this function
+// Thus, attrs passed to the function are modified
+function getAndDeletePacketType(attrs){
+	if(!Array.isArray(attrs)){
+		// Attributes are in hash format
+		var packetType = (attrs["PacketType"]||1) == 1 ? "Access-Request" : "Accounting-Request";
+		delete attrs["PacketType"];
+		return packetType;
+	}
+	else {
+		// Attributes are in array format
+		for(var cx=0; cx<attrs.length; cx++){
+			if(attrs[cx][0]=="PacketType"){
+				packetType = (attrs[cx][1]) == 1 ? "Access-Request" : "Accounting-Request";
+				attrs.splice(cx, 1);
+				return packetType;
+			}
+		}
+	}
 }

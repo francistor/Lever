@@ -3,7 +3,7 @@
 		"PacketType": 1,
 		"User-Name": "User-${i}",
 		"User-Password" : "void",
-		"Acct-Session-Id": "acct-session-id-${i}",
+		"Acct-Session-Id": "${r}-acct-session-id-${i}",
 		"Calling-Station-Id": "${Math.floor(i / 4096)}_${i % 4096}",
 		"NAS-IP-Address": "200.1.1.1"
 	},
@@ -11,7 +11,7 @@
 		"PacketType": 4,
 		"User-Name": "User-${i}",
 		"Acct-Status-Type": "Start",
-		"Acct-Session-Id": "acct-session-id-${i}",
+		"Acct-Session-Id": "${r}-acct-session-id-${i}",
 		"Calling-Station-Id": "${Math.floor(i / 4096)}_${i % 4096}",
 		"NAS-IP-Address": "200.1.1.1",
 		"Framed-IP-Address": "199.${Math.floor(i / 65536)}.${Math.floor(i / 256)}.${i % 256}"
@@ -21,7 +21,7 @@
 		"User-Name": "User-${i}",
 		"Acct-Status-Type": "Interim-Update",
 		"Acct-Session-Time": 1,
-		"Acct-Session-Id": "acct-session-id-${i}",
+		"Acct-Session-Id": "${r}-acct-session-id-${i}",
 		"Calling-Station-Id": "${Math.floor(i / 4096)}_${i % 4096}",
 		"NAS-IP-Address": "200.1.1.1",
 		"Framed-IP-Address": "199.${Math.floor(i / 65536)}.${Math.floor(i / 256)}.${i % 256}"
@@ -31,7 +31,7 @@
 		"User-Name": "User-${i}",
 		"Acct-Status-Type": "Stop",
 		"Acct-Session-Time": 2,
-		"Acct-Session-Id": "acct-session-id-${i}",
+		"Acct-Session-Id": "${r}-acct-session-id-${i}",
 		"Calling-Station-Id": "${Math.floor(i / 4096)}_${i % 4096}",
 		"NAS-IP-Address": "200.1.1.1",
 		"Framed-IP-Address": "199.${Math.floor(i / 65536)}.${Math.floor(i / 256)}.${i % 256}"
