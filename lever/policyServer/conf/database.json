@@ -1,0 +1,32 @@
+{
+  "__configDatabaseURL" : "use this property without __ to use a URL not in the environment variable LEVER_CONFIGDATABASE_URL",
+  "__clientDatabaseURL" : "use this property without __ to use a URL not in the environment variable LEVER_CLIENTDATABASE_URL",
+  "__eventDatabaseURL" :  "use this property without __ to use a URL not in the environment variable LEVER_EVENTDATABASE_URL",
+  
+  "configDatabaseURL": "mongodb://127.0.0.1/config",
+  "clientDatabaseURL": "mongodb://127.0.0.1/clients",
+  "eventDatabaseURL": "mongodb://127.0.0.1/events",
+  
+    "databaseOptions":{
+        "db": {
+            "retryMiliSeconds": 5000,
+            "bufferMaxEntries": 0
+        },
+        "server": {
+            "poolSize": 1,
+            "autoReconnect": true,
+            "socketOptions":{
+                "connectTimeoutMS": 5000,
+                "socketTimeoutMS": 0
+            }
+        }
+    },
+    "queryOptions":{
+        "timeout": true,
+        "maxTimeMS": 1000
+    },
+
+    "writeOptions":{
+
+    }
+}

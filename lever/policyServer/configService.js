@@ -1,7 +1,7 @@
 // Holds the policySever configuration
 // which consists of a set of JSON objects, read from file or from the backend database
 // config.<configItem>.<json-object>
-// <configItem> may be one of "node", "dispatcher", "dictionary", or "policy"
+// <configItem> may be one of "node", "dispatcher", "diameterDictionary", or "policyParams"
 
 // configService tries to get the configItem from file, reading the conf/<configItem>.json
 // file, or the conf/policy/<setName>.json files, and then tries to get the configuration
