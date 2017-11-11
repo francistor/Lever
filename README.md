@@ -35,5 +35,16 @@ To configure the address of the server where to send the packets, secret, ports,
 ## runRadiusLoad
 ```runRadiusLoad.sh``` sends a sequence or radius packets as specified in a template with the syntax shown in ```loadTemplate.json```. The template allows replacement of variables, to provide unique User-Names, Acct-Session-Ids, etc. per session, as well as random numbers. If vendor specific attributes are used, use ```loadTemplate-ArrayFormat.json``` as an example.
 
+# Full setup
+Install mongodb following the instructions in the mongodb site for your distribution.
+
+Then, follow the steps in the basic installation.
+
+To copy the example/test configuration in the database, go to the lever/database directory and execute ```toDatabase.sh```. This will populate the database with the contents of the files in the same directory, that include three radius/diameter nodes, named "client", "server" and "meta-server".
+
+Go to the lever/policyServer/tools directory and execute ```disableLocalConfig.sh``` to make sure that the configuration is read from the database.
+
+To check that the setup is OK, go to the lever/policyServer/test and execute ```runUnitTest.sh```. All thest should show [OK] instead of [ERROR]. Some traces showing errors when establishing connection with peers are expected, since the test configuration includes non-existing servers to test the balancing pools. Those errors do not include the [ERROR] mark.
+
 
 
