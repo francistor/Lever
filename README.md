@@ -1,6 +1,6 @@
 Lever
 =====
-Lever is a toy radius and diameter server and client for testing and experimentation.
+Lever is a toy radius and diameter server and client for testing and experimentation. It is written in javascript and requires [nodejs](https://nodejs.org/).
 
 This project does not include any license and is intended for personal use by the author only (see LICENSE file).
 
@@ -16,10 +16,13 @@ Lever may be executed in a single node and be configured using local files, or m
 
 This setup is intended for building a radius/diameter client on a single node, typically used to generate testing loads.
 
-First, clone the repository using 
+First, install [nodejs](https://nodejs.org/)
+
+Second, clone the repository using 
 
 ```git clone https://github.com/francistor/Lever.git```
 
+go to ```Lever/lever/policyServer``` and update the dependencies unsing ```npm install```
 
 
 
