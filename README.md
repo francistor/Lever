@@ -68,8 +68,20 @@ Holds the configuation for each module/function to call for each type of diamete
 It is stored in the ```dispacher.json``` file or, if not present, in the ```config``` database and the ```dispacher``` collection, which must have only one entry.
 
 ## Policy parameters configuration
+Holds opaque configuration items at the disposal of the dispacthing functions, that is, to be used in the message handlers. It consists of a set of json objects with ```setName``` and ```key``` attributes, that will be exposed as ```config.policyParams["setName"]["key"]``` by the configuration object utility.
 
+It is stored in the ```policyParams.json``` file, as an array of objects or, if not present, in the ```config``` database and ```policyParams``` collection.
 
 ## Diameter dictionary configuration
 It is stored in the ```diameterDictionary``` file or, if not present, in the ```config``` database and the ```diameterDictionary``` collection, which must have only one entry.
+
+## Radius dictionary configuration
+[nodejs](https://nodejs.org/) is used "as is". The embedded radius dictionaries are located in ```policyServer/node_modules/radius/dictionaries```. Additional dictionaries may be added in the code using:
+
+```
+var radius = require('radius');
+radius.add_dictionary('/path/to/my/dictionary');
+```
+## Logging configuration
+
 
