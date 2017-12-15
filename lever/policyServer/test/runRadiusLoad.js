@@ -76,7 +76,7 @@ for(var i=2; i<process.argv.length; i++){
 process.title="policyServer-" + hostName;
 
 // Read packet template
-const radiusTemplate = JSON.parse(fs.readFileSync(__dirname + "/" + loadTemplate));
+const radiusTemplate = JSON.parse(fs.readFileSync(loadTemplate));
 
 // Build random number
 const rnd = parseInt(Math.random()*65536);
@@ -138,7 +138,7 @@ function packetLoop(sessionIndex, packetIndex){
 				finishedThreads++;
 				if(finishedThreads == totalThreads){
 					var endTime=Date.now();
-					console.log("\n[OK] Thread finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
+					console.log("\n[OK] Finished in %d seconds. Speed is %d operations per second", (endTime-startTime) / 1000, parseFloat((totalSessions*radiusTemplate.length)/((endTime-startTime)/1000)).toFixed(2));
 					process.exit(0);
 				}
 			}

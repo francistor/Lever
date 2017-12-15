@@ -21,12 +21,13 @@ for(var i=2; i<process.argv.length; i++){
     }
 	
 	if(argument=="--testSpec") if(process.argv.length>=i){
-        testSpec="./"+process.argv[i+1];
+        testSpec=process.argv[i+1];
+		if(!testSpec.startsWith("/")) testSpec="./"+testSpec;
         console.log("[TEST] TestSpec: "+testSpec);
     }
 }
 
-testItems=require("./"+testSpec).testItems;
+testItems=require(testSpec).testItems;
 
 // Create process title so that it can be stopped using pkill --signal SIGINT <process.title>
 process.title="policyServer-"+hostName;
